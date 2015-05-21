@@ -110,7 +110,7 @@ class Server(object):
 
         The service interface is used by the launcher when receiving a
         SIGHUP. The service interface is defined in
-        openstack.common.service.Service.
+        oslo_service.Service.
 
         Test server does not need to do anything here.
         """

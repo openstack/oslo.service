@@ -355,7 +355,7 @@ class LauncherTest(test_base.BaseTestCase):
         # unit test fixtures in nova bug #1199315)
         launcher.stop()
 
-    @mock.patch('openstack.common.service.ServiceLauncher.launch_service')
+    @mock.patch('oslo_service.ServiceLauncher.launch_service')
     def _test_launch_single(self, workers, mock_launch):
         svc = service.Service()
         service.launch(svc, workers=workers)
@@ -367,7 +367,7 @@ class LauncherTest(test_base.BaseTestCase):
     def test_launch_one_worker(self):
         self._test_launch_single(1)
 
-    @mock.patch('openstack.common.service.ProcessLauncher.launch_service')
+    @mock.patch('oslo_service.ProcessLauncher.launch_service')
     def test_multiple_worker(self, mock_launch):
         svc = service.Service()
         service.launch(svc, workers=3)
@@ -383,7 +383,7 @@ class ProcessLauncherTest(test_base.BaseTestCase):
         self.assertTrue(launcher.running)
 
         launcher.children = [22, 222]
-        with mock.patch('openstack.common.service.os.kill') as mock_kill:
+        with mock.patch('oslo_service.os.kill') as mock_kill:
             with mock.patch.object(launcher, '_wait_child') as _wait_child:
                 _wait_child.side_effect = lambda: launcher.children.pop()
                 launcher.stop()
@@ -395,7 +395,7 @@ class ProcessLauncherTest(test_base.BaseTestCase):
                          mock_kill.mock_calls)
 
     @mock.patch(
-        "openstack.common.service.ProcessLauncher._signal_handlers_set",
+        "oslo_service.ProcessLauncher._signal_handlers_set",
         new_callable=lambda: set())
     def test__signal_handlers_set(self, signal_handlers_set_mock):
         callables = set()
@@ -409,7 +409,7 @@ class ProcessLauncherTest(test_base.BaseTestCase):
                          service.ProcessLauncher._signal_handlers_set)
 
     @mock.patch(
-        "openstack.common.service.ProcessLauncher._signal_handlers_set",
+        "oslo_service.ProcessLauncher._signal_handlers_set",
         new_callable=lambda: set())
     def test__handle_class_signals(self, signal_handlers_set_mock):
         signal_handlers_set_mock.update([mock.Mock(), mock.Mock()])
@@ -418,13 +418,13 @@ class ProcessLauncherTest(test_base.BaseTestCase):
             m.assert_called_once_with()
 
     @mock.patch("os.kill")
-    @mock.patch("openstack.common.service.ProcessLauncher.stop")
-    @mock.patch("openstack.common.service.ProcessLauncher._respawn_children")
-    @mock.patch("openstack.common.service.ProcessLauncher.handle_signal")
+    @mock.patch("oslo_service.ProcessLauncher.stop")
+    @mock.patch("oslo_service.ProcessLauncher._respawn_children")
+    @mock.patch("oslo_service.ProcessLauncher.handle_signal")
     @mock.patch("oslo_config.cfg.CONF.log_opt_values")
     @mock.patch("openstack.common.systemd.notify_once")
     @mock.patch("oslo_config.cfg.CONF.reload_config_files")
-    @mock.patch("openstack.common.service._is_sighup_and_daemon")
+    @mock.patch("oslo_service._is_sighup_and_daemon")
     def test_parent_process_reload_config(self,
                                           is_sighup_and_daemon_mock,
                                           reload_config_files_mock,

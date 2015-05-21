@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = service
+omit = service/tests/*,service/openstack/*
+
+[report]
+ignore-errors = True
