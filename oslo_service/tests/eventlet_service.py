@@ -23,7 +23,7 @@ import greenlet
 
 from oslo_config import cfg
 
-from openstack.common import service
+from oslo_service import service
 
 
 CONF = cfg.CONF

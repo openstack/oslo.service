@@ -23,7 +23,7 @@ from oslo_config import fixture as config
 from oslotest import base as test_base
 from testtools import matchers
 
-from openstack.common import periodic_task
+from oslo_service import periodic_task
 
 
 class AnException(Exception):

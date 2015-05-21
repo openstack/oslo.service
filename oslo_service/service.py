@@ -30,10 +30,10 @@ import eventlet
 from eventlet import event
 from oslo_config import cfg
 
-from openstack.common import eventlet_backdoor
-from openstack.common._i18n import _LE, _LI, _LW
-from openstack.common import systemd
-from openstack.common import threadgroup
+from oslo_service import eventlet_backdoor
+from oslo_service._i18n import _LE, _LI, _LW
+from oslo_service import systemd
+from oslo_service import threadgroup
 
 
 CONF = cfg.CONF

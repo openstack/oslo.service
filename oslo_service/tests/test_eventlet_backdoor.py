@@ -25,7 +25,7 @@ from oslo_config import fixture as config
 from oslotest import base as test_base
 from oslotest import moxstubout
 
-from openstack.common import eventlet_backdoor
+from oslo_service import eventlet_backdoor
 
 
 class BackdoorPortTest(test_base.BaseTestCase):

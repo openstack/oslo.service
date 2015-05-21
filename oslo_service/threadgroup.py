@@ -17,8 +17,8 @@ import threading
 import eventlet
 from eventlet import greenpool
 
-from openstack.common._i18n import _LE
-from openstack.common import loopingcall
+from oslo_service._i18n import _LE
+from oslo_service import loopingcall
 
 
 LOG = logging.getLogger(__name__)

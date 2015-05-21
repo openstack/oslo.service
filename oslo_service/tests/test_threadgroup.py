@@ -21,7 +21,7 @@ import time
 
 from oslotest import base as test_base
 
-from openstack.common import threadgroup
+from oslo_service import threadgroup
 
 
 class ThreadGroupTestCase(test_base.BaseTestCase):
