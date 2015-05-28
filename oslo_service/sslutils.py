@@ -19,28 +19,17 @@ import ssl
 from oslo_config import cfg
 
 from oslo_service._i18n import _
+from oslo_service import _options
 
-
-ssl_opts = [
-    cfg.StrOpt('ca_file',
-               help="CA certificate file to use to verify "
-                    "connecting clients."),
-    cfg.StrOpt('cert_file',
-               help="Certificate file to use when starting "
-                    "the server securely."),
-    cfg.StrOpt('key_file',
-               help="Private key file to use when starting "
-                    "the server securely."),
-]
 
 CONF = cfg.CONF
 config_section = 'ssl'
-CONF.register_opts(ssl_opts, config_section)
+CONF.register_opts(_options.ssl_opts, config_section)
 
 
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [(config_section, copy.deepcopy(ssl_opts))]
+    return [(config_section, copy.deepcopy(_options.ssl_opts))]
 
 
 def is_enabled():

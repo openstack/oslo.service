@@ -20,17 +20,11 @@ from oslo_config import cfg
 import six
 
 from oslo_service._i18n import _, _LE, _LI
+from oslo_service import _options
 
-
-periodic_opts = [
-    cfg.BoolOpt('run_external_periodic_tasks',
-                default=True,
-                help='Some periodic tasks can be run in a separate process. '
-                     'Should we run them here?'),
-]
 
 CONF = cfg.CONF
-CONF.register_opts(periodic_opts)
+CONF.register_opts(_options.periodic_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -39,7 +33,7 @@ DEFAULT_INTERVAL = 60.0
 
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [(None, copy.deepcopy(periodic_opts))]
+    return [(None, copy.deepcopy(_options.periodic_opts))]
 
 
 class InvalidPeriodicTaskArg(Exception):

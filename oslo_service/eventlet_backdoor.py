@@ -31,28 +31,18 @@ import greenlet
 from oslo_config import cfg
 
 from oslo_service._i18n import _LI
+from oslo_service import _options
 
-help_for_backdoor_port = (
-    "Acceptable values are 0, <port>, and <start>:<end>, where 0 results "
-    "in listening on a random tcp port number; <port> results in listening "
-    "on the specified port number (and not enabling backdoor if that port "
-    "is in use); and <start>:<end> results in listening on the smallest "
-    "unused port number within the specified range of port numbers.  The "
-    "chosen port is displayed in the service's log file.")
-eventlet_backdoor_opts = [
-    cfg.StrOpt('backdoor_port',
-               help="Enable eventlet backdoor.  %s" % help_for_backdoor_port)
-]
 
 CONF = cfg.CONF
-CONF.register_opts(eventlet_backdoor_opts)
+CONF.register_opts(_options.eventlet_backdoor_opts)
 LOG = logging.getLogger(__name__)
 
 
 def list_opts():
     """Entry point for oslo-config-generator.
     """
-    return [(None, copy.deepcopy(eventlet_backdoor_opts))]
+    return [(None, copy.deepcopy(_options.eventlet_backdoor_opts))]
 
 
 class EventletBackdoorConfigValueError(Exception):
@@ -97,8 +87,8 @@ def _parse_port_range(port_range):
             raise ValueError
         return start, end
     except ValueError as ex:
-        raise EventletBackdoorConfigValueError(port_range, ex,
-                                               help_for_backdoor_port)
+        raise EventletBackdoorConfigValueError(
+            port_range, ex, _options.help_for_backdoor_port)
 
 
 def _listen(host, start_port, end_port, listen_func):
