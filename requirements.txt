@@ -5,4 +5,5 @@
 Babel>=0.9.6
 eventlet>=0.17.3
 oslo.config>=1.11.0  # Apache-2.0
+six>=1.9.0
 oslo.i18n>=1.5.0  # Apache-2.0
