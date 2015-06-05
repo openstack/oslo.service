@@ -29,6 +29,7 @@ one instance of ServiceLauncher and ProcessLauncher classes per process.
 """
 
 import abc
+import copy
 import errno
 import io
 import logging
@@ -45,12 +46,21 @@ from oslo_config import cfg
 
 from oslo_service import eventlet_backdoor
 from oslo_service._i18n import _LE, _LI, _LW
+from oslo_service import _options
 from oslo_service import systemd
 from oslo_service import threadgroup
 
 
 CONF = cfg.CONF
+CONF.register_opts(_options.service_opts)
+
 LOG = logging.getLogger(__name__)
+
+
+def list_opts():
+    """Entry point for oslo-config-generator."""
+    return [(None, copy.deepcopy(_options.eventlet_backdoor_opts +
+                                 _options.service_opts))]
 
 
 def _sighup_supported():
@@ -191,8 +201,9 @@ class ServiceLauncher(Launcher):
         status = None
         signo = 0
 
-        LOG.debug('Full set of CONF:')
-        CONF.log_opt_values(LOG, logging.DEBUG)
+        if CONF.log_options:
+            LOG.debug('Full set of CONF:')
+            CONF.log_opt_values(LOG, logging.DEBUG)
 
         try:
             if ready_callback:
@@ -410,8 +421,9 @@ class ProcessLauncher(object):
         """Loop waiting on children to die and respawning as necessary."""
 
         systemd.notify_once()
-        LOG.debug('Full set of CONF:')
-        CONF.log_opt_values(LOG, logging.DEBUG)
+        if CONF.log_options:
+            LOG.debug('Full set of CONF:')
+            CONF.log_opt_values(LOG, logging.DEBUG)
 
         try:
             while True:

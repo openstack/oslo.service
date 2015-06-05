@@ -34,6 +34,13 @@ periodic_opts = [
                      'Should we run them here?'),
 ]
 
+service_opts = [
+    cfg.BoolOpt('log_options',
+                default=True,
+                help='Enables or disables logging values of all registered '
+                     'options when starting a service (at DEBUG level).'),
+]
+
 ssl_opts = [
     cfg.StrOpt('ca_file',
                help="CA certificate file to use to verify "
