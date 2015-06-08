@@ -37,13 +37,13 @@ import eventlet
 from eventlet import event
 import mock
 from mox3 import mox
-from oslo_config import fixture as config
 from oslotest import base as test_base
 from oslotest import moxstubout
 from six.moves import queue
 
 from oslo_service import eventlet_backdoor
 from oslo_service import service
+from oslo_service.tests import base
 
 
 LOG = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class ServiceWithTimer(service.Service):
         self.timer_fired = self.timer_fired + 1
 
 
-class ServiceTestBase(test_base.BaseTestCase):
+class ServiceTestBase(base.ServiceBaseTestCase):
     """A base class for ServiceLauncherTest and ServiceRestartTest."""
 
     def _spawn_service(self, workers=1, *args, **kwargs):
@@ -90,7 +90,7 @@ class ServiceTestBase(test_base.BaseTestCase):
             status = 0
             try:
                 serv = ServiceWithTimer()
-                launcher = service.launch(serv, workers=workers)
+                launcher = service.launch(self.conf, serv, workers=workers)
                 launcher.wait(*args, **kwargs)
             except SystemExit as exc:
                 status = exc.code
@@ -114,10 +114,10 @@ class ServiceTestBase(test_base.BaseTestCase):
 
     def setUp(self):
         super(ServiceTestBase, self).setUp()
-        self.CONF = self.useFixture(config.Config()).conf
         # NOTE(markmc): ConfigOpts.log_opt_values() uses CONF.config-file
-        self.CONF(args=[], default_config_files=[])
-        self.addCleanup(self.CONF.reset)
+        self.conf(args=[], default_config_files=[])
+        self.addCleanup(self.conf.reset)
+        self.addCleanup(self.conf.reset)
         self.addCleanup(self._reap_pid)
 
     def _reap_pid(self):
@@ -277,11 +277,10 @@ class _Service(service.Service):
         super(_Service, self).stop()
 
 
-class LauncherTest(test_base.BaseTestCase):
+class LauncherTest(base.ServiceBaseTestCase):
     def setUp(self):
         super(LauncherTest, self).setUp()
         self.mox = self.useFixture(moxstubout.MoxStubout()).mox
-        self.config = self.useFixture(config.Config()).config
 
     def test_backdoor_port(self):
         self.config(backdoor_port='1234')
@@ -298,7 +297,7 @@ class LauncherTest(test_base.BaseTestCase):
         self.mox.ReplayAll()
 
         svc = service.Service()
-        launcher = service.launch(svc)
+        launcher = service.launch(self.conf, svc)
         self.assertEqual(svc.backdoor_port, 1234)
         launcher.stop()
 
@@ -308,7 +307,7 @@ class LauncherTest(test_base.BaseTestCase):
         self.config(backdoor_port=port)
         svc = service.Service()
         self.assertRaises(socket.error,
-                          service.launch, svc)
+                          service.launch, self.conf, svc)
         sock.close()
 
     def test_backdoor_port_range_one_inuse(self):
@@ -328,7 +327,7 @@ class LauncherTest(test_base.BaseTestCase):
         self.mox.ReplayAll()
 
         svc = service.Service()
-        launcher = service.launch(svc)
+        launcher = service.launch(self.conf, svc)
         self.assertEqual(svc.backdoor_port, 8801)
         launcher.stop()
 
@@ -337,13 +336,13 @@ class LauncherTest(test_base.BaseTestCase):
         self.config(backdoor_port='8888:7777')
         svc = service.Service()
         self.assertRaises(eventlet_backdoor.EventletBackdoorConfigValueError,
-                          service.launch, svc)
+                          service.launch, self.conf, svc)
 
     def test_graceful_shutdown(self):
         # test that services are given a chance to clean up:
         svc = _Service()
 
-        launcher = service.launch(svc)
+        launcher = service.launch(self.conf, svc)
         # wait on 'init' so we know the service had time to start:
         svc.init.wait()
 
@@ -358,7 +357,7 @@ class LauncherTest(test_base.BaseTestCase):
     @mock.patch('oslo_service.service.ServiceLauncher.launch_service')
     def _test_launch_single(self, workers, mock_launch):
         svc = service.Service()
-        service.launch(svc, workers=workers)
+        service.launch(self.conf, svc, workers=workers)
         mock_launch.assert_called_with(svc)
 
     def test_launch_none(self):
@@ -370,22 +369,22 @@ class LauncherTest(test_base.BaseTestCase):
     @mock.patch('oslo_service.service.ProcessLauncher.launch_service')
     def test_multiple_worker(self, mock_launch):
         svc = service.Service()
-        service.launch(svc, workers=3)
+        service.launch(self.conf, svc, workers=3)
         mock_launch.assert_called_with(svc, workers=3)
 
     def test_launch_wrong_service_base_class(self):
         # check that services that do not subclass service.ServiceBase
         # can not be launched.
         svc = mock.Mock()
-        self.assertRaises(TypeError, service.launch, svc)
+        self.assertRaises(TypeError, service.launch, self.conf, svc)
 
 
-class ProcessLauncherTest(test_base.BaseTestCase):
+class ProcessLauncherTest(base.ServiceBaseTestCase):
 
     @mock.patch("signal.signal")
     def test_stop(self, signal_mock):
         signal_mock.SIGTERM = 15
-        launcher = service.ProcessLauncher()
+        launcher = service.ProcessLauncher(self.conf)
         self.assertTrue(launcher.running)
 
         launcher.children = [22, 222]
@@ -405,10 +404,10 @@ class ProcessLauncherTest(test_base.BaseTestCase):
         new_callable=lambda: set())
     def test__signal_handlers_set(self, signal_handlers_set_mock):
         callables = set()
-        l1 = service.ProcessLauncher()
+        l1 = service.ProcessLauncher(self.conf)
         callables.add(l1._handle_signal)
         self.assertEqual(1, len(service.ProcessLauncher._signal_handlers_set))
-        l2 = service.ProcessLauncher()
+        l2 = service.ProcessLauncher(self.conf)
         callables.add(l2._handle_signal)
         self.assertEqual(2, len(service.ProcessLauncher._signal_handlers_set))
         self.assertEqual(callables,
@@ -443,7 +442,7 @@ class ProcessLauncherTest(test_base.BaseTestCase):
         is_sighup_and_daemon_mock.return_value = True
         respawn_children_mock.side_effect = [None,
                                              eventlet.greenlet.GreenletExit()]
-        launcher = service.ProcessLauncher()
+        launcher = service.ProcessLauncher(self.conf)
         launcher.sigcaught = 1
         launcher.children = {}
 

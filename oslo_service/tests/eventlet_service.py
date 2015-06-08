@@ -25,9 +25,6 @@ from oslo_config import cfg
 
 from oslo_service import service
 
-
-CONF = cfg.CONF
-
 POOL_SIZE = 1
 
 
@@ -144,11 +141,9 @@ class ServerWrapper(object):
 
 def run():
 
-    CONF()
-
     eventlet.patcher.monkey_patch()
 
-    launcher = service.ProcessLauncher()
+    launcher = service.ProcessLauncher(cfg.CONF)
 
     def hi_app(environ, start_response):
         start_response('200 OK', [('Content-Type', 'application/json')])

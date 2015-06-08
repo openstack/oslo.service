@@ -42,7 +42,6 @@ import time
 
 import eventlet
 from eventlet import event
-from oslo_config import cfg
 
 from oslo_service import eventlet_backdoor
 from oslo_service._i18n import _LE, _LI, _LW
@@ -50,9 +49,6 @@ from oslo_service import _options
 from oslo_service import systemd
 from oslo_service import threadgroup
 
-
-CONF = cfg.CONF
-CONF.register_opts(_options.service_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -137,14 +133,17 @@ class ServiceBase(object):
 class Launcher(object):
     """Launch one or more services and wait for them to complete."""
 
-    def __init__(self):
+    def __init__(self, conf):
         """Initialize the service launcher.
 
         :returns: None
 
         """
+        self.conf = conf
+        conf.register_opts(_options.service_opts)
         self.services = Services()
-        self.backdoor_port = eventlet_backdoor.initialize_if_enabled()
+        self.backdoor_port = (
+            eventlet_backdoor.initialize_if_enabled(self.conf))
 
     def launch_service(self, service):
         """Load and start the given service.
@@ -178,7 +177,7 @@ class Launcher(object):
         :returns: None
 
         """
-        cfg.CONF.reload_config_files()
+        self.conf.reload_config_files()
         self.services.restart()
 
 
@@ -189,6 +188,9 @@ class SignalExit(SystemExit):
 
 
 class ServiceLauncher(Launcher):
+    def __init__(self, conf):
+        super(ServiceLauncher, self).__init__(conf)
+
     def _handle_signal(self, signo, frame):
         # Allow the process to be killed again and die from natural causes
         _set_signals_handler(signal.SIG_DFL)
@@ -201,9 +203,9 @@ class ServiceLauncher(Launcher):
         status = None
         signo = 0
 
-        if CONF.log_options:
+        if self.conf.log_options:
             LOG.debug('Full set of CONF:')
-            CONF.log_opt_values(LOG, logging.DEBUG)
+            self.conf.log_opt_values(LOG, logging.DEBUG)
 
         try:
             if ready_callback:
@@ -247,12 +249,14 @@ class ProcessLauncher(object):
         for handler in cls._signal_handlers_set:
             handler(*args, **kwargs)
 
-    def __init__(self, wait_interval=0.01):
+    def __init__(self, conf, wait_interval=0.01):
         """Constructor.
 
         :param wait_interval: The interval to sleep for between checks
                               of child process exit.
         """
+        self.conf = conf
+        conf.register_opts(_options.service_opts)
         self.children = {}
         self.sigcaught = None
         self.running = True
@@ -333,7 +337,7 @@ class ProcessLauncher(object):
         # Reseed random number generator
         random.seed()
 
-        launcher = Launcher()
+        launcher = Launcher(self.conf)
         launcher.launch_service(service)
         return launcher
 
@@ -421,9 +425,9 @@ class ProcessLauncher(object):
         """Loop waiting on children to die and respawning as necessary."""
 
         systemd.notify_once()
-        if CONF.log_options:
+        if self.conf.log_options:
             LOG.debug('Full set of CONF:')
-            CONF.log_opt_values(LOG, logging.DEBUG)
+            self.conf.log_opt_values(LOG, logging.DEBUG)
 
         try:
             while True:
@@ -438,7 +442,7 @@ class ProcessLauncher(object):
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break
 
-                cfg.CONF.reload_config_files()
+                self.conf.reload_config_files()
                 for service in set(
                         [wrap.service for wrap in self.children.values()]):
                     service.reset()
@@ -545,15 +549,15 @@ class Services(object):
         done.wait()
 
 
-def launch(service, workers=1):
+def launch(conf, service, workers=1):
     if not isinstance(service, ServiceBase):
         raise TypeError("Service %(service)s must be subclass of %(base)s!"
                         % {'service': service, 'base': ServiceBase})
     if workers is None or workers == 1:
-        launcher = ServiceLauncher()
+        launcher = ServiceLauncher(conf)
         launcher.launch_service(service)
     else:
-        launcher = ProcessLauncher()
+        launcher = ProcessLauncher(conf)
         launcher.launch_service(service, workers=workers)
 
     return launcher

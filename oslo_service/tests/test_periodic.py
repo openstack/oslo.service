@@ -19,18 +19,17 @@ Unit Tests for periodic_task decorator and PeriodicTasks class.
 """
 
 import mock
-from oslo_config import fixture as config
-from oslotest import base as test_base
 from testtools import matchers
 
 from oslo_service import periodic_task
+from oslo_service.tests import base
 
 
 class AnException(Exception):
     pass
 
 
-class PeriodicTasksTestCase(test_base.BaseTestCase):
+class PeriodicTasksTestCase(base.ServiceBaseTestCase):
     """Test cases for PeriodicTasks."""
 
     @mock.patch('time.time')
@@ -42,8 +41,8 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
         # Class inside test def to mock 'time.time' in
         # the periodic task decorator
         class AService(periodic_task.PeriodicTasks):
-            def __init__(self):
-                super(AService, self).__init__()
+            def __init__(self, conf):
+                super(AService, self).__init__(conf)
                 self.called = {'doit': 0, 'urg': 0, 'ticks': 0, 'tocks': 0}
 
             @periodic_task.periodic_task
@@ -77,7 +76,7 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
         def ext2(self, context):
             external_called['ext2'] += 1
 
-        serv = AService()
+        serv = AService(self.conf)
         serv.add_periodic_task(ext1)
         serv.add_periodic_task(ext2)
         serv.run_periodic_tasks(None)
@@ -135,15 +134,15 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
         # Class inside test def to mock 'time.time' in
         # the periodic task decorator
         class AService(periodic_task.PeriodicTasks):
-            def __init__(self):
-                super(AService, self).__init__()
+            def __init__(self, conf):
+                super(AService, self).__init__(conf)
                 self.called = {'ticks': 0}
 
             @periodic_task.periodic_task(spacing=test_spacing)
             def tick(self, context):
                 self.called['ticks'] += 1
 
-        serv = AService()
+        serv = AService(self.conf)
         for i in range(200):
             serv.run_periodic_tasks(None)
             self.assertEqual(serv.called['ticks'], int(i / test_spacing))
@@ -156,8 +155,8 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
         mock_time.return_value = time
 
         class AService(periodic_task.PeriodicTasks):
-            def __init__(self):
-                super(AService, self).__init__()
+            def __init__(self, conf):
+                super(AService, self).__init__(conf)
                 self.called = {'urg': 0, }
 
             @periodic_task.periodic_task
@@ -165,7 +164,7 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
                 self.called['urg'] += 1
                 raise AnException('urg')
 
-        serv = AService()
+        serv = AService(self.conf)
         now = serv._periodic_last_run['crashit']
 
         mock_time.return_value = now + periodic_task.DEFAULT_INTERVAL
@@ -175,6 +174,9 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
 
     def test_name(self):
         class AService(periodic_task.PeriodicTasks):
+            def __init__(self, conf):
+                super(AService, self).__init__(conf)
+
             @periodic_task.periodic_task(name='better-name')
             def tick(self, context):
                 pass
@@ -187,14 +189,14 @@ class PeriodicTasksTestCase(test_base.BaseTestCase):
         def foo(self, context):
             pass
 
-        serv = AService()
+        serv = AService(self.conf)
         serv.add_periodic_task(foo)
         self.assertIn('better-name', serv._periodic_last_run)
         self.assertIn('another-name', serv._periodic_last_run)
         self.assertIn('tack', serv._periodic_last_run)
 
 
-class ManagerMetaTestCase(test_base.BaseTestCase):
+class ManagerMetaTestCase(base.ServiceBaseTestCase):
     """Tests for the meta class which manages the creation of periodic tasks.
     """
 
@@ -213,7 +215,7 @@ class ManagerMetaTestCase(test_base.BaseTestCase):
             def baz(self):
                 return 'baz'
 
-        m = Manager()
+        m = Manager(self.conf)
         self.assertThat(m._periodic_tasks, matchers.HasLength(2))
         self.assertEqual(periodic_task.DEFAULT_INTERVAL,
                          m._periodic_spacing['foo'])
@@ -231,11 +233,10 @@ class ManagerMetaTestCase(test_base.BaseTestCase):
                          m._periodic_spacing['external'])
 
 
-class ManagerTestCase(test_base.BaseTestCase):
+class ManagerTestCase(base.ServiceBaseTestCase):
     """Tests the periodic tasks portion of the manager class."""
     def setUp(self):
         super(ManagerTestCase, self).setUp()
-        self.config = self.useFixture(config.Config()).config
 
     def test_periodic_tasks_with_idle(self):
         class Manager(periodic_task.PeriodicTasks):
@@ -244,7 +245,7 @@ class ManagerTestCase(test_base.BaseTestCase):
             def bar(self):
                 return 'bar'
 
-        m = Manager()
+        m = Manager(self.conf)
         self.assertThat(m._periodic_tasks, matchers.HasLength(1))
         self.assertEqual(200, m._periodic_spacing['bar'])
 
@@ -259,7 +260,7 @@ class ManagerTestCase(test_base.BaseTestCase):
             def bar(self):
                 return 'bar'
 
-        m = Manager()
+        m = Manager(self.conf)
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(60, idle, 1)
 
@@ -274,7 +275,7 @@ class ManagerTestCase(test_base.BaseTestCase):
             def bar(self, context):
                 return 'bar'
 
-        m = Manager()
+        m = Manager(self.conf)
 
         # Ensure initial values are correct
         self.assertEqual(1, len(m._periodic_tasks))
@@ -317,7 +318,7 @@ class ManagerTestCase(test_base.BaseTestCase):
             def bar(self, context):
                 return 'bar'
 
-        m = Manager()
+        m = Manager(self.conf)
 
         # Ensure initial values are correct
         self.assertEqual(1, len(m._periodic_tasks))
@@ -351,7 +352,7 @@ class ManagerTestCase(test_base.BaseTestCase):
             def bar(self):
                 return 'bar'
 
-        m = Manager()
+        m = Manager(self.conf)
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(60, idle, 1)
 
@@ -364,20 +365,8 @@ class ManagerTestCase(test_base.BaseTestCase):
             def bar(self):
                 return 'bar'
 
-        m = Manager()
+        m = Manager(self.conf)
         self.assertThat(m._periodic_tasks, matchers.HasLength(1))
-
-    def test_external_running_elsewhere(self):
-        self.config(run_external_periodic_tasks=False)
-
-        class Manager(periodic_task.PeriodicTasks):
-
-            @periodic_task.periodic_task(spacing=200, external_process_ok=True)
-            def bar(self):
-                return 'bar'
-
-        m = Manager()
-        self.assertEqual([], m._periodic_tasks)
 
     @mock.patch('time.time')
     @mock.patch('random.random')

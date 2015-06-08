@@ -16,15 +16,11 @@ import copy
 import os
 import ssl
 
-from oslo_config import cfg
-
 from oslo_service._i18n import _
 from oslo_service import _options
 
 
-CONF = cfg.CONF
 config_section = 'ssl'
-CONF.register_opts(_options.ssl_opts, config_section)
 
 
 def list_opts():
@@ -32,10 +28,11 @@ def list_opts():
     return [(config_section, copy.deepcopy(_options.ssl_opts))]
 
 
-def is_enabled():
-    cert_file = CONF.ssl.cert_file
-    key_file = CONF.ssl.key_file
-    ca_file = CONF.ssl.ca_file
+def is_enabled(conf):
+    conf.register_opts(_options.ssl_opts, config_section)
+    cert_file = conf.ssl.cert_file
+    key_file = conf.ssl.key_file
+    ca_file = conf.ssl.ca_file
     use_ssl = cert_file or key_file
 
     if cert_file and not os.path.exists(cert_file):
@@ -55,16 +52,17 @@ def is_enabled():
     return use_ssl
 
 
-def wrap(sock):
+def wrap(conf, sock):
+    conf.register_opts(_options.ssl_opts, config_section)
     ssl_kwargs = {
         'server_side': True,
-        'certfile': CONF.ssl.cert_file,
-        'keyfile': CONF.ssl.key_file,
+        'certfile': conf.ssl.cert_file,
+        'keyfile': conf.ssl.key_file,
         'cert_reqs': ssl.CERT_NONE,
     }
 
-    if CONF.ssl.ca_file:
-        ssl_kwargs['ca_certs'] = CONF.ssl.ca_file
+    if conf.ssl.ca_file:
+        ssl_kwargs['ca_certs'] = conf.ssl.ca_file
         ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
 
     return ssl.wrap_socket(sock, **ssl_kwargs)

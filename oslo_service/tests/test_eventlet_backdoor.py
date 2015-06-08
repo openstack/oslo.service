@@ -21,19 +21,17 @@ import errno
 import socket
 
 import eventlet
-from oslo_config import fixture as config
-from oslotest import base as test_base
 from oslotest import moxstubout
 
 from oslo_service import eventlet_backdoor
+from oslo_service.tests import base
 
 
-class BackdoorPortTest(test_base.BaseTestCase):
+class BackdoorPortTest(base.ServiceBaseTestCase):
 
     def setUp(self):
         super(BackdoorPortTest, self).setUp()
         self.mox = self.useFixture(moxstubout.MoxStubout()).mox
-        self.config = self.useFixture(config.Config()).config
 
     def common_backdoor_port_setup(self):
         self.sock = self.mox.CreateMockAnything()
@@ -47,7 +45,7 @@ class BackdoorPortTest(test_base.BaseTestCase):
             socket.error(errno.EADDRINUSE, ''))
         self.mox.ReplayAll()
         self.assertRaises(socket.error,
-                          eventlet_backdoor.initialize_if_enabled)
+                          eventlet_backdoor.initialize_if_enabled, self.conf)
 
     def test_backdoor_port_range(self):
         self.config(backdoor_port='8800:8899')
@@ -57,7 +55,7 @@ class BackdoorPortTest(test_base.BaseTestCase):
         eventlet.spawn_n(eventlet.backdoor.backdoor_server, self.sock,
                          locals=moxstubout.mox.IsA(dict))
         self.mox.ReplayAll()
-        port = eventlet_backdoor.initialize_if_enabled()
+        port = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual(port, 8800)
 
     def test_backdoor_port_range_all_inuse(self):
@@ -68,9 +66,9 @@ class BackdoorPortTest(test_base.BaseTestCase):
                 socket.error(errno.EADDRINUSE, ''))
         self.mox.ReplayAll()
         self.assertRaises(socket.error,
-                          eventlet_backdoor.initialize_if_enabled)
+                          eventlet_backdoor.initialize_if_enabled, self.conf)
 
     def test_backdoor_port_bad(self):
         self.config(backdoor_port='abc')
         self.assertRaises(eventlet_backdoor.EventletBackdoorConfigValueError,
-                          eventlet_backdoor.initialize_if_enabled)
+                          eventlet_backdoor.initialize_if_enabled, self.conf)

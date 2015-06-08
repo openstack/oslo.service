@@ -16,15 +16,11 @@ import logging
 import random
 import time
 
-from oslo_config import cfg
 import six
 
 from oslo_service._i18n import _, _LE, _LI
 from oslo_service import _options
 
-
-CONF = cfg.CONF
-CONF.register_opts(_options.periodic_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -67,10 +63,7 @@ def periodic_task(*args, **kwargs):
         # Control if run at all
         f._periodic_task = True
         f._periodic_external_ok = kwargs.pop('external_process_ok', False)
-        if f._periodic_external_ok and not CONF.run_external_periodic_tasks:
-            f._periodic_enabled = False
-        else:
-            f._periodic_enabled = kwargs.pop('enabled', True)
+        f._periodic_enabled = kwargs.pop('enabled', True)
         f._periodic_name = kwargs.pop('name', f.__name__)
 
         # Control frequency
@@ -177,8 +170,10 @@ def _nearest_boundary(last_run, spacing):
 
 @six.add_metaclass(_PeriodicTasksMeta)
 class PeriodicTasks(object):
-    def __init__(self):
+    def __init__(self, conf):
         super(PeriodicTasks, self).__init__()
+        self.conf = conf
+        self.conf.register_opts(_options.periodic_opts)
         self._periodic_last_run = {}
         for name, task in self._periodic_tasks:
             self._periodic_last_run[name] = task._periodic_last_run
@@ -196,6 +191,9 @@ class PeriodicTasks(object):
         """Tasks to be run at a periodic interval."""
         idle_for = DEFAULT_INTERVAL
         for task_name, task in self._periodic_tasks:
+            if (task._periodic_external_ok and not
+               self.conf.run_external_periodic_tasks):
+                continue
             full_task_name = '.'.join([self.__class__.__name__, task_name])
 
             spacing = self._periodic_spacing[task_name]
