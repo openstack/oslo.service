@@ -1,20 +1,30 @@
-==============
- oslo.service
-==============
+========================================
+Welcome to oslo.service's documentation!
+========================================
 
-oslo.service library
+Library for running OpenStack services
 
-Contents
-========
+.. toctree::
+   :maxdepth: 1
+
+   installation
+   usage
+   contributing
+   history
+
+API Documentation
+=================
 
 .. toctree::
    :maxdepth: 2
 
-   installation
-   api
-   usage
-   contributing
-   history
+   api/eventlet_backdoor
+   api/loopingcall
+   api/periodic_task
+   api/service
+   api/sslutils
+   api/systemd
+   api/threadgroup
 
 Indices and tables
 ==================
@@ -23,3 +33,4 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+.. _oslo: https://wiki.openstack.org/wiki/Oslo

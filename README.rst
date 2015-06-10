@@ -2,7 +2,7 @@
 oslo.service
 ===================================
 
-oslo.service library
+Library for running OpenStack services
 
 * Free software: Apache license
 * Documentation: http://docs.openstack.org/developer/oslo.service
