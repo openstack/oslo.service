@@ -16,6 +16,7 @@ import logging
 import random
 import time
 
+from monotonic import monotonic as now  # noqa
 import six
 
 from oslo_service._i18n import _, _LE, _LI
@@ -72,7 +73,7 @@ def periodic_task(*args, **kwargs):
         if f._periodic_immediate:
             f._periodic_last_run = None
         else:
-            f._periodic_last_run = time.time()
+            f._periodic_last_run = now()
         return f
 
     # NOTE(sirp): The `if` is necessary to allow the decorator to be used with
@@ -158,7 +159,7 @@ def _nearest_boundary(last_run, spacing):
     do not synchronize. This jitter is rounded to the nearest second, this
     means that spacings smaller than 20 seconds will not have jitter.
     """
-    current_time = time.time()
+    current_time = now()
     if last_run is None:
         return current_time
     delta = current_time - last_run
@@ -202,7 +203,7 @@ class PeriodicTasks(object):
             # Check if due, if not skip
             idle_for = min(idle_for, spacing)
             if last_run is not None:
-                delta = last_run + spacing - time.time()
+                delta = last_run + spacing - now()
                 if delta > 0:
                     idle_for = min(idle_for, delta)
                     continue

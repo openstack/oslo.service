@@ -17,19 +17,14 @@
 
 import logging
 import sys
-import time
 
 from eventlet import event
 from eventlet import greenthread
+from oslo_utils import timeutils
 
 from oslo_service._i18n import _LE, _LW
 
 LOG = logging.getLogger(__name__)
-
-# NOTE(zyluo): This lambda function was declared to avoid mocking collisions
-#              with time.time() called in the standard logging module
-#              during unittests.
-_ts = lambda: time.time()
 
 
 class LoopingCallDone(Exception):
@@ -76,13 +71,15 @@ class FixedIntervalLoopingCall(LoopingCallBase):
                 greenthread.sleep(initial_delay)
 
             try:
+                watch = timeutils.StopWatch()
                 while self._running:
-                    start = _ts()
+                    watch.restart()
                     self.f(*self.args, **self.kw)
-                    end = _ts()
+                    watch.stop()
                     if not self._running:
                         break
-                    delay = end - start - interval
+                    elapsed = watch.elapsed()
+                    delay = elapsed - interval
                     if delay > 0:
                         LOG.warning(_LW('task %(func_name)r run outlasted '
                                         'interval by %(delay).2f sec'),

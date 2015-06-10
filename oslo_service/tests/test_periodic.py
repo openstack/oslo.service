@@ -32,13 +32,13 @@ class AnException(Exception):
 class PeriodicTasksTestCase(base.ServiceBaseTestCase):
     """Test cases for PeriodicTasks."""
 
-    @mock.patch('time.time')
-    def test_called_thrice(self, mock_time):
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_called_thrice(self, mock_now):
 
         time = 340
-        mock_time.return_value = time
+        mock_now.return_value = time
 
-        # Class inside test def to mock 'time.time' in
+        # Class inside test def to mock 'now' in
         # the periodic task decorator
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
@@ -90,7 +90,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         self.assertEqual(external_called['ext2'], 0)
 
         time = time + periodic_task.DEFAULT_INTERVAL
-        mock_time.return_value = time
+        mock_now.return_value = time
         serv.run_periodic_tasks(None)
 
         # Time:400
@@ -104,7 +104,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         self.assertEqual(external_called['ext2'], 0)
 
         time = time + periodic_task.DEFAULT_INTERVAL / 2
-        mock_time.return_value = time
+        mock_now.return_value = time
         serv.run_periodic_tasks(None)
         self.assertEqual(serv.called['doit'], 1)
         self.assertEqual(serv.called['urg'], 1)
@@ -114,7 +114,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         self.assertEqual(external_called['ext2'], 1)
 
         time = time + periodic_task.DEFAULT_INTERVAL
-        mock_time.return_value = time
+        mock_now.return_value = time
         serv.run_periodic_tasks(None)
         self.assertEqual(serv.called['doit'], 2)
         self.assertEqual(serv.called['urg'], 2)
@@ -123,15 +123,15 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         self.assertEqual(external_called['ext1'], 2)
         self.assertEqual(external_called['ext2'], 2)
 
-    @mock.patch('time.time')
-    def test_called_correct(self, mock_time):
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_called_correct(self, mock_now):
 
         time = 360444
-        mock_time.return_value = time
+        mock_now.return_value = time
 
         test_spacing = 9
 
-        # Class inside test def to mock 'time.time' in
+        # Class inside test def to mock 'now' in
         # the periodic task decorator
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
@@ -147,12 +147,12 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
             serv.run_periodic_tasks(None)
             self.assertEqual(serv.called['ticks'], int(i / test_spacing))
             time += 1
-            mock_time.return_value = time
+            mock_now.return_value = time
 
-    @mock.patch('time.time')
-    def test_raises(self, mock_time):
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_raises(self, mock_now):
         time = 230000
-        mock_time.return_value = time
+        mock_now.return_value = time
 
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
@@ -167,7 +167,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         serv = AService(self.conf)
         now = serv._periodic_last_run['crashit']
 
-        mock_time.return_value = now + periodic_task.DEFAULT_INTERVAL
+        mock_now.return_value = now + periodic_task.DEFAULT_INTERVAL
         self.assertRaises(AnException,
                           serv.run_periodic_tasks,
                           None, raise_on_error=True)
@@ -264,10 +264,10 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(60, idle, 1)
 
-    @mock.patch('time.time')
-    def test_periodic_tasks_idle_calculation(self, mock_time):
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_periodic_tasks_idle_calculation(self, mock_now):
         fake_time = 32503680000.0
-        mock_time.return_value = fake_time
+        mock_now.return_value = fake_time
 
         class Manager(periodic_task.PeriodicTasks):
 
@@ -295,22 +295,22 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.assertAlmostEqual(32503680000.0,
                                m._periodic_last_run[task_name])
 
-        mock_time.return_value = fake_time + 5
+        mock_now.return_value = fake_time + 5
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(5, idle, 1)
         self.assertAlmostEqual(32503680000.0,
                                m._periodic_last_run[task_name])
 
-        mock_time.return_value = fake_time + 10
+        mock_now.return_value = fake_time + 10
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(10, idle, 1)
         self.assertAlmostEqual(32503680010.0,
                                m._periodic_last_run[task_name])
 
-    @mock.patch('time.time')
-    def test_periodic_tasks_immediate_runs_now(self, mock_time):
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_periodic_tasks_immediate_runs_now(self, mock_now):
         fake_time = 32503680000.0
-        mock_time.return_value = fake_time
+        mock_now.return_value = fake_time
 
         class Manager(periodic_task.PeriodicTasks):
 
@@ -341,7 +341,7 @@ class ManagerTestCase(base.ServiceBaseTestCase):
                                m._periodic_last_run[task_name])
         self.assertAlmostEqual(10, idle, 1)
 
-        mock_time.return_value = fake_time + 5
+        mock_now.return_value = fake_time + 5
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(5, idle, 1)
 
@@ -368,25 +368,25 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         m = Manager(self.conf)
         self.assertThat(m._periodic_tasks, matchers.HasLength(1))
 
-    @mock.patch('time.time')
+    @mock.patch('oslo_service.periodic_task.now')
     @mock.patch('random.random')
-    def test_nearest_boundary(self, mock_random, mock_time):
-        mock_time.return_value = 19
+    def test_nearest_boundary(self, mock_random, mock_now):
+        mock_now.return_value = 19
         mock_random.return_value = 0
         self.assertEqual(17, periodic_task._nearest_boundary(10, 7))
-        mock_time.return_value = 28
+        mock_now.return_value = 28
         self.assertEqual(27, periodic_task._nearest_boundary(13, 7))
-        mock_time.return_value = 1841
+        mock_now.return_value = 1841
         self.assertEqual(1837, periodic_task._nearest_boundary(781, 88))
-        mock_time.return_value = 1835
-        self.assertEqual(mock_time.return_value,
+        mock_now.return_value = 1835
+        self.assertEqual(mock_now.return_value,
                          periodic_task._nearest_boundary(None, 88))
 
         # Add 5% jitter
         mock_random.return_value = 1.0
-        mock_time.return_value = 1300
+        mock_now.return_value = 1300
         self.assertEqual(1200 + 10, periodic_task._nearest_boundary(1000, 200))
         # Add 2.5% jitter
         mock_random.return_value = 0.5
-        mock_time.return_value = 1300
+        mock_now.return_value = 1300
         self.assertEqual(1200 + 5, periodic_task._nearest_boundary(1000, 200))

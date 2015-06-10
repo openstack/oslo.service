@@ -62,7 +62,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         self.assertEqual(0, round(actual - expected, precision), message)
 
     @mock.patch('eventlet.greenthread.sleep')
-    @mock.patch('oslo_service.loopingcall._ts')
+    @mock.patch('oslo_utils.timeutils.now')
     def test_interval_adjustment(self, time_mock, sleep_mock):
         """Ensure the interval is adjusted to account for task duration."""
         self.num_runs = 3
@@ -71,14 +71,13 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         second = 1
         smidgen = 0.01
 
-        time_mock.side_effect = [now,  # start
+        time_mock.side_effect = [now,  # restart
                                  now + second - smidgen,  # end
-                                 now,  # start
+                                 now,  # restart
                                  now + second + second,  # end
-                                 now,  # start
+                                 now,  # restart
                                  now + second + smidgen,  # end
-                                 now]  # start
-
+                                 now]  # restart
         timer = loopingcall.FixedIntervalLoopingCall(self._wait_for_zero)
         timer.start(interval=1.01).wait()
 
