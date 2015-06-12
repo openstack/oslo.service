@@ -27,14 +27,11 @@ import traceback
 
 import eventlet.backdoor
 import greenlet
-from oslo_config import cfg
 
 from oslo_service._i18n import _LI
 from oslo_service import _options
 
 
-CONF = cfg.CONF
-CONF.register_opts(_options.eventlet_backdoor_opts)
 LOG = logging.getLogger(__name__)
 
 
@@ -96,7 +93,8 @@ def _listen(host, start_port, end_port, listen_func):
             try_port += 1
 
 
-def initialize_if_enabled():
+def initialize_if_enabled(conf):
+    conf.register_opts(_options.eventlet_backdoor_opts)
     backdoor_locals = {
         'exit': _dont_use_this,      # So we don't exit the entire process
         'quit': _dont_use_this,      # So we don't exit the entire process
@@ -105,10 +103,10 @@ def initialize_if_enabled():
         'pnt': _print_nativethreads,
     }
 
-    if CONF.backdoor_port is None:
+    if conf.backdoor_port is None:
         return None
 
-    start_port, end_port = _parse_port_range(str(CONF.backdoor_port))
+    start_port, end_port = _parse_port_range(str(conf.backdoor_port))
 
     # NOTE(johannes): The standard sys.displayhook will print the value of
     # the last expression and set it to __builtin__._, which overwrites
