@@ -140,6 +140,10 @@ class ServerWrapper(object):
 
 
 def run():
+    # ProcessLauncher uses cfg.CONF.log_opt_values()
+    # and cfg.CONF.log_opt_values() uses config_file option.
+    # We need to call CONF() to register the --config-file option
+    cfg.CONF()
 
     eventlet.patcher.monkey_patch()
 
