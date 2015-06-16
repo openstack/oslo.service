@@ -546,6 +546,9 @@ class EventletServerTest(test_base.BaseTestCase):
     def test_shuts_down_on_sigint_when_client_connected(self):
         server, conn = self.run_server()
 
+        # check that server is live
+        self.assertIsNone(server.poll())
+
         # send SIGINT to the server and wait for it to exit while client still
         # connected.
         server.send_signal(signal.SIGINT)
