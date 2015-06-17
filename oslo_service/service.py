@@ -164,7 +164,7 @@ class Launcher(object):
         self.services.stop()
 
     def wait(self):
-        """Waits until all services have been stopped, and then returns.
+        """Wait until all services have been stopped, and then return.
 
         :returns: None
 
@@ -188,15 +188,27 @@ class SignalExit(SystemExit):
 
 
 class ServiceLauncher(Launcher):
+    """Runs one or more service in a parent process."""
     def __init__(self, conf):
+        """Constructor.
+
+        :param conf: an instance of ConfigOpts
+        """
         super(ServiceLauncher, self).__init__(conf)
 
     def _handle_signal(self, signo, frame):
+        """Set signal handlers and raise an exception.
+
+        :param signo: signal number
+        :param frame: current stack frame
+        :raises SignalExit
+        """
         # Allow the process to be killed again and die from natural causes
         _set_signals_handler(signal.SIG_DFL)
         raise SignalExit(signo)
 
     def handle_signal(self):
+        """Set self._handle_signal as a signal handler."""
         _set_signals_handler(self._handle_signal)
 
     def _wait_for_exit_or_signal(self, ready_callback=None):
@@ -224,6 +236,10 @@ class ServiceLauncher(Launcher):
         return status, signo
 
     def wait(self, ready_callback=None):
+        """Wait for a service to terminate and restart it on SIGHUP.
+
+        :returns: termination status
+        """
         systemd.notify_once()
         while True:
             self.handle_signal()
@@ -242,16 +258,23 @@ class ServiceWrapper(object):
 
 
 class ProcessLauncher(object):
+    """Launch a service with a given number of workers."""
     _signal_handlers_set = set()
 
     @classmethod
     def _handle_class_signals(cls, *args, **kwargs):
+        """Call all registered class handlers.
+
+        That is needed in case there are multiple ProcessLauncher
+        instances in one process.
+        """
         for handler in cls._signal_handlers_set:
             handler(*args, **kwargs)
 
     def __init__(self, conf, wait_interval=0.01):
         """Constructor.
 
+        :param conf: an instance of ConfigOpts
         :param wait_interval: The interval to sleep for between checks
                               of child process exit.
         """
@@ -266,10 +289,16 @@ class ProcessLauncher(object):
         self.handle_signal()
 
     def handle_signal(self):
+        """Add instance's signal handlers to class handlers."""
         self._signal_handlers_set.add(self._handle_signal)
         _set_signals_handler(self._handle_class_signals)
 
     def _handle_signal(self, signo, frame):
+        """Set signal handlers.
+
+        :param signo: signal number
+        :param frame: current stack frame
+        """
         self.sigcaught = signo
         self.running = False
 
@@ -375,6 +404,13 @@ class ProcessLauncher(object):
         return pid
 
     def launch_service(self, service, workers=1):
+        """Launch a service with a given number of workers.
+
+       :param service: a service to launch, must be an instance of
+              :class:`oslo_service.service.ServiceBase`
+       :param workers: a number of processes in which a service
+              will be running
+        """
         wrap = ServiceWrapper(service, workers)
 
         LOG.info(_LI('Starting %d workers'), wrap.workers)
@@ -484,13 +520,19 @@ class Service(ServiceBase):
         self._done = event.Event()
 
     def reset(self):
+        """Reset a service in case it received a SIGHUP."""
         # NOTE(Fengqian): docs for Event.reset() recommend against using it
         self._done = event.Event()
 
     def start(self):
-        pass
+        """Start a service."""
 
     def stop(self, graceful=False):
+        """Stop a service.
+
+        :param graceful: indicates whether to wait for all threads to finish
+               or terminate them instantly
+        """
         self.tg.stop(graceful)
         self.tg.wait()
         # Signal that service cleanup is done:
@@ -498,6 +540,7 @@ class Service(ServiceBase):
             self._done.send()
 
     def wait(self):
+        """Wait for a service to shut down."""
         self._done.wait()
 
 
@@ -509,11 +552,15 @@ class Services(object):
         self.done = event.Event()
 
     def add(self, service):
+        """Add a service to a list and create a thread to run it.
+
+        :param service: service to run
+        """
         self.services.append(service)
         self.tg.add_thread(self.run_service, service, self.done)
 
     def stop(self):
-        # wait for graceful shutdown of services:
+        """Wait for graceful shutdown of services and kill the threads."""
         for service in self.services:
             service.stop()
             service.wait()
@@ -527,9 +574,11 @@ class Services(object):
         self.tg.stop()
 
     def wait(self):
+        """Wait for services to shut down."""
         self.tg.wait()
 
     def restart(self):
+        """Reset services and start them in new threads."""
         self.stop()
         self.done = event.Event()
         for restart_service in self.services:
@@ -550,6 +599,14 @@ class Services(object):
 
 
 def launch(conf, service, workers=1):
+    """Launch a service with a given number of workers.
+
+    :param conf: an instance of ConfigOpts
+    :param service: a service to launch, must be an instance of
+           :class:`oslo_service.service.ServiceBase`
+    :param workers: a number of processes in which a service will be running
+    :returns: instance of a launcher that was used to launch the service
+    """
     if not isinstance(service, ServiceBase):
         raise TypeError("Service %(service)s must be subclass of %(base)s!"
                         % {'service': service, 'base': ServiceBase})
