@@ -45,6 +45,21 @@ class LoopingCallDone(Exception):
         self.retvalue = retvalue
 
 
+def safe_wrapper(f, kind):
+    def func(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except LoopingCallDone:
+            raise  # let the outer handler process this
+        except Exception:
+            LOG.error(_LE('%(kind)s %(func_name)r failed'),
+                      {'kind': kind, 'func_name': f},
+                      exc_info=True)
+            return 0
+
+    return func
+
+
 class LoopingCallBase(object):
     _KIND = _("Unknown looping call")
 
@@ -69,26 +84,28 @@ class LoopingCallBase(object):
         self._thread = None
         self._running = False
 
-    def _start(self, idle_for, initial_delay=None):
+    def _start(self, idle_for, initial_delay=None, stop_on_exception=True):
         if self._thread is not None:
             raise RuntimeError(self._RUN_ONLY_ONE_MESSAGE)
         self._running = True
         self.done = event.Event()
         self._thread = greenthread.spawn(
             self._run_loop, self._KIND, self.done, idle_for,
-            initial_delay=initial_delay)
+            initial_delay=initial_delay, stop_on_exception=stop_on_exception)
         self._thread.link(self._on_done)
         return self.done
 
     def _run_loop(self, kind, event, idle_for_func,
-                  initial_delay=None):
+                  initial_delay=None, stop_on_exception=True):
+        func = self.f if stop_on_exception else safe_wrapper(self.f, kind)
+
         if initial_delay:
             greenthread.sleep(initial_delay)
         try:
             watch = timeutils.StopWatch()
             while self._running:
                 watch.restart()
-                result = self.f(*self.args, **self.kw)
+                result = func(*self.args, **self.kw)
                 watch.stop()
                 if not self._running:
                     break
@@ -122,7 +139,7 @@ class FixedIntervalLoopingCall(LoopingCallBase):
 
     _KIND = _('Fixed interval looping call')
 
-    def start(self, interval, initial_delay=None):
+    def start(self, interval, initial_delay=None, stop_on_exception=True):
         def _idle_for(result, elapsed):
             delay = elapsed - interval
             if delay > 0:
@@ -130,7 +147,8 @@ class FixedIntervalLoopingCall(LoopingCallBase):
                                 'interval by %(delay).2f sec'),
                             {'func_name': self.f, 'delay': delay})
             return -delay if delay < 0 else 0
-        return self._start(_idle_for, initial_delay=initial_delay)
+        return self._start(_idle_for, initial_delay=initial_delay,
+                           stop_on_exception=stop_on_exception)
 
 
 class DynamicLoopingCall(LoopingCallBase):
@@ -145,13 +163,15 @@ class DynamicLoopingCall(LoopingCallBase):
 
     _KIND = _('Dynamic interval looping call')
 
-    def start(self, initial_delay=None, periodic_interval_max=None):
+    def start(self, initial_delay=None, periodic_interval_max=None,
+              stop_on_exception=True):
         def _idle_for(suggested_delay, elapsed):
             delay = suggested_delay
             if periodic_interval_max is not None:
                 delay = min(delay, periodic_interval_max)
             return delay
-        return self._start(_idle_for, initial_delay=initial_delay)
+        return self._start(_idle_for, initial_delay=initial_delay,
+                           stop_on_exception=stop_on_exception)
 
 
 class RetryDecorator(object):

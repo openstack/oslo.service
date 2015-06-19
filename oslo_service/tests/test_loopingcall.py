@@ -46,6 +46,20 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
         self.assertRaises(RuntimeError, timer.start(interval=0.5).wait)
 
+    def _raise_and_then_done(self):
+        if self.num_runs == 0:
+            raise loopingcall.LoopingCallDone(False)
+        else:
+            self.num_runs = self.num_runs - 1
+            raise RuntimeError()
+
+    def test_do_not_stop_on_exception(self):
+        self.num_runs = 2
+
+        timer = loopingcall.FixedIntervalLoopingCall(self._raise_and_then_done)
+        res = timer.start(interval=0.5, stop_on_exception=False).wait()
+        self.assertFalse(res)
+
     def _wait_for_zero(self):
         """Called at an interval until num_runs == 0."""
         if self.num_runs == 0:
@@ -149,6 +163,19 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
 
         timer = loopingcall.DynamicLoopingCall(_raise_it)
         self.assertRaises(RuntimeError, timer.start().wait)
+
+    def _raise_and_then_done(self):
+        if self.num_runs == 0:
+            raise loopingcall.LoopingCallDone(False)
+        else:
+            self.num_runs = self.num_runs - 1
+            raise RuntimeError()
+
+    def test_do_not_stop_on_exception(self):
+        self.num_runs = 2
+
+        timer = loopingcall.DynamicLoopingCall(self._raise_and_then_done)
+        timer.start(stop_on_exception=False).wait()
 
     def _wait_for_zero(self):
         """Called at an interval until num_runs == 0."""
