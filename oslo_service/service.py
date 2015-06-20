@@ -50,6 +50,17 @@ from oslo_service import systemd
 from oslo_service import threadgroup
 
 
+# Map all signal names to there signal integer value and create a
+# reverse mapping (for easier + quick lookup).
+_ignore_signals = ('SIG_DFL', 'SIG_IGN')
+_signals_by_name = dict((name, getattr(signal, name))
+                        for name in dir(signal)
+                        if name.startswith("SIG")
+                        and name not in _ignore_signals)
+_signals_to_name = dict((sigval, name)
+                        for (name, sigval) in _signals_by_name.items())
+
+
 LOG = logging.getLogger(__name__)
 
 
@@ -60,7 +71,7 @@ def list_opts():
 
 
 def _sighup_supported():
-    return hasattr(signal, 'SIGHUP')
+    return 'SIGHUP' in _signals_by_name
 
 
 def _is_daemon():
@@ -89,14 +100,6 @@ def _is_sighup_and_daemon(signo):
         # SIGHUP.
         return False
     return _is_daemon()
-
-
-def _signo_to_signame(signo):
-    signals = {signal.SIGTERM: 'SIGTERM',
-               signal.SIGINT: 'SIGINT'}
-    if _sighup_supported():
-        signals[signal.SIGHUP] = 'SIGHUP'
-    return signals[signo]
 
 
 def _set_signals_handler(handler):
@@ -223,7 +226,7 @@ class ServiceLauncher(Launcher):
                 ready_callback()
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
-            signame = _signo_to_signame(exc.signo)
+            signame = _signals_to_name[exc.signo]
             LOG.info(_LI('Caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
@@ -343,7 +346,7 @@ class ProcessLauncher(object):
         try:
             launcher.wait()
         except SignalExit as exc:
-            signame = _signo_to_signame(exc.signo)
+            signame = _signals_to_name[exc.signo]
             LOG.info(_LI('Child caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
@@ -479,7 +482,7 @@ class ProcessLauncher(object):
                 if not self.sigcaught:
                     return
 
-                signame = _signo_to_signame(self.sigcaught)
+                signame = _signals_to_name[self.sigcaught]
                 LOG.info(_LI('Caught %s, stopping children'), signame)
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break
