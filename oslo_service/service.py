@@ -50,7 +50,7 @@ from oslo_service import systemd
 from oslo_service import threadgroup
 
 
-# Map all signal names to there signal integer value and create a
+# Map all signal names to signal integer values and create a
 # reverse mapping (for easier + quick lookup).
 _ignore_signals = ('SIG_DFL', 'SIG_IGN')
 _signals_by_name = dict((name, getattr(signal, name))
