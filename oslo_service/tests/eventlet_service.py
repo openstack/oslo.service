@@ -28,7 +28,7 @@ from oslo_service import service
 POOL_SIZE = 1
 
 
-class Server(object):
+class Server(service.ServiceBase):
     """Server class to manage multiple WSGI sockets and applications."""
 
     def __init__(self, application, host=None, port=None, keepalive=False,

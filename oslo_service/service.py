@@ -105,6 +105,12 @@ def _set_signals_handler(handler):
         signal.signal(signal.SIGHUP, handler)
 
 
+def _check_service_base(service):
+    if not isinstance(service, ServiceBase):
+        raise TypeError("Service %(service)s must an instance of %(base)s!"
+                        % {'service': service, 'base': ServiceBase})
+
+
 @six.add_metaclass(abc.ABCMeta)
 class ServiceBase(object):
     """Base class for all services."""
@@ -147,10 +153,12 @@ class Launcher(object):
     def launch_service(self, service):
         """Load and start the given service.
 
-        :param service: The service you would like to start.
+        :param service: The service you would like to start, must be an
+                        instance of :class:`oslo_service.service.ServiceBase`
         :returns: None
 
         """
+        _check_service_base(service)
         service.backdoor_port = self.backdoor_port
         self.services.add(service)
 
@@ -417,6 +425,7 @@ class ProcessLauncher(object):
        :param workers: a number of processes in which a service
               will be running
         """
+        _check_service_base(service)
         wrap = ServiceWrapper(service, workers)
 
         LOG.info(_LI('Starting %d workers'), wrap.workers)
@@ -621,9 +630,6 @@ def launch(conf, service, workers=1):
     :param workers: a number of processes in which a service will be running
     :returns: instance of a launcher that was used to launch the service
     """
-    if not isinstance(service, ServiceBase):
-        raise TypeError("Service %(service)s must be subclass of %(base)s!"
-                        % {'service': service, 'base': ServiceBase})
     if workers is None or workers == 1:
         launcher = ServiceLauncher(conf)
         launcher.launch_service(service)
