@@ -378,6 +378,28 @@ class LauncherTest(base.ServiceBaseTestCase):
         svc = mock.Mock()
         self.assertRaises(TypeError, service.launch, self.conf, svc)
 
+    @mock.patch("oslo_service.service.Services.add")
+    @mock.patch("oslo_service.eventlet_backdoor.initialize_if_enabled")
+    def test_check_service_base(self, initialize_if_enabled_mock,
+                                services_mock):
+        initialize_if_enabled_mock.return_value = None
+        launcher = service.Launcher(self.conf)
+        serv = _Service()
+        launcher.launch_service(serv)
+
+    @mock.patch("oslo_service.service.Services.add")
+    @mock.patch("oslo_service.eventlet_backdoor.initialize_if_enabled")
+    def test_check_service_base_fails(self, initialize_if_enabled_mock,
+                                      services_mock):
+        initialize_if_enabled_mock.return_value = None
+        launcher = service.Launcher(self.conf)
+
+        class FooService(object):
+            def __init__(self):
+                pass
+        serv = FooService()
+        self.assertRaises(TypeError, launcher.launch_service, serv)
+
 
 class ProcessLauncherTest(base.ServiceBaseTestCase):
 
@@ -464,6 +486,32 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
 
         reload_config_files_mock.assert_called_once_with()
         wrap_mock.service.reset.assert_called_once_with()
+
+    @mock.patch("oslo_service.service.ProcessLauncher._start_child")
+    @mock.patch("oslo_service.service.ProcessLauncher.handle_signal")
+    @mock.patch("eventlet.greenio.GreenPipe")
+    @mock.patch("os.pipe")
+    def test_check_service_base(self, pipe_mock, green_pipe_mock,
+                                handle_signal_mock, start_child_mock):
+        pipe_mock.return_value = [None, None]
+        launcher = service.ProcessLauncher(self.conf)
+        serv = _Service()
+        launcher.launch_service(serv, workers=0)
+
+    @mock.patch("oslo_service.service.ProcessLauncher._start_child")
+    @mock.patch("oslo_service.service.ProcessLauncher.handle_signal")
+    @mock.patch("eventlet.greenio.GreenPipe")
+    @mock.patch("os.pipe")
+    def test_check_service_base_fails(self, pipe_mock, green_pipe_mock,
+                                      handle_signal_mock, start_child_mock):
+        pipe_mock.return_value = [None, None]
+        launcher = service.ProcessLauncher(self.conf)
+
+        class FooService(object):
+            def __init__(self):
+                pass
+        serv = FooService()
+        self.assertRaises(TypeError, launcher.launch_service, serv, 0)
 
 
 class GracefulShutdownTestService(service.Service):
