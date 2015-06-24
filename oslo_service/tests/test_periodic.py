@@ -197,8 +197,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
 
 
 class ManagerMetaTestCase(base.ServiceBaseTestCase):
-    """Tests for the meta class which manages the creation of periodic tasks.
-    """
+    """Tests for the meta class which manages creation of periodic tasks."""
 
     def test_meta(self):
         class Manager(periodic_task.PeriodicTasks):

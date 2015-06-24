@@ -149,8 +149,9 @@ class _PeriodicTasksMeta(type):
 
 
 def _nearest_boundary(last_run, spacing):
-    """Find nearest boundary which is in the past, which is a multiple of the
-    spacing with the last run as an offset.
+    """Find the nearest boundary in the past.
+
+    The boundary is a multiple of the spacing with the last run as an offset.
 
     Eg if last run was 10 and spacing was 7, the new last run could be: 17, 24,
     31, 38...
