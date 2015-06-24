@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from eventlet.green import threading as greenthreading
 import mock
 from oslotest import base as test_base
 
@@ -51,6 +52,21 @@ class LoopingCallTestCase(test_base.BaseTestCase):
             raise loopingcall.LoopingCallDone(False)
         else:
             self.num_runs = self.num_runs - 1
+
+    def test_no_double_start(self):
+        wait_ev = greenthreading.Event()
+
+        def _run_forever_until_set():
+            if wait_ev.is_set():
+                raise loopingcall.LoopingCallDone(True)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_run_forever_until_set)
+        timer.start(interval=0.01)
+
+        self.assertRaises(RuntimeError, timer.start, interval=0.01)
+
+        wait_ev.set()
+        timer.wait()
 
     def test_repeat(self):
         self.num_runs = 2
@@ -102,6 +118,20 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
 
         timer = loopingcall.DynamicLoopingCall(_raise_it)
         self.assertTrue(timer.start().wait())
+
+    def test_no_double_start(self):
+        wait_ev = greenthreading.Event()
+
+        def _run_forever_until_set():
+            if wait_ev.is_set():
+                raise loopingcall.LoopingCallDone(True)
+            else:
+                return 0.01
+
+        timer = loopingcall.DynamicLoopingCall(_run_forever_until_set)
+        timer.start()
+
+        self.assertRaises(RuntimeError, timer.start)
 
     def test_return_false(self):
         def _raise_it():
