@@ -22,7 +22,7 @@ from eventlet import event
 from eventlet import greenthread
 from oslo_utils import timeutils
 
-from oslo_service._i18n import _LE, _LW
+from oslo_service._i18n import _LE, _LW, _
 
 LOG = logging.getLogger(__name__)
 
@@ -58,46 +58,61 @@ class LoopingCallBase(object):
     def wait(self):
         return self.done.wait()
 
+    def _run_loop(self, kind, event, idle_for_func,
+                  initial_delay=None):
+        if initial_delay:
+            greenthread.sleep(initial_delay)
+        try:
+            watch = timeutils.StopWatch()
+            while self._running:
+                watch.restart()
+                result = self.f(*self.args, **self.kw)
+                watch.stop()
+                if not self._running:
+                    break
+                idle = idle_for_func(result, watch.elapsed())
+                LOG.debug('%(kind)s %(func_name)r sleeping '
+                          'for %(idle).02f seconds',
+                          {'func_name': self.f, 'idle': idle,
+                           'kind': kind})
+                greenthread.sleep(idle)
+        except LoopingCallDone as e:
+            self.stop()
+            event.send(e.retvalue)
+        except Exception:
+            exc_info = sys.exc_info()
+            try:
+                LOG.error(_LE('%(kind)s %(func_name)r failed'),
+                          {'kind': kind, 'func_name': self.f},
+                          exc_info=exc_info)
+                event.send_exception(*exc_info)
+            finally:
+                del exc_info
+            return
+        else:
+            event.send(True)
+
 
 class FixedIntervalLoopingCall(LoopingCallBase):
     """A fixed interval looping call."""
 
+    _KIND = _('Fixed interval looping call')
+
     def start(self, interval, initial_delay=None):
+
+        def _idle_for(result, elapsed):
+            delay = elapsed - interval
+            if delay > 0:
+                LOG.warning(_LW('Function %(func_name)r run outlasted '
+                                'interval by %(delay).2f sec'),
+                            {'func_name': self.f, 'delay': delay})
+            return -delay if delay < 0 else 0
+
         self._running = True
-        done = event.Event()
-
-        def _inner():
-            if initial_delay:
-                greenthread.sleep(initial_delay)
-
-            try:
-                watch = timeutils.StopWatch()
-                while self._running:
-                    watch.restart()
-                    self.f(*self.args, **self.kw)
-                    watch.stop()
-                    if not self._running:
-                        break
-                    elapsed = watch.elapsed()
-                    delay = elapsed - interval
-                    if delay > 0:
-                        LOG.warning(_LW('task %(func_name)r run outlasted '
-                                        'interval by %(delay).2f sec'),
-                                    {'func_name': self.f, 'delay': delay})
-                    greenthread.sleep(-delay if delay < 0 else 0)
-            except LoopingCallDone as e:
-                self.stop()
-                done.send(e.retvalue)
-            except Exception:
-                LOG.exception(_LE('in fixed duration looping call'))
-                done.send_exception(*sys.exc_info())
-                return
-            else:
-                done.send(True)
-
-        self.done = done
-
-        greenthread.spawn_n(_inner)
+        self.done = event.Event()
+        greenthread.spawn_n(self._run_loop,
+                            self._KIND, self.done, _idle_for,
+                            initial_delay=initial_delay)
         return self.done
 
 
@@ -108,37 +123,19 @@ class DynamicLoopingCall(LoopingCallBase):
     called again.
     """
 
+    _KIND = _('Dynamic interval looping call')
+
     def start(self, initial_delay=None, periodic_interval_max=None):
+
+        def _idle_for(suggested_delay, elapsed):
+            delay = suggested_delay
+            if periodic_interval_max is not None:
+                delay = min(delay, periodic_interval_max)
+            return delay
+
         self._running = True
-        done = event.Event()
-
-        def _inner():
-            if initial_delay:
-                greenthread.sleep(initial_delay)
-
-            try:
-                while self._running:
-                    idle = self.f(*self.args, **self.kw)
-                    if not self._running:
-                        break
-
-                    if periodic_interval_max is not None:
-                        idle = min(idle, periodic_interval_max)
-                    LOG.debug('Dynamic looping call %(func_name)r sleeping '
-                              'for %(idle).02f seconds',
-                              {'func_name': self.f, 'idle': idle})
-                    greenthread.sleep(idle)
-            except LoopingCallDone as e:
-                self.stop()
-                done.send(e.retvalue)
-            except Exception:
-                LOG.exception(_LE('in dynamic looping call'))
-                done.send_exception(*sys.exc_info())
-                return
-            else:
-                done.send(True)
-
-        self.done = done
-
-        greenthread.spawn(_inner)
+        self.done = event.Event()
+        greenthread.spawn_n(self._run_loop,
+                            self._KIND, self.done, _idle_for,
+                            initial_delay=initial_delay)
         return self.done
