@@ -41,3 +41,27 @@ When using oslo.service
 
     CONF = cfg.CONF
     launcher = service.launch(CONF, service, workers=2)
+
+Using oslo.service with oslo-config-generator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``oslo.service`` provides several entry points to generate a configuration
+files.
+
+* :func:`oslo.service.service <oslo_service.service.list_opts>`
+    The options from the service and eventlet_backdoor modules for
+    the [DEFAULT] section.
+
+* :func:`oslo.service.periodic_task <oslo_service.periodic_task.list_opts>`
+    The options from the periodic_task module for the [DEFAULT] section.
+
+* :func:`oslo.service.sslutils <oslo_service.sslutils.list_opts>`
+    The options from the sslutils module for the [ssl] section.
+
+**ATTENTION:** The library doesn't provide an oslo.service entry point.
+
+.. code-block:: bash
+
+    $ oslo-config-generator --namespace oslo.service.service \
+    --namespace oslo.service.periodic_task \
+    --namespace oslo.service.sslutils
