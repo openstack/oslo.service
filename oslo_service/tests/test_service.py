@@ -287,12 +287,12 @@ class LauncherTest(base.ServiceBaseTestCase):
 
         sock = self.mox.CreateMockAnything()
         self.mox.StubOutWithMock(eventlet, 'listen')
-        self.mox.StubOutWithMock(eventlet, 'spawn_n')
+        self.mox.StubOutWithMock(eventlet, 'spawn')
 
         eventlet.listen(('localhost', 1234)).AndReturn(sock)
         sock.getsockname().AndReturn(('127.0.0.1', 1234))
-        eventlet.spawn_n(eventlet.backdoor.backdoor_server, sock,
-                         locals=mox.IsA(dict))
+        eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
+                       locals=mox.IsA(dict))
 
         self.mox.ReplayAll()
 
@@ -315,14 +315,14 @@ class LauncherTest(base.ServiceBaseTestCase):
 
         sock = self.mox.CreateMockAnything()
         self.mox.StubOutWithMock(eventlet, 'listen')
-        self.mox.StubOutWithMock(eventlet, 'spawn_n')
+        self.mox.StubOutWithMock(eventlet, 'spawn')
 
         eventlet.listen(('localhost', 8800)).AndRaise(
             socket.error(errno.EADDRINUSE, ''))
         eventlet.listen(('localhost', 8801)).AndReturn(sock)
         sock.getsockname().AndReturn(('127.0.0.1', 8801))
-        eventlet.spawn_n(eventlet.backdoor.backdoor_server, sock,
-                         locals=mox.IsA(dict))
+        eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
+                       locals=mox.IsA(dict))
 
         self.mox.ReplayAll()
 
