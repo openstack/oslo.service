@@ -133,6 +133,9 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
 
         self.assertRaises(RuntimeError, timer.start)
 
+        wait_ev.set()
+        timer.wait()
+
     def test_return_false(self):
         def _raise_it():
             raise loopingcall.LoopingCallDone(False)
