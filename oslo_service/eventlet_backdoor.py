@@ -93,7 +93,7 @@ def _listen(host, start_port, end_port, listen_func):
             try_port += 1
 
 
-def initialize_if_enabled(conf):
+def _initialize_if_enabled(conf):
     conf.register_opts(_options.eventlet_backdoor_opts)
     backdoor_locals = {
         'exit': _dont_use_this,      # So we don't exit the entire process
@@ -127,6 +127,40 @@ def initialize_if_enabled(conf):
         _LI('Eventlet backdoor listening on %(port)s for process %(pid)d'),
         {'port': port, 'pid': os.getpid()}
     )
-    eventlet.spawn_n(eventlet.backdoor.backdoor_server, sock,
-                     locals=backdoor_locals)
-    return port
+    thread = eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
+                            locals=backdoor_locals)
+    return (port, thread)
+
+
+def initialize_if_enabled(conf):
+    port_thread = _initialize_if_enabled(conf)
+    if not port_thread:
+        return None
+    else:
+        port, _thread = port_thread
+        return port
+
+
+def _main():
+    import eventlet
+    eventlet.monkey_patch(all=True)
+
+    from oslo_config import cfg
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    conf = cfg.ConfigOpts()
+    conf.register_cli_opts(_options.eventlet_backdoor_opts)
+    conf(sys.argv[1:])
+
+    port_thread = _initialize_if_enabled(conf)
+    if not port_thread:
+        raise RuntimeError("Did not create backdoor at requested port")
+    else:
+        _port, thread = port_thread
+        thread.wait()
+
+
+if __name__ == '__main__':
+    # simple CLI for testing
+    _main()

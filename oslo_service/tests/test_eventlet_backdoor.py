@@ -36,7 +36,7 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
     def common_backdoor_port_setup(self):
         self.sock = self.mox.CreateMockAnything()
         self.mox.StubOutWithMock(eventlet, 'listen')
-        self.mox.StubOutWithMock(eventlet, 'spawn_n')
+        self.mox.StubOutWithMock(eventlet, 'spawn')
 
     def test_backdoor_port_inuse(self):
         self.config(backdoor_port=2345)
@@ -52,8 +52,8 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
         self.common_backdoor_port_setup()
         eventlet.listen(('localhost', 8800)).AndReturn(self.sock)
         self.sock.getsockname().AndReturn(('127.0.0.1', 8800))
-        eventlet.spawn_n(eventlet.backdoor.backdoor_server, self.sock,
-                         locals=moxstubout.mox.IsA(dict))
+        eventlet.spawn(eventlet.backdoor.backdoor_server, self.sock,
+                       locals=moxstubout.mox.IsA(dict))
         self.mox.ReplayAll()
         port = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual(port, 8800)
