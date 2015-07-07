@@ -22,7 +22,6 @@ from __future__ import print_function
 
 import threading
 
-import errno
 import logging
 import multiprocessing
 import os
@@ -36,12 +35,9 @@ import traceback
 import eventlet
 from eventlet import event
 import mock
-from mox3 import mox
 from oslotest import base as test_base
-from oslotest import moxstubout
 from six.moves import queue
 
-from oslo_service import eventlet_backdoor
 from oslo_service import service
 from oslo_service.tests import base
 
@@ -278,65 +274,6 @@ class _Service(service.Service):
 
 
 class LauncherTest(base.ServiceBaseTestCase):
-    def setUp(self):
-        super(LauncherTest, self).setUp()
-        self.mox = self.useFixture(moxstubout.MoxStubout()).mox
-
-    def test_backdoor_port(self):
-        self.config(backdoor_port='1234')
-
-        sock = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(eventlet, 'listen')
-        self.mox.StubOutWithMock(eventlet, 'spawn')
-
-        eventlet.listen(('localhost', 1234)).AndReturn(sock)
-        sock.getsockname().AndReturn(('127.0.0.1', 1234))
-        eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
-                       locals=mox.IsA(dict))
-
-        self.mox.ReplayAll()
-
-        svc = service.Service()
-        launcher = service.launch(self.conf, svc)
-        self.assertEqual(svc.backdoor_port, 1234)
-        launcher.stop()
-
-    def test_backdoor_inuse(self):
-        sock = eventlet.listen(('localhost', 0))
-        port = sock.getsockname()[1]
-        self.config(backdoor_port=port)
-        svc = service.Service()
-        self.assertRaises(socket.error,
-                          service.launch, self.conf, svc)
-        sock.close()
-
-    def test_backdoor_port_range_one_inuse(self):
-        self.config(backdoor_port='8800:8900')
-
-        sock = self.mox.CreateMockAnything()
-        self.mox.StubOutWithMock(eventlet, 'listen')
-        self.mox.StubOutWithMock(eventlet, 'spawn')
-
-        eventlet.listen(('localhost', 8800)).AndRaise(
-            socket.error(errno.EADDRINUSE, ''))
-        eventlet.listen(('localhost', 8801)).AndReturn(sock)
-        sock.getsockname().AndReturn(('127.0.0.1', 8801))
-        eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
-                       locals=mox.IsA(dict))
-
-        self.mox.ReplayAll()
-
-        svc = service.Service()
-        launcher = service.launch(self.conf, svc)
-        self.assertEqual(svc.backdoor_port, 8801)
-        launcher.stop()
-
-    def test_backdoor_port_reverse_range(self):
-        # backdoor port should get passed to the service being launched
-        self.config(backdoor_port='8888:7777')
-        svc = service.Service()
-        self.assertRaises(eventlet_backdoor.EventletBackdoorConfigValueError,
-                          service.launch, self.conf, svc)
 
     def test_graceful_shutdown(self):
         # test that services are given a chance to clean up:
