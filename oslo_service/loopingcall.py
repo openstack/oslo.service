@@ -22,6 +22,7 @@ from eventlet import event
 from eventlet import greenthread
 from oslo_utils import excutils
 from oslo_utils import timeutils
+import six
 
 from oslo_service._i18n import _LE, _LW, _
 
@@ -224,6 +225,7 @@ class RetryDecorator(object):
                         return self._sleep_time
             raise LoopingCallDone(result)
 
+        @six.wraps(f)
         def func(*args, **kwargs):
             loop = DynamicLoopingCall(_func, *args, **kwargs)
             evt = loop.start(periodic_interval_max=self._max_sleep_time)
