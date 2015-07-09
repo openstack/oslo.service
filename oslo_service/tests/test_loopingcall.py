@@ -182,3 +182,76 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
         timer.start(initial_delay=3).wait()
 
         sleep_mock.assert_has_calls([mock.call(3), mock.call(1)])
+
+
+class AnException(Exception):
+    pass
+
+
+class UnknownException(Exception):
+    pass
+
+
+class RetryDecoratorTest(test_base.BaseTestCase):
+    """Tests for retry decorator class."""
+
+    def test_retry(self):
+        result = "RESULT"
+
+        @loopingcall.RetryDecorator()
+        def func(*args, **kwargs):
+            return result
+
+        self.assertEqual(result, func())
+
+        def func2(*args, **kwargs):
+            return result
+
+        retry = loopingcall.RetryDecorator()
+        self.assertEqual(result, retry(func2)())
+        self.assertTrue(retry._retry_count == 0)
+
+    def test_retry_with_expected_exceptions(self):
+        result = "RESULT"
+        responses = [AnException(None),
+                     AnException(None),
+                     result]
+
+        def func(*args, **kwargs):
+            response = responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+        sleep_time_incr = 0.01
+        retry_count = 2
+        retry = loopingcall.RetryDecorator(10, sleep_time_incr, 10,
+                                           (AnException,))
+        self.assertEqual(result, retry(func)())
+        self.assertTrue(retry._retry_count == retry_count)
+        self.assertEqual(retry_count * sleep_time_incr, retry._sleep_time)
+
+    def test_retry_with_max_retries(self):
+        responses = [AnException(None),
+                     AnException(None),
+                     AnException(None)]
+
+        def func(*args, **kwargs):
+            response = responses.pop(0)
+            if isinstance(response, Exception):
+                raise response
+            return response
+
+        retry = loopingcall.RetryDecorator(2, 0, 0,
+                                           (AnException,))
+        self.assertRaises(AnException, retry(func))
+        self.assertTrue(retry._retry_count == 2)
+
+    def test_retry_with_unexpected_exception(self):
+
+        def func(*args, **kwargs):
+            raise UnknownException(None)
+
+        retry = loopingcall.RetryDecorator()
+        self.assertRaises(UnknownException, retry(func))
+        self.assertTrue(retry._retry_count == 0)
