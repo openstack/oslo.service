@@ -58,6 +58,9 @@ files.
 * :func:`oslo.service.sslutils <oslo_service.sslutils.list_opts>`
     The options from the sslutils module for the [ssl] section.
 
+* :func:`oslo.service.wsgi <oslo_service.wsgi.list_opts>`
+    The options from the wsgi module for the [DEFAULT] section.
+
 **ATTENTION:** The library doesn't provide an oslo.service entry point.
 
 .. code-block:: bash
