@@ -15,18 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""Generic Node base class for all workers that run on hosts.
-
-This module provides two launchers for running services:
-
-    * ServiceLauncher - used for running one or more service in
-      a parent process.
-    * ProcessLauncher - forks a given number of workers in which
-      service(s) are then started.
-
-Please be informed that it is highly recommended to use no more than
-one instance of ServiceLauncher and ProcessLauncher classes per process.
-"""
+"""Generic Node base class for all workers that run on hosts."""
 
 import abc
 import copy

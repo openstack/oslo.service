@@ -5,7 +5,7 @@ Welcome to oslo.service's documentation!
 Library for running OpenStack services
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    installation
    usage

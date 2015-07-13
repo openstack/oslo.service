@@ -65,3 +65,94 @@ files.
     $ oslo-config-generator --namespace oslo.service.service \
     --namespace oslo.service.periodic_task \
     --namespace oslo.service.sslutils
+
+Launching and controlling services
+==================================
+
+oslo_service.service module provides tools for launching OpenStack services and controlling their lifecycles.
+
+A service is an instance of any class that subclasses :py:class:`oslo_service.service.ServiceBase`.
+:py:class:`ServiceBase <oslo_service.service.ServiceBase>` is an abstract class that defines an interface every
+service should implement. :py:class:`oslo_service.service.Service` can serve as a base for constructing new services.
+
+Launchers
+~~~~~~~~~
+
+oslo_service.service module provides two launchers for running services:
+
+    * :py:class:`oslo_service.service.ServiceLauncher` - used for running one or more service in
+      a parent process.
+    * :py:class:`oslo_service.service.ProcessLauncher` - forks a given number of workers in which
+      service(s) are then started.
+
+It is possible to initialize whatever launcher is needed and then launch a service using it.
+
+::
+
+    from oslo_config import cfg
+    from oslo_service import service
+
+    CONF = cfg.CONF
+
+
+    service_launcher = service.ServiceLauncher(CONF)
+    service_launcher.launch_service(service.Service())
+
+    process_launcher = service.ProcessLauncher(CONF, wait_interval=1.0)
+    process_launcher.launch_service(service.Service(), workers=2)
+
+Or one can simply call :func:`oslo_service.service.launch` which will automatically pick an appropriate launcher
+based on a number of workers that are passed to it (ServiceLauncher in case workers=1 or None and ProcessLauncher in
+other case).
+
+::
+
+    from oslo_config import cfg
+    from oslo_service import service
+
+    CONF = cfg.CONF
+
+    launcher = service.launch(CONF, service.Service(), workers=3)
+
+*NOTE:* Please be informed that it is highly recommended to use no more than one instance of ServiceLauncher and
+ProcessLauncher classes per process.
+
+Signal handling
+~~~~~~~~~~~~~~~
+
+oslo_service.service provides handlers for such signals as SIGTERM and SIGHUP.
+
+SIGTERM is used for graceful termination of services. This can allow a server to wait for all clients to close
+connections while rejecting new incoming requests. To force instantaneous termination SIGINT signal must be sent.
+
+On receiving SIGHUP configuration files are reloaded and a service is being reset and started again.Thus, SIGHUP
+can be used for changing config options on the go. To achieve this each service should implement a *reset* method
+which actually enforces changes to config options values.
+
+Below is the example of a service with a reset method that allows reloading logging options by sending a SIGHUP.
+
+::
+
+    from oslo_config import cfg
+    from oslo_log import log as logging
+    from oslo_service import service
+
+    CONF = cfg.CONF
+
+    LOG = logging.getLogger(__name__)
+
+    class FooService(service.ServiceBase):
+
+        def start(self):
+            pass
+
+        def wait(self):
+            pass
+
+        def stop(self):
+            pass
+
+        def reset(self):
+            logging.setup(cfg.CONF, 'foo')
+
+
