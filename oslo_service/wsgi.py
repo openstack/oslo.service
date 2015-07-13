@@ -59,7 +59,11 @@ class InvalidInput(Exception):
 class Server(service.ServiceBase):
     """Server class to manage a WSGI server, serving a WSGI application."""
 
-    def __init__(self, conf, name, app, host='0.0.0.0', port=0,
+    # TODO(eezhova): Consider changing the default host value to prevent
+    # possible binding to all interfaces. The most appropriate value seems
+    # to be 127.0.0.1, but it has to be verified that the change wouldn't
+    # break any consuming project.
+    def __init__(self, conf, name, app, host='0.0.0.0', port=0,  # nosec
                  pool_size=None, protocol=eventlet.wsgi.HttpProtocol,
                  backlog=128, use_ssl=False, max_url_len=None,
                  logger_name='eventlet.wsgi.server',

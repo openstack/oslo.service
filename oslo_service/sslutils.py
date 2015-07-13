@@ -37,7 +37,7 @@ for protocol in _OPTIONAL_PROTOCOLS:
     try:
         _SSL_PROTOCOLS[protocol] = getattr(ssl,
                                            _OPTIONAL_PROTOCOLS[protocol])
-    except AttributeError:
+    except AttributeError:  # nosec
         pass
 
 
@@ -99,4 +99,6 @@ def wrap(conf, sock):
         if conf.ssl.ciphers:
             ssl_kwargs['ciphers'] = conf.ssl.ciphers
 
-    return ssl.wrap_socket(sock, **ssl_kwargs)
+    # NOTE(eezhova): SSL/TLS protocol version is injected in ssl_kwargs above,
+    # so skipping bandit check
+    return ssl.wrap_socket(sock, **ssl_kwargs)  # nosec
