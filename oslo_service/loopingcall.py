@@ -181,7 +181,9 @@ class RetryDecorator(object):
                                inc_sleep_time. On reaching this threshold,
                                max_sleep_time will be used as the sleep time.
         :param exceptions: suggested exceptions for which the function must be
-                           retried
+                           retried, if no exceptions are provided (the default)
+                           then all exceptions will be reraised, and no
+                           retrying will be triggered.
         """
         self._max_retry_count = max_retry_count
         self._inc_sleep_time = inc_sleep_time
