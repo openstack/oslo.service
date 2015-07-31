@@ -18,6 +18,7 @@
 """Generic Node base class for all workers that run on hosts."""
 
 import abc
+import collections
 import copy
 import errno
 import io
@@ -32,22 +33,12 @@ import time
 import eventlet
 from eventlet import event
 
+from oslo_concurrency import lockutils
 from oslo_service import eventlet_backdoor
 from oslo_service._i18n import _LE, _LI, _LW
 from oslo_service import _options
 from oslo_service import systemd
 from oslo_service import threadgroup
-
-
-# Map all signal names to signal integer values and create a
-# reverse mapping (for easier + quick lookup).
-_ignore_signals = ('SIG_DFL', 'SIG_IGN')
-_signals_by_name = dict((name, getattr(signal, name))
-                        for name in dir(signal)
-                        if name.startswith("SIG")
-                        and name not in _ignore_signals)
-_signals_to_name = dict((sigval, name)
-                        for (name, sigval) in _signals_by_name.items())
 
 
 LOG = logging.getLogger(__name__)
@@ -57,10 +48,6 @@ def list_opts():
     """Entry point for oslo-config-generator."""
     return [(None, copy.deepcopy(_options.eventlet_backdoor_opts +
                                  _options.service_opts))]
-
-
-def _sighup_supported():
-    return 'SIGHUP' in _signals_by_name
 
 
 def _is_daemon():
@@ -84,17 +71,11 @@ def _is_daemon():
 
 
 def _is_sighup_and_daemon(signo):
-    if not (_sighup_supported() and signo == signal.SIGHUP):
+    if not (SignalHandler().is_sighup_supported and signo == signal.SIGHUP):
         # Avoid checking if we are a daemon, because the signal isn't
         # SIGHUP.
         return False
     return _is_daemon()
-
-
-def _set_signals_handler(handler):
-    signal.signal(signal.SIGTERM, handler)
-    if _sighup_supported():
-        signal.signal(signal.SIGHUP, handler)
 
 
 def _check_service_base(service):
@@ -125,6 +106,56 @@ class ServiceBase(object):
 
         Called in case service running in daemon mode receives SIGHUP.
         """
+
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        with lockutils.lock('singleton_lock'):
+            if cls not in cls._instances:
+                cls._instances[cls] = super(Singleton, cls).__call__(
+                    *args, **kwargs)
+        return cls._instances[cls]
+
+
+@six.add_metaclass(Singleton)
+class SignalHandler(object):
+    def __init__(self, *args, **kwargs):
+        super(SignalHandler, self).__init__(*args, **kwargs)
+        # Map all signal names to signal integer values and create a
+        # reverse mapping (for easier + quick lookup).
+        self._ignore_signals = ('SIG_DFL', 'SIG_IGN')
+        self._signals_by_name = dict((name, getattr(signal, name))
+                                     for name in dir(signal)
+                                     if name.startswith("SIG")
+                                     and name not in self._ignore_signals)
+        self.signals_to_name = dict(
+            (sigval, name)
+            for (name, sigval) in self._signals_by_name.items())
+        self.is_sighup_supported = 'SIGHUP' in self._signals_by_name
+        self._signal_handlers = collections.defaultdict(set)
+        self.clear()
+
+    def clear(self):
+        for sig in self._signal_handlers:
+            signal.signal(sig, signal.SIG_DFL)
+        self._signal_handlers.clear()
+
+    def add_handler(self, signals, handler):
+        if isinstance(signals, collections.Iterable):
+            for sig in signals:
+                self.add_handler(sig, handler)
+            return
+        sig = signals
+        if sig == signal.SIGHUP and not self.is_sighup_supported:
+            return
+        self._signal_handlers[sig].add(handler)
+        signal.signal(sig, self._handle_signals)
+
+    def _handle_signals(self, signo, frame):
+        for handler in self._signal_handlers[signo]:
+            handler(signo, frame)
 
 
 class Launcher(object):
@@ -203,12 +234,14 @@ class ServiceLauncher(Launcher):
         :raises SignalExit
         """
         # Allow the process to be killed again and die from natural causes
-        _set_signals_handler(signal.SIG_DFL)
+        SignalHandler().clear()
         raise SignalExit(signo)
 
     def handle_signal(self):
         """Set self._handle_signal as a signal handler."""
-        _set_signals_handler(self._handle_signal)
+        SignalHandler().add_handler(
+            (signal.SIGTERM, signal.SIGHUP, signal.SIGINT),
+            self._handle_signal)
 
     def _wait_for_exit_or_signal(self, ready_callback=None):
         status = None
@@ -223,7 +256,7 @@ class ServiceLauncher(Launcher):
                 ready_callback()
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
-            signame = _signals_to_name[exc.signo]
+            signame = SignalHandler().signals_to_name[exc.signo]
             LOG.info(_LI('Caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
@@ -240,6 +273,7 @@ class ServiceLauncher(Launcher):
         :returns: termination status
         """
         systemd.notify_once()
+        SignalHandler().clear()
         while True:
             self.handle_signal()
             status, signo = self._wait_for_exit_or_signal(ready_callback)
@@ -258,17 +292,6 @@ class ServiceWrapper(object):
 
 class ProcessLauncher(object):
     """Launch a service with a given number of workers."""
-    _signal_handlers_set = set()
-
-    @classmethod
-    def _handle_class_signals(cls, *args, **kwargs):
-        """Call all registered class handlers.
-
-        That is needed in case there are multiple ProcessLauncher
-        instances in one process.
-        """
-        for handler in cls._signal_handlers_set:
-            handler(*args, **kwargs)
 
     def __init__(self, conf, wait_interval=0.01):
         """Constructor.
@@ -286,12 +309,14 @@ class ProcessLauncher(object):
         self.launcher = None
         rfd, self.writepipe = os.pipe()
         self.readpipe = eventlet.greenio.GreenPipe(rfd, 'r')
+        self.signal_handler = SignalHandler()
         self.handle_signal()
 
     def handle_signal(self):
         """Add instance's signal handlers to class handlers."""
-        self._signal_handlers_set.add(self._handle_signal)
-        _set_signals_handler(self._handle_class_signals)
+        self.signal_handler.add_handler((signal.SIGTERM, signal.SIGHUP),
+                                        self._handle_signal)
+        self.signal_handler.add_handler(signal.SIGINT, self._fast_exit)
 
     def _handle_signal(self, signo, frame):
         """Set signal handlers.
@@ -303,7 +328,11 @@ class ProcessLauncher(object):
         self.running = False
 
         # Allow the process to be killed again and die from natural causes
-        _set_signals_handler(signal.SIG_DFL)
+        self.signal_handler.clear()
+
+    def _fast_exit(self, signo, frame):
+        LOG.info(_LI('Caught SIGINT signal, instantaneous exiting'))
+        os._exit(1)
 
     def _pipe_watcher(self):
         # This will block until the write end is closed when the parent
@@ -321,17 +350,19 @@ class ProcessLauncher(object):
         # Setup child signal handlers differently
 
         def _sigterm(*args):
-            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+            SignalHandler().clear()
             self.launcher.stop()
 
         def _sighup(*args):
-            signal.signal(signal.SIGHUP, signal.SIG_DFL)
+            SignalHandler().clear()
             raise SignalExit(signal.SIGHUP)
 
+        self.signal_handler.clear()
+
         # Parent signals with SIGTERM when it wants us to go away.
-        signal.signal(signal.SIGTERM, _sigterm)
-        if _sighup_supported():
-            signal.signal(signal.SIGHUP, _sighup)
+        self.signal_handler.add_handler(signal.SIGTERM, _sigterm)
+        self.signal_handler.add_handler(signal.SIGHUP, _sighup)
+        self.signal_handler.add_handler(signal.SIGINT, self._fast_exit)
 
     def _child_wait_for_exit_or_signal(self, launcher):
         status = 0
@@ -343,7 +374,7 @@ class ProcessLauncher(object):
         try:
             launcher.wait()
         except SignalExit as exc:
-            signame = _signals_to_name[exc.signo]
+            signame = self.signal_handler.signals_to_name[exc.signo]
             LOG.info(_LI('Child caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
@@ -480,7 +511,7 @@ class ProcessLauncher(object):
                 if not self.sigcaught:
                     return
 
-                signame = _signals_to_name[self.sigcaught]
+                signame = self.signal_handler.signals_to_name[self.sigcaught]
                 LOG.info(_LI('Caught %s, stopping children'), signame)
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break

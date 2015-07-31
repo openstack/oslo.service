@@ -370,28 +370,20 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
                          mock_kill.mock_calls)
         mock_service_stop.assert_called_once_with()
 
-    @mock.patch(
-        "oslo_service.service.ProcessLauncher._signal_handlers_set",
-        new_callable=lambda: set())
-    def test__signal_handlers_set(self, signal_handlers_set_mock):
-        callables = set()
-        l1 = service.ProcessLauncher(self.conf)
-        callables.add(l1._handle_signal)
-        self.assertEqual(1, len(service.ProcessLauncher._signal_handlers_set))
-        l2 = service.ProcessLauncher(self.conf)
-        callables.add(l2._handle_signal)
-        self.assertEqual(2, len(service.ProcessLauncher._signal_handlers_set))
-        self.assertEqual(callables,
-                         service.ProcessLauncher._signal_handlers_set)
-
-    @mock.patch(
-        "oslo_service.service.ProcessLauncher._signal_handlers_set",
-        new_callable=lambda: set())
-    def test__handle_class_signals(self, signal_handlers_set_mock):
-        signal_handlers_set_mock.update([mock.Mock(), mock.Mock()])
-        service.ProcessLauncher._handle_class_signals()
-        for m in service.ProcessLauncher._signal_handlers_set:
-            m.assert_called_once_with()
+    def test__handle_signals(self):
+        signal_handler = service.SignalHandler()
+        signal_handler.clear()
+        self.assertEqual(0,
+                         len(signal_handler._signal_handlers[signal.SIGTERM]))
+        call_1, call_2 = mock.Mock(), mock.Mock()
+        signal_handler.add_handler(signal.SIGTERM, call_1)
+        signal_handler.add_handler(signal.SIGTERM, call_2)
+        self.assertEqual(2,
+                         len(signal_handler._signal_handlers[signal.SIGTERM]))
+        signal_handler._handle_signals(signal.SIGTERM, 'test')
+        for m in signal_handler._signal_handlers[signal.SIGTERM]:
+            m.assert_called_once_with(signal.SIGTERM, 'test')
+        signal_handler.clear()
 
     @mock.patch("os.kill")
     @mock.patch("oslo_service.service.ProcessLauncher.stop")
