@@ -110,9 +110,10 @@ class ServiceBase(object):
 
 class Singleton(type):
     _instances = {}
+    _semaphores = lockutils.Semaphores()
 
     def __call__(cls, *args, **kwargs):
-        with lockutils.lock('singleton_lock'):
+        with lockutils.lock('singleton_lock', semaphores=cls._semaphores):
             if cls not in cls._instances:
                 cls._instances[cls] = super(Singleton, cls).__call__(
                     *args, **kwargs)
