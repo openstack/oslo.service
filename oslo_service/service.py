@@ -121,6 +121,7 @@ class Singleton(type):
 
 @six.add_metaclass(Singleton)
 class SignalHandler(object):
+
     def __init__(self, *args, **kwargs):
         super(SignalHandler, self).__init__(*args, **kwargs)
         # Map all signal names to signal integer values and create a
@@ -142,16 +143,16 @@ class SignalHandler(object):
             signal.signal(sig, signal.SIG_DFL)
         self._signal_handlers.clear()
 
-    def add_handler(self, signals, handler):
-        if isinstance(signals, collections.Iterable):
-            for sig in signals:
-                self.add_handler(sig, handler)
+    def add_handlers(self, signals, handler):
+        for sig in signals:
+            self.add_handler(sig, handler)
+
+    def add_handler(self, sig, handler):
+        if sig == "SIGHUP" and not self.is_sighup_supported:
             return
-        sig = signals
-        if sig == signal.SIGHUP and not self.is_sighup_supported:
-            return
-        self._signal_handlers[sig].add(handler)
-        signal.signal(sig, self._handle_signals)
+        signo = self._signals_by_name[sig]
+        self._signal_handlers[signo].add(handler)
+        signal.signal(signo, self._handle_signals)
 
     def _handle_signals(self, signo, frame):
         for handler in self._signal_handlers[signo]:
@@ -239,8 +240,8 @@ class ServiceLauncher(Launcher):
 
     def handle_signal(self):
         """Set self._handle_signal as a signal handler."""
-        SignalHandler().add_handler(
-            (signal.SIGTERM, signal.SIGHUP, signal.SIGINT),
+        SignalHandler().add_handlers(
+            ('SIGTERM', 'SIGHUP', 'SIGINT'),
             self._handle_signal)
 
     def _wait_for_exit_or_signal(self, ready_callback=None):
@@ -314,9 +315,9 @@ class ProcessLauncher(object):
 
     def handle_signal(self):
         """Add instance's signal handlers to class handlers."""
-        self.signal_handler.add_handler((signal.SIGTERM, signal.SIGHUP),
-                                        self._handle_signal)
-        self.signal_handler.add_handler(signal.SIGINT, self._fast_exit)
+        self.signal_handler.add_handlers(('SIGTERM', 'SIGHUP'),
+                                         self._handle_signal)
+        self.signal_handler.add_handler('SIGINT', self._fast_exit)
 
     def _handle_signal(self, signo, frame):
         """Set signal handlers.
@@ -360,9 +361,9 @@ class ProcessLauncher(object):
         self.signal_handler.clear()
 
         # Parent signals with SIGTERM when it wants us to go away.
-        self.signal_handler.add_handler(signal.SIGTERM, _sigterm)
-        self.signal_handler.add_handler(signal.SIGHUP, _sighup)
-        self.signal_handler.add_handler(signal.SIGINT, self._fast_exit)
+        self.signal_handler.add_handler('SIGTERM', _sigterm)
+        self.signal_handler.add_handler('SIGHUP', _sighup)
+        self.signal_handler.add_handler('SIGINT', self._fast_exit)
 
     def _child_wait_for_exit_or_signal(self, launcher):
         status = 0

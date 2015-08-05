@@ -376,8 +376,8 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
         self.assertEqual(0,
                          len(signal_handler._signal_handlers[signal.SIGTERM]))
         call_1, call_2 = mock.Mock(), mock.Mock()
-        signal_handler.add_handler(signal.SIGTERM, call_1)
-        signal_handler.add_handler(signal.SIGTERM, call_2)
+        signal_handler.add_handler('SIGTERM', call_1)
+        signal_handler.add_handler('SIGTERM', call_2)
         self.assertEqual(2,
                          len(signal_handler._signal_handlers[signal.SIGTERM]))
         signal_handler._handle_signals(signal.SIGTERM, 'test')
