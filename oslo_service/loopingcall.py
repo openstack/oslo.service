@@ -46,7 +46,9 @@ class LoopingCallDone(Exception):
         self.retvalue = retvalue
 
 
-def safe_wrapper(f, kind):
+def _safe_wrapper(f, kind):
+    """Wrapper that calls into wrapped function and logs errors as needed."""
+
     def func(*args, **kwargs):
         try:
             return f(*args, **kwargs)
@@ -98,8 +100,7 @@ class LoopingCallBase(object):
 
     def _run_loop(self, kind, event, idle_for_func,
                   initial_delay=None, stop_on_exception=True):
-        func = self.f if stop_on_exception else safe_wrapper(self.f, kind)
-
+        func = self.f if stop_on_exception else _safe_wrapper(self.f, kind)
         if initial_delay:
             greenthread.sleep(initial_delay)
         try:
