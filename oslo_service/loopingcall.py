@@ -21,6 +21,7 @@ import sys
 from eventlet import event
 from eventlet import greenthread
 from oslo_utils import excutils
+from oslo_utils import reflection
 from oslo_utils import timeutils
 import six
 
@@ -46,7 +47,7 @@ class LoopingCallDone(Exception):
         self.retvalue = retvalue
 
 
-def _safe_wrapper(f, kind):
+def _safe_wrapper(f, kind, func_name):
     """Wrapper that calls into wrapped function and logs errors as needed."""
 
     def func(*args, **kwargs):
@@ -56,7 +57,7 @@ def _safe_wrapper(f, kind):
             raise  # let the outer handler process this
         except Exception:
             LOG.error(_LE('%(kind)s %(func_name)r failed'),
-                      {'kind': kind, 'func_name': f},
+                      {'kind': kind, 'func_name': func_name},
                       exc_info=True)
             return 0
 
@@ -100,7 +101,9 @@ class LoopingCallBase(object):
 
     def _run_loop(self, kind, event, idle_for_func,
                   initial_delay=None, stop_on_exception=True):
-        func = self.f if stop_on_exception else _safe_wrapper(self.f, kind)
+        func_name = reflection.get_callable_name(self.f)
+        func = self.f if stop_on_exception else _safe_wrapper(self.f, kind,
+                                                              func_name)
         if initial_delay:
             greenthread.sleep(initial_delay)
         try:
@@ -114,7 +117,7 @@ class LoopingCallBase(object):
                 idle = idle_for_func(result, watch.elapsed())
                 LOG.debug('%(kind)s %(func_name)r sleeping '
                           'for %(idle).02f seconds',
-                          {'func_name': self.f, 'idle': idle,
+                          {'func_name': func_name, 'idle': idle,
                            'kind': kind})
                 greenthread.sleep(idle)
         except LoopingCallDone as e:
@@ -123,7 +126,7 @@ class LoopingCallBase(object):
             exc_info = sys.exc_info()
             try:
                 LOG.error(_LE('%(kind)s %(func_name)r failed'),
-                          {'kind': kind, 'func_name': self.f},
+                          {'kind': kind, 'func_name': func_name},
                           exc_info=exc_info)
                 event.send_exception(*exc_info)
             finally:
@@ -145,9 +148,10 @@ class FixedIntervalLoopingCall(LoopingCallBase):
         def _idle_for(result, elapsed):
             delay = elapsed - interval
             if delay > 0:
+                func_name = reflection.get_callable_name(self.f)
                 LOG.warning(_LW('Function %(func_name)r run outlasted '
                                 'interval by %(delay).2f sec'),
-                            {'func_name': self.f, 'delay': delay})
+                            {'func_name': func_name, 'delay': delay})
             return -delay if delay < 0 else 0
         return self._start(_idle_for, initial_delay=initial_delay,
                            stop_on_exception=stop_on_exception)
@@ -215,9 +219,9 @@ class RetryDecorator(object):
         self._sleep_time = 0
 
     def __call__(self, f):
+        func_name = reflection.get_callable_name(f)
 
         def _func(*args, **kwargs):
-            func_name = f.__name__
             result = None
             try:
                 if self._retry_count:
@@ -235,12 +239,14 @@ class RetryDecorator(object):
                              exc_info=True)
                     if (self._max_retry_count != -1 and
                             self._retry_count >= self._max_retry_count):
-                        LOG.error(_LE("Cannot retry upon suggested exception "
+                        LOG.error(_LE("Cannot retry %(func_name)s upon "
+                                      "suggested exception "
                                       "since retry count (%(retry_count)d) "
                                       "reached max retry count "
                                       "(%(max_retry_count)d)."),
                                   {'retry_count': self._retry_count,
-                                   'max_retry_count': self._max_retry_count})
+                                   'max_retry_count': self._max_retry_count,
+                                   'func_name': func_name})
                     else:
                         ctxt.reraise = False
                         self._retry_count += 1
@@ -252,7 +258,7 @@ class RetryDecorator(object):
         def func(*args, **kwargs):
             loop = DynamicLoopingCall(_func, *args, **kwargs)
             evt = loop.start(periodic_interval_max=self._max_sleep_time)
-            LOG.debug("Waiting for function %s to return.", f.__name__)
+            LOG.debug("Waiting for function %s to return.", func_name)
             return evt.wait()
 
         return func
