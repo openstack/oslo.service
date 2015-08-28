@@ -192,6 +192,30 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
         timer = loopingcall.DynamicLoopingCall(self._wait_for_zero)
         self.assertFalse(timer.start().wait())
 
+    def _timeout_task_without_any_return(self):
+        pass
+
+    def test_timeout_task_without_return_and_max_periodic(self):
+        timer = loopingcall.DynamicLoopingCall(
+            self._timeout_task_without_any_return
+        )
+        self.assertRaises(RuntimeError, timer.start().wait)
+
+    def _timeout_task_without_return_but_with_done(self):
+        if self.num_runs == 0:
+            raise loopingcall.LoopingCallDone(False)
+        else:
+            self.num_runs = self.num_runs - 1
+
+    @mock.patch('eventlet.greenthread.sleep')
+    def test_timeout_task_without_return(self, sleep_mock):
+        self.num_runs = 1
+        timer = loopingcall.DynamicLoopingCall(
+            self._timeout_task_without_return_but_with_done
+        )
+        timer.start(periodic_interval_max=5).wait()
+        sleep_mock.assert_has_calls([mock.call(5)])
+
     @mock.patch('eventlet.greenthread.sleep')
     def test_interval_adjustment(self, sleep_mock):
         self.num_runs = 2
