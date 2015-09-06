@@ -53,6 +53,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
             time.sleep(1)
         start_time = time.time()
         self.tg.add_thread(foo, 'arg', kwarg='kwarg')
+        time.sleep(0)
         self.tg.stop()
         end_time = time.time()
 

@@ -27,13 +27,13 @@ import multiprocessing
 import os
 import signal
 import socket
-import subprocess
 import sys
 import time
 import traceback
 
 import eventlet
 from eventlet import event
+from eventlet.green import subprocess
 import mock
 from oslotest import base as test_base
 from six.moves import queue
