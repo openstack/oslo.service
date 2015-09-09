@@ -80,11 +80,17 @@ wsgi_opts = [
 ssl_opts = [
     cfg.StrOpt('ca_file',
                help="CA certificate file to use to verify "
-                    "connecting clients."),
+                    "connecting clients.",
+               deprecated_group='DEFAULT',
+               deprecated_name='ssl_ca_file'),
     cfg.StrOpt('cert_file',
                help="Certificate file to use when starting "
-                    "the server securely."),
+                    "the server securely.",
+               deprecated_group='DEFAULT',
+               deprecated_name='ssl_cert_file'),
     cfg.StrOpt('key_file',
                help="Private key file to use when starting "
-                    "the server securely."),
+                    "the server securely.",
+               deprecated_group='DEFAULT',
+               deprecated_name='ssl_key_file'),
 ]
