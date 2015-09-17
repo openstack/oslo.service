@@ -215,15 +215,16 @@ class ServiceLauncherTest(ServiceTestBase):
         start_workers = self._spawn()
 
         os.kill(self.pid, signal.SIGHUP)
-        # Wait at most 5 seconds to respawn a worker
-        cond = lambda: start_workers == self._get_workers()
-        timeout = 5
-        self._wait(cond, timeout)
 
-        # Make sure worker pids match
-        end_workers = self._get_workers()
-        LOG.info('workers: %r' % end_workers)
-        self.assertEqual(start_workers, end_workers)
+        def cond():
+            workers = self._get_workers()
+            return (len(workers) == len(start_workers) and
+                    not set(start_workers).intersection(workers))
+
+        # Wait at most 5 seconds to respawn a worker
+        timeout = 10
+        self._wait(cond, timeout)
+        self.assertTrue(cond())
 
 
 class ServiceRestartTest(ServiceTestBase):

@@ -524,7 +524,7 @@ class ProcessLauncher(object):
                     service.reset()
 
                 for pid in self.children:
-                    os.kill(pid, signal.SIGHUP)
+                    os.kill(pid, signal.SIGTERM)
 
                 self.running = True
                 self.sigcaught = None
