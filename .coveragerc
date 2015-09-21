@@ -4,4 +4,4 @@ source = service
 omit = service/tests/*,service/openstack/*
 
 [report]
-ignore-errors = True
+ignore_errors = True
