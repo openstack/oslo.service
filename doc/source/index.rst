@@ -9,6 +9,7 @@ Library for running OpenStack services
 
    installation
    usage
+   opts
    contributing
    history
 
