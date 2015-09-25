@@ -43,6 +43,11 @@ class Thread(object):
     def __init__(self, thread, group):
         self.thread = thread
         self.thread.link(_thread_done, group=group, thread=self)
+        self._ident = id(thread)
+
+    @property
+    def ident(self):
+        return self._ident
 
     def stop(self):
         self.thread.kill()
@@ -100,7 +105,7 @@ class ThreadGroup(object):
         # Iterate over a copy of self.threads so thread_done doesn't
         # modify the list while we're iterating
         for x in self.threads[:]:
-            if x is current:
+            if x.ident == current.ident:
                 # don't kill the current thread.
                 continue
             try:
@@ -148,7 +153,7 @@ class ThreadGroup(object):
         # Iterate over a copy of self.threads so thread_done doesn't
         # modify the list while we're iterating
         for x in self.threads[:]:
-            if x is current:
+            if x.ident == current.ident:
                 continue
             try:
                 x.wait()
