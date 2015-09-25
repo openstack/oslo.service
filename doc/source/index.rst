@@ -11,7 +11,6 @@ Library for running OpenStack services
    usage
    opts
    contributing
-   history
 
 API Documentation
 =================
@@ -26,6 +25,14 @@ API Documentation
    api/sslutils
    api/systemd
    api/threadgroup
+
+Release Notes
+=============
+
+.. toctree::
+   :maxdepth: 1
+
+   history
 
 Indices and tables
 ==================
