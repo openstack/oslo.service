@@ -16,6 +16,7 @@ from oslo_config import fixture as config
 from oslotest import base as test_base
 
 from oslo_service import _options
+from oslo_service import sslutils
 
 
 class ServiceBaseTestCase(test_base.BaseTestCase):
@@ -25,7 +26,8 @@ class ServiceBaseTestCase(test_base.BaseTestCase):
         self.conf_fixture = self.useFixture(config.Config())
         self.conf_fixture.register_opts(_options.eventlet_backdoor_opts)
         self.conf_fixture.register_opts(_options.service_opts)
-        self.conf_fixture.register_opts(_options.ssl_opts)
+        self.conf_fixture.register_opts(_options.ssl_opts,
+                                        sslutils.config_section)
         self.conf_fixture.register_opts(_options.periodic_opts)
 
         self.conf = self.conf_fixture.conf
