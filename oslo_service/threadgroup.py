@@ -147,7 +147,7 @@ class ThreadGroup(object):
             except eventlet.greenlet.GreenletExit:
                 pass
             except Exception:
-                LOG.exception(_LE('Error waiting on ThreadGroup.'))
+                LOG.exception(_LE('Error waiting on timer.'))
         current = threading.current_thread()
 
         # Iterate over a copy of self.threads so thread_done doesn't
@@ -159,5 +159,5 @@ class ThreadGroup(object):
                 x.wait()
             except eventlet.greenlet.GreenletExit:
                 pass
-            except Exception as ex:
-                LOG.exception(ex)
+            except Exception:
+                LOG.exception(_LE('Error waiting on thread.'))
