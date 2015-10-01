@@ -28,6 +28,11 @@ def list_opts():
     return [(config_section, copy.deepcopy(_options.ssl_opts))]
 
 
+def register_opts(conf):
+    """Registers sslutils config options."""
+    return conf.register_opts(_options.ssl_opts, config_section)
+
+
 def is_enabled(conf):
     conf.register_opts(_options.ssl_opts, config_section)
     cert_file = conf.ssl.cert_file
