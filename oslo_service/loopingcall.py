@@ -247,18 +247,17 @@ class RetryDecorator(object):
                 result = f(*args, **kwargs)
             except self._exceptions:
                 with excutils.save_and_reraise_exception() as ctxt:
-                    LOG.warn(_LW("Exception which is in the suggested list of "
-                                 "exceptions occurred while invoking function:"
-                                 " %s."),
-                             func_name,
-                             exc_info=True)
+                    LOG.debug("Exception which is in the suggested list of "
+                              "exceptions occurred while invoking function:"
+                              " %s.",
+                              func_name)
                     if (self._max_retry_count != -1 and
                             self._retry_count >= self._max_retry_count):
-                        LOG.error(_LE("Cannot retry %(func_name)s upon "
-                                      "suggested exception "
-                                      "since retry count (%(retry_count)d) "
-                                      "reached max retry count "
-                                      "(%(max_retry_count)d)."),
+                        LOG.debug("Cannot retry %(func_name)s upon "
+                                  "suggested exception "
+                                  "since retry count (%(retry_count)d) "
+                                  "reached max retry count "
+                                  "(%(max_retry_count)d).",
                                   {'retry_count': self._retry_count,
                                    'max_retry_count': self._max_retry_count,
                                    'func_name': func_name})
