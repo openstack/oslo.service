@@ -24,13 +24,13 @@ from oslo_service import loopingcall
 LOG = logging.getLogger(__name__)
 
 
-def _thread_done(gt, *args, **kwargs):
+def _on_thread_done(_greenthread, group, thread):
     """Callback function to be passed to GreenThread.link() when we spawn().
 
-    Calls the :class:`ThreadGroup` to notify if.
-
+    Calls the :class:`ThreadGroup` to notify it to remove this thread from
+    the associated group.
     """
-    kwargs['group'].thread_done(kwargs['thread'])
+    group.thread_done(thread)
 
 
 class Thread(object):
@@ -42,7 +42,7 @@ class Thread(object):
     """
     def __init__(self, thread, group):
         self.thread = thread
-        self.thread.link(_thread_done, group=group, thread=self)
+        self.thread.link(_on_thread_done, group, self)
         self._ident = id(thread)
 
     @property
