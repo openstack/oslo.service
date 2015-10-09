@@ -99,21 +99,25 @@ class ThreadGroup(object):
     def timer_done(self, timer):
         self.timers.remove(timer)
 
-    def _stop_threads(self):
+    def _perform_action_on_threads(self, action_func, on_error_func):
         current = threading.current_thread()
-
         # Iterate over a copy of self.threads so thread_done doesn't
         # modify the list while we're iterating
         for x in self.threads[:]:
             if x.ident == current.ident:
-                # don't kill the current thread.
+                # Don't perform actions on the current thread.
                 continue
             try:
-                x.stop()
+                action_func(x)
             except eventlet.greenlet.GreenletExit:
                 pass
             except Exception:
-                LOG.exception(_LE('Error stopping thread.'))
+                on_error_func(x)
+
+    def _stop_threads(self):
+        self._perform_action_on_threads(
+            lambda x: x.stop(),
+            lambda x: LOG.exception(_LE('Error stopping thread.')))
 
     def stop_timers(self):
         for x in self.timers:
@@ -148,16 +152,6 @@ class ThreadGroup(object):
                 pass
             except Exception:
                 LOG.exception(_LE('Error waiting on timer.'))
-        current = threading.current_thread()
-
-        # Iterate over a copy of self.threads so thread_done doesn't
-        # modify the list while we're iterating
-        for x in self.threads[:]:
-            if x.ident == current.ident:
-                continue
-            try:
-                x.wait()
-            except eventlet.greenlet.GreenletExit:
-                pass
-            except Exception:
-                LOG.exception(_LE('Error waiting on thread.'))
+        self._perform_action_on_threads(
+            lambda x: x.wait(),
+            lambda x: LOG.exception(_LE('Error waiting on thread.')))
