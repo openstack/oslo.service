@@ -3,7 +3,7 @@
 # process, which may cause wedges in the gate later.
 
 Babel>=1.3
-WebOb>=1.2.3
+WebOb<1.5.0,>=1.2.3
 eventlet>=0.17.4
 greenlet>=0.3.2
 monotonic>=0.3 # Apache-2.0
