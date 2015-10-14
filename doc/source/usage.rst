@@ -128,9 +128,9 @@ oslo_service.service provides handlers for such signals as SIGTERM, SIGINT and S
 SIGTERM is used for graceful termination of services. This can allow a server to wait for all clients to close
 connections while rejecting new incoming requests. To force instantaneous termination SIGINT signal must be sent.
 
-On receiving SIGHUP configuration files are reloaded and a service is being reset and started again.Thus, SIGHUP
-can be used for changing config options on the go. To achieve this each service should implement a *reset* method
-which actually enforces changes to config options values.
+On receiving SIGHUP configuration files are reloaded and a service is being reset and started again. Then all child
+workers are gracefully stopped using SIGTERM and workers with new configuration are spawned. Thus, SIGHUP can be used
+for changing config options on the go.
 
 *NOTE:* SIGHUP is not supported on Windows.
 
