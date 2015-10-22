@@ -20,26 +20,22 @@ Unit Tests for service class
 
 from __future__ import print_function
 
-import threading
-
 import logging
 import multiprocessing
 import os
 import signal
 import socket
-import sys
 import time
 import traceback
 
 import eventlet
 from eventlet import event
-from eventlet.green import subprocess
 import mock
 from oslotest import base as test_base
-from six.moves import queue
 
 from oslo_service import service
 from oslo_service.tests import base
+from oslo_service.tests import eventlet_service
 
 
 LOG = logging.getLogger(__name__)
@@ -304,8 +300,9 @@ class LauncherTest(base.ServiceBaseTestCase):
     def test_launch_one_worker(self):
         self._test_launch_single(1)
 
+    @mock.patch('signal.alarm')
     @mock.patch('oslo_service.service.ProcessLauncher.launch_service')
-    def test_multiple_worker(self, mock_launch):
+    def test_multiple_worker(self, mock_launch, alarm_mock):
         svc = service.Service()
         service.launch(self.conf, svc, workers=3)
         mock_launch.assert_called_with(svc, workers=3)
@@ -316,19 +313,23 @@ class LauncherTest(base.ServiceBaseTestCase):
         svc = mock.Mock()
         self.assertRaises(TypeError, service.launch, self.conf, svc)
 
+    @mock.patch('signal.alarm')
     @mock.patch("oslo_service.service.Services.add")
     @mock.patch("oslo_service.eventlet_backdoor.initialize_if_enabled")
     def test_check_service_base(self, initialize_if_enabled_mock,
-                                services_mock):
+                                services_mock,
+                                alarm_mock):
         initialize_if_enabled_mock.return_value = None
         launcher = service.Launcher(self.conf)
         serv = _Service()
         launcher.launch_service(serv)
 
+    @mock.patch('signal.alarm')
     @mock.patch("oslo_service.service.Services.add")
     @mock.patch("oslo_service.eventlet_backdoor.initialize_if_enabled")
     def test_check_service_base_fails(self, initialize_if_enabled_mock,
-                                      services_mock):
+                                      services_mock,
+                                      alarm_mock):
         initialize_if_enabled_mock.return_value = None
         launcher = service.Launcher(self.conf)
 
@@ -341,8 +342,9 @@ class LauncherTest(base.ServiceBaseTestCase):
 
 class ProcessLauncherTest(base.ServiceBaseTestCase):
 
+    @mock.patch('signal.alarm')
     @mock.patch("signal.signal")
-    def test_stop(self, signal_mock):
+    def test_stop(self, signal_mock, alarm_mock):
         signal_mock.SIGTERM = 15
         launcher = service.ProcessLauncher(self.conf)
         self.assertTrue(launcher.running)
@@ -386,6 +388,7 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
             m.assert_called_once_with(signal.SIGTERM, 'test')
         signal_handler.clear()
 
+    @mock.patch('signal.alarm')
     @mock.patch("os.kill")
     @mock.patch("oslo_service.service.ProcessLauncher.stop")
     @mock.patch("oslo_service.service.ProcessLauncher._respawn_children")
@@ -402,7 +405,8 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
                                           handle_signal_mock,
                                           respawn_children_mock,
                                           stop_mock,
-                                          kill_mock):
+                                          kill_mock,
+                                          alarm_mock):
         is_sighup_and_daemon_mock.return_value = True
         respawn_children_mock.side_effect = [None,
                                              eventlet.greenlet.GreenletExit()]
@@ -479,39 +483,19 @@ class ServiceTest(test_base.BaseTestCase):
                          exercise_graceful_test_service(1, 2, False))
 
 
-class EventletServerTest(test_base.BaseTestCase):
+class EventletServerTest(base.ServiceBaseTestCase):
+    def setUp(self):
+        super(EventletServerTest, self).setUp()
+        self.conf(args=[], default_config_files=[])
+        self.addCleanup(self.conf.reset)
+
     def run_server(self):
+        queue = multiprocessing.Queue()
+        proc = multiprocessing.Process(target=eventlet_service.run,
+                                       kwargs={'port_queue': queue})
+        proc.start()
 
-        server_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                   'eventlet_service.py')
-
-        # Start up an eventlet server.
-        server = subprocess.Popen([sys.executable, server_path],
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE,
-                                  bufsize=1000,
-                                  close_fds=True)
-
-        def enqueue_output(f, q):
-            while True:
-                line = f.readline()
-                if not line:
-                    break
-                q.put(line)
-            f.close()
-
-        # Start a thread to read stderr so the app doesn't block.
-        err_q = queue.Queue()
-        err_t = threading.Thread(target=enqueue_output,
-                                 args=(server.stderr, err_q))
-        err_t.daemon = True
-        err_t.start()
-
-        # The server's line of output is the port it picked.
-        port_str = server.stdout.readline()
-        port = int(port_str)
-
-        # connect to the server.
+        port = queue.get()
         conn = socket.create_connection(('127.0.0.1', port))
 
         # NOTE(blk-u): The sleep shouldn't be necessary. There must be a bug in
@@ -519,38 +503,49 @@ class EventletServerTest(test_base.BaseTestCase):
         # server or signal handlers.
         time.sleep(1)
 
-        return (server, conn)
+        return (proc, conn)
 
     def test_shuts_down_on_sigint_when_client_connected(self):
-        server, conn = self.run_server()
+        proc, conn = self.run_server()
 
         # check that server is live
-        self.assertIsNone(server.poll())
+        self.assertTrue(proc.is_alive())
 
         # send SIGINT to the server and wait for it to exit while client still
         # connected.
-        server.send_signal(signal.SIGINT)
-        server.wait()
+        os.kill(proc.pid, signal.SIGINT)
+        proc.join()
         conn.close()
 
     def test_graceful_shuts_down_on_sigterm_when_client_connected(self):
-        server, conn = self.run_server()
+        self.config(graceful_shutdown_timeout=7)
+        proc, conn = self.run_server()
 
         # send SIGTERM to the server and wait for it to exit while client still
         # connected.
-        server.send_signal(signal.SIGTERM)
+        os.kill(proc.pid, signal.SIGTERM)
 
-        server_wait_thread = threading.Thread(
-            target=lambda server: server.wait(), args=(server,))
-        server_wait_thread.start()
-
-        # server with graceful shutdown must wait forewer
-        # for closing connection by client
-        # but for test 3 seconds is enough
+        # server with graceful shutdown must wait forewer if
+        # option graceful_shutdown_timeout is not specified.
+        # we can not wait forever ... so 3 seconds are enough
         time.sleep(3)
 
-        self.assertEqual(True, server_wait_thread.is_alive())
+        self.assertEqual(True, proc.is_alive())
 
         conn.close()
+        proc.join()
 
-        server_wait_thread.join()
+    def test_graceful_stop_with_exceeded_graceful_shutdown_timeout(self):
+        # Server must exit if graceful_shutdown_timeout exceeded
+        graceful_shutdown_timeout = 4
+        self.config(graceful_shutdown_timeout=graceful_shutdown_timeout)
+        proc, conn = self.run_server()
+
+        time_before = time.time()
+        os.kill(proc.pid, signal.SIGTERM)
+        self.assertEqual(True, proc.is_alive())
+        proc.join()
+        self.assertFalse(False, proc.is_alive())
+        time_after = time.time()
+
+        self.assertTrue(time_after - time_before > graceful_shutdown_timeout)

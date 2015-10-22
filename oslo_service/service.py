@@ -71,7 +71,8 @@ def _is_daemon():
 
 
 def _is_sighup_and_daemon(signo):
-    if not (SignalHandler().is_sighup_supported and signo == signal.SIGHUP):
+    if not (SignalHandler().is_signal_supported('SIGHUP') and
+            signo == signal.SIGHUP):
         # Avoid checking if we are a daemon, because the signal isn't
         # SIGHUP.
         return False
@@ -135,7 +136,6 @@ class SignalHandler(object):
         self.signals_to_name = dict(
             (sigval, name)
             for (name, sigval) in self._signals_by_name.items())
-        self.is_sighup_supported = 'SIGHUP' in self._signals_by_name
         self._signal_handlers = collections.defaultdict(set)
         self.clear()
 
@@ -149,7 +149,7 @@ class SignalHandler(object):
             self.add_handler(sig, handler)
 
     def add_handler(self, sig, handler):
-        if sig == "SIGHUP" and not self.is_sighup_supported:
+        if not self.is_signal_supported(sig):
             return
         signo = self._signals_by_name[sig]
         self._signal_handlers[signo].add(handler)
@@ -158,6 +158,9 @@ class SignalHandler(object):
     def _handle_signals(self, signo, frame):
         for handler in self._signal_handlers[signo]:
             handler(signo, frame)
+
+    def is_signal_supported(self, sig_name):
+        return sig_name in self._signals_by_name
 
 
 class Launcher(object):
@@ -319,6 +322,7 @@ class ProcessLauncher(object):
         self.signal_handler.add_handlers(('SIGTERM', 'SIGHUP'),
                                          self._handle_signal)
         self.signal_handler.add_handler('SIGINT', self._fast_exit)
+        self.signal_handler.add_handler('SIGALRM', self._on_alarm_exit)
 
     def _handle_signal(self, signo, frame):
         """Set signal handlers.
@@ -334,6 +338,11 @@ class ProcessLauncher(object):
 
     def _fast_exit(self, signo, frame):
         LOG.info(_LI('Caught SIGINT signal, instantaneous exiting'))
+        os._exit(1)
+
+    def _on_alarm_exit(self, signo, frame):
+        LOG.info(_LI('Graceful shutdown timeout exceeded, '
+                     'instantaneous exiting'))
         os._exit(1)
 
     def _pipe_watcher(self):
@@ -530,6 +539,12 @@ class ProcessLauncher(object):
                 self.sigcaught = None
         except eventlet.greenlet.GreenletExit:
             LOG.info(_LI("Wait called after thread killed. Cleaning up."))
+
+        # if we are here it means that we try to do gracefull shutdown.
+        # add alarm watching that graceful_shutdown_timeout is not exceeded
+        if (self.conf.graceful_shutdown_timeout and
+                self.signal_handler.is_signal_supported('SIGALRM')):
+            signal.alarm(self.conf.graceful_shutdown_timeout)
 
         self.stop()
 

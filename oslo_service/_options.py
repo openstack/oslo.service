@@ -39,6 +39,10 @@ service_opts = [
                 default=True,
                 help='Enables or disables logging values of all registered '
                      'options when starting a service (at DEBUG level).'),
+    cfg.IntOpt('graceful_shutdown_timeout',
+               default=0,
+               help='Specify a timeout after which a gracefully shutdown '
+                    'server will exit. Zero value means endless wait.'),
 ]
 
 wsgi_opts = [

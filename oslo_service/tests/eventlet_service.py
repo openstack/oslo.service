@@ -139,12 +139,7 @@ class ServerWrapper(object):
             launcher.launch_service(self.server)
 
 
-def run():
-    # ProcessLauncher uses cfg.CONF.log_opt_values()
-    # and cfg.CONF.log_opt_values() uses config_file option.
-    # We need to call CONF() to register the --config-file option
-    cfg.CONF()
-
+def run(port_queue=None):
     eventlet.patcher.monkey_patch()
 
     launcher = service.ProcessLauncher(cfg.CONF)
@@ -156,7 +151,8 @@ def run():
     server = ServerWrapper(Server(hi_app), workers=3)
     server.launch_with(launcher)
 
-    print('%s' % server.server.socket.getsockname()[1])
+    port = server.server.socket.getsockname()[1]
+    port_queue.put(port)
 
     sys.stdout.flush()
 
