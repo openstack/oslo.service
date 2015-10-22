@@ -89,6 +89,18 @@ class LoopingCallBase(object):
         self._running = False
 
     def _start(self, idle_for, initial_delay=None, stop_on_exception=True):
+        """Start the looping
+
+        :param idle_for: Callable that takes two positional arguments, returns
+                         how long to idle for. The first positional argument is
+                         the last result from the function being looped and the
+                         second positional argument is the time it took to
+                         calculate that result.
+        :param initial_delay: How long to delay before starting the looping.
+                              Value is in seconds.
+        :param stop_on_exception: Whether to stop if an exception occurs.
+        :returns: eventlet event instance
+        """
         if self._thread is not None:
             raise RuntimeError(self._RUN_ONLY_ONE_MESSAGE)
         self._running = True
