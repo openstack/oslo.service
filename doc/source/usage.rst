@@ -135,8 +135,13 @@ and SIGHUP.
 
 SIGTERM is used for graceful termination of services. This can allow a
 server to wait for all clients to close connections while rejecting new
-incoming requests. To force instantaneous termination SIGINT signal must
-be sent.
+incoming requests. Config option graceful_shutdown_timeout specifies how
+many seconds after receiving a SIGTERM signal, a server should continue
+to run, handling the existing connections. Setting graceful_shutdown_timeout
+to zero means that the server will wait indefinitely until all remaining
+requests have been fully served.
+
+To force instantaneous termination SIGINT signal must be sent.
 
 On receiving SIGHUP configuration files are reloaded and a service
 is being reset and started again. Then all child workers are gracefully
@@ -144,6 +149,7 @@ stopped using SIGTERM and workers with new configuration are
 spawned. Thus, SIGHUP can be used for changing config options on the go.
 
 *NOTE:* SIGHUP is not supported on Windows.
+*NOTE:* Config option graceful_shutdown_timeout is not supported on Windows.
 
 Below is the example of a service with a reset method that allows reloading
 logging options by sending a SIGHUP.
