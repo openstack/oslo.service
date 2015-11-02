@@ -16,7 +16,7 @@
 
 """Unit tests for `wsgi`."""
 
-import os.path
+import os
 import platform
 import socket
 import tempfile
@@ -29,12 +29,11 @@ import requests
 import webob
 
 from oslo_config import cfg
-from oslo_config import fixture as config
 from oslo_service import _options
 from oslo_service import sslutils
+from oslo_service.tests import base
 from oslo_service import wsgi
 from oslo_utils import netutils
-from oslotest import base as test_base
 from oslotest import moxstubout
 
 
@@ -44,15 +43,12 @@ SSL_CERT_DIR = os.path.normpath(os.path.join(
 CONF = cfg.CONF
 
 
-class WsgiTestCase(test_base.BaseTestCase):
+class WsgiTestCase(base.ServiceBaseTestCase):
     """Base class for WSGI tests."""
 
     def setUp(self):
         super(WsgiTestCase, self).setUp()
-        self.conf_fixture = self.useFixture(config.Config())
         self.conf_fixture.register_opts(_options.wsgi_opts)
-        self.conf = self.conf_fixture.conf
-        self.config = self.conf_fixture.config
         self.conf(args=[], default_config_files=[])
 
 
@@ -163,7 +159,7 @@ class TestWSGIServer(WsgiTestCase):
         server = wsgi.Server(self.conf, "test_socket_options", None,
                              host="127.0.0.1", port=0)
         server.start()
-        sock = server._socket
+        sock = server.socket
         self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
                                             socket.SO_REUSEADDR))
         self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
@@ -172,6 +168,24 @@ class TestWSGIServer(WsgiTestCase):
             self.assertEqual(self.conf.tcp_keepidle,
                              sock.getsockopt(socket.IPPROTO_TCP,
                                              socket.TCP_KEEPIDLE))
+        self.assertFalse(server._server.dead)
+        server.stop()
+        server.wait()
+        self.assertTrue(server._server.dead)
+
+    @testtools.skipIf(not hasattr(socket, "AF_UNIX"),
+                      'UNIX sockets not supported')
+    def test_server_with_unix_socket(self):
+        socket_file = self.get_temp_file_path('sock')
+        socket_mode = 0o644
+        server = wsgi.Server(self.conf, "test_socket_options", None,
+                             socket_family=socket.AF_UNIX,
+                             socket_mode=socket_mode,
+                             socket_file=socket_file)
+        self.assertEqual(socket_file, server.socket.getsockname())
+        self.assertEqual(socket_mode,
+                         os.stat(socket_file).st_mode & 0o777)
+        server.start()
         self.assertFalse(server._server.dead)
         server.stop()
         server.wait()
@@ -333,7 +347,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         server = wsgi.Server(self.conf, "test_socket_options", None,
                              host="127.0.0.1", port=0, use_ssl=True)
         server.start()
-        sock = server._socket
+        sock = server.socket
         self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
                                             socket.SO_REUSEADDR))
         self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
