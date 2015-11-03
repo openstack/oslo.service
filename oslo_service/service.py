@@ -670,6 +670,10 @@ def launch(conf, service, workers=1):
     :param workers: a number of processes in which a service will be running
     :returns: instance of a launcher that was used to launch the service
     """
+
+    if workers is not None and workers <= 0:
+        raise ValueError("Number of workers should be positive!")
+
     if workers is None or workers == 1:
         launcher = ServiceLauncher(conf)
         launcher.launch_service(service)

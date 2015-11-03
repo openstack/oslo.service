@@ -300,6 +300,12 @@ class LauncherTest(base.ServiceBaseTestCase):
     def test_launch_one_worker(self):
         self._test_launch_single(1)
 
+    def test_launch_invalid_workers_number(self):
+        svc = service.Service()
+        for num_workers in [0, -1]:
+            self.assertRaises(ValueError, service.launch, self.conf,
+                              svc, num_workers)
+
     @mock.patch('signal.alarm')
     @mock.patch('oslo_service.service.ProcessLauncher.launch_service')
     def test_multiple_worker(self, mock_launch, alarm_mock):
