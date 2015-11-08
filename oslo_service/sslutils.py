@@ -22,6 +22,24 @@ from oslo_service import _options
 
 config_section = 'ssl'
 
+_SSL_PROTOCOLS = {
+    "tlsv1": ssl.PROTOCOL_TLSv1,
+    "sslv23": ssl.PROTOCOL_SSLv23
+}
+
+_OPTIONAL_PROTOCOLS = {
+    'sslv2': 'PROTOCOL_SSLv2',
+    'sslv3': 'PROTOCOL_SSLv3',
+    'tlsv1_1': 'PROTOCOL_TLSv1_1',
+    'tlsv1_2': 'PROTOCOL_TLSv1_2',
+}
+for protocol in _OPTIONAL_PROTOCOLS:
+    try:
+        _SSL_PROTOCOLS[protocol] = getattr(ssl,
+                                           _OPTIONAL_PROTOCOLS[protocol])
+    except AttributeError:
+        pass
+
 
 def list_opts():
     """Entry point for oslo-config-generator."""
@@ -69,5 +87,16 @@ def wrap(conf, sock):
     if conf.ssl.ca_file:
         ssl_kwargs['ca_certs'] = conf.ssl.ca_file
         ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
+
+        if conf.ssl.version:
+            key = conf.ssl.version.lower()
+            try:
+                ssl_kwargs['ssl_version'] = _SSL_PROTOCOLS[key]
+            except KeyError:
+                raise RuntimeError(
+                    _("Invalid SSL version : %s") % conf.ssl.version)
+
+        if conf.ssl.ciphers:
+            ssl_kwargs['ciphers'] = conf.ssl.ciphers
 
     return ssl.wrap_socket(sock, **ssl_kwargs)

@@ -97,4 +97,14 @@ ssl_opts = [
                     "the server securely.",
                deprecated_group='DEFAULT',
                deprecated_name='ssl_key_file'),
+    cfg.StrOpt('version',
+               help='SSL version to use (valid only if SSL enabled). '
+                    'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
+                    'TLSv1_1, and TLSv1_2 may be available on some '
+                    'distributions.'
+               ),
+    cfg.StrOpt('ciphers',
+               help='Sets the list of available ciphers. value should be a '
+                    'string in the OpenSSL cipher list format.'
+               ),
 ]
