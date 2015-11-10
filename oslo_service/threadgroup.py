@@ -120,19 +120,9 @@ class ThreadGroup(object):
             lambda x: LOG.exception(_LE('Error stopping thread.')))
 
     def stop_timers(self):
-        stopped_timers = []
-        for x in self.timers:
-            try:
-                x.stop()
-            except Exception:
-                LOG.exception(_LE('Error stopping timer.'))
-            else:
-                stopped_timers.append(x)
-        for x in stopped_timers:
-            try:
-                self.timers.remove(x)
-            except ValueError:
-                pass
+        for timer in self.timers:
+            timer.stop()
+        self.timers = []
 
     def stop(self, graceful=False):
         """stop function has the option of graceful=True/False.
