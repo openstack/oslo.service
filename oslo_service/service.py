@@ -444,7 +444,7 @@ class ProcessLauncher(object):
 
             os._exit(status)
 
-        LOG.info(_LI('Started child %d'), pid)
+        LOG.debug('Started child %d', pid)
 
         wrap.children.add(pid)
         self.children[pid] = wrap
