@@ -61,7 +61,8 @@ class Server(service.ServiceBase):
 
     def __init__(self, conf, name, app, host='0.0.0.0', port=0, pool_size=None,
                  protocol=eventlet.wsgi.HttpProtocol, backlog=128,
-                 use_ssl=False, max_url_len=None):
+                 use_ssl=False, max_url_len=None,
+                 logger_name='eventlet.wsgi.server'):
         """Initialize, but do not start, a WSGI server.
 
         :param conf: Instance of ConfigOpts.
@@ -74,6 +75,7 @@ class Server(service.ServiceBase):
         :param backlog: Maximum number of queued connections.
         :param use_ssl: Wraps the socket in an SSL context if True.
         :param max_url_len: Maximum length of permitted URLs.
+        :param logger_name: The name for the logger.
         :returns: None
         :raises: InvalidInput
         :raises: EnvironmentError
@@ -92,7 +94,7 @@ class Server(service.ServiceBase):
         self._protocol = protocol
         self.pool_size = pool_size or self.default_pool_size
         self._pool = eventlet.GreenPool(self.pool_size)
-        self._logger = logging.getLogger("eventlet.wsgi.server")
+        self._logger = logging.getLogger(logger_name)
         self._use_ssl = use_ssl
         self._max_url_len = max_url_len
         self.client_socket_timeout = conf.client_socket_timeout or None
