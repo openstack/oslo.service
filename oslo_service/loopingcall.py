@@ -116,13 +116,14 @@ class LoopingCallBase(object):
         self._running = True
         self.done = event.Event()
         self._thread = greenthread.spawn(
-            self._run_loop, self._KIND, self.done, idle_for,
+            self._run_loop, idle_for,
             initial_delay=initial_delay, stop_on_exception=stop_on_exception)
         self._thread.link(self._on_done)
         return self.done
 
-    def _run_loop(self, kind, event, idle_for_func,
+    def _run_loop(self, idle_for_func,
                   initial_delay=None, stop_on_exception=True):
+        kind = self._KIND
         func_name = reflection.get_callable_name(self.f)
         func = self.f if stop_on_exception else _safe_wrapper(self.f, kind,
                                                               func_name)
@@ -143,19 +144,19 @@ class LoopingCallBase(object):
                            'kind': kind})
                 greenthread.sleep(idle)
         except LoopingCallDone as e:
-            event.send(e.retvalue)
+            self.done.send(e.retvalue)
         except Exception:
             exc_info = sys.exc_info()
             try:
                 LOG.error(_LE('%(kind)s %(func_name)r failed'),
                           {'kind': kind, 'func_name': func_name},
                           exc_info=exc_info)
-                event.send_exception(*exc_info)
+                self.done.send_exception(*exc_info)
             finally:
                 del exc_info
             return
         else:
-            event.send(True)
+            self.done.send(True)
 
 
 class FixedIntervalLoopingCall(LoopingCallBase):
