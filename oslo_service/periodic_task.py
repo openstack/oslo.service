@@ -17,6 +17,7 @@ import random
 import time
 
 from monotonic import monotonic as now  # noqa
+from oslo_utils import reflection
 import six
 
 from oslo_service._i18n import _, _LE, _LI
@@ -196,7 +197,8 @@ class PeriodicTasks(object):
             if (task._periodic_external_ok and not
                self.conf.run_external_periodic_tasks):
                 continue
-            full_task_name = '.'.join([self.__class__.__name__, task_name])
+            cls_name = reflection.get_class_name(self, fully_qualified=False)
+            full_task_name = '.'.join([cls_name, task_name])
 
             spacing = self._periodic_spacing[task_name]
             last_run = self._periodic_last_run[task_name]
