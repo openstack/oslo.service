@@ -59,10 +59,11 @@ class InvalidInput(Exception):
 class Server(service.ServiceBase):
     """Server class to manage a WSGI server, serving a WSGI application."""
 
-    def __init__(self, conf, name, app, host='0.0.0.0', port=0, pool_size=None,
-                 protocol=eventlet.wsgi.HttpProtocol, backlog=128,
-                 use_ssl=False, max_url_len=None,
-                 logger_name='eventlet.wsgi.server'):
+    def __init__(self, conf, name, app, host='0.0.0.0', port=0,
+                 pool_size=None, protocol=eventlet.wsgi.HttpProtocol,
+                 backlog=128, use_ssl=False, max_url_len=None,
+                 logger_name='eventlet.wsgi.server',
+                 socket_family=None, socket_file=None, socket_mode=None):
         """Initialize, but do not start, a WSGI server.
 
         :param conf: Instance of ConfigOpts.
@@ -76,6 +77,9 @@ class Server(service.ServiceBase):
         :param use_ssl: Wraps the socket in an SSL context if True.
         :param max_url_len: Maximum length of permitted URLs.
         :param logger_name: The name for the logger.
+        :param socket_family: Socket family.
+        :param socket_file: location of UNIX socket.
+        :param socket_mode: UNIX socket mode.
         :returns: None
         :raises: InvalidInput
         :raises: EnvironmentError
@@ -102,6 +106,21 @@ class Server(service.ServiceBase):
         if backlog < 1:
             raise InvalidInput(reason=_('The backlog must be more than 0'))
 
+        if not socket_family or socket_family in [socket.AF_INET,
+                                                  socket.AF_INET6]:
+            self.socket = self._get_socket(host, port, backlog)
+        elif hasattr(socket, "AF_UNIX") and socket_family == socket.AF_UNIX:
+            self.socket = self._get_unix_socket(socket_file, socket_mode,
+                                                backlog)
+        else:
+            raise ValueError(_("Unsupported socket family: %s"), socket_family)
+
+        (self.host, self.port) = self.socket.getsockname()[0:2]
+
+        if self._use_ssl:
+            sslutils.is_enabled(conf)
+
+    def _get_socket(self, host, port, backlog):
         bind_addr = (host, port)
         # TODO(dims): eventlet's green dns/socket module does not actually
         # support IPv6 in getaddrinfo(). We need to get around this in the
@@ -116,19 +135,25 @@ class Server(service.ServiceBase):
         except Exception:
             family = socket.AF_INET
 
-        if self._use_ssl:
-            sslutils.is_enabled(conf)
-
         try:
-            self._socket = eventlet.listen(bind_addr, family, backlog=backlog)
+            sock = eventlet.listen(bind_addr, family, backlog=backlog)
         except EnvironmentError:
             LOG.error(_LE("Could not bind to %(host)s:%(port)s"),
                       {'host': host, 'port': port})
             raise
-
-        (self.host, self.port) = self._socket.getsockname()[0:2]
+        sock = self._set_socket_opts(sock)
         LOG.info(_LI("%(name)s listening on %(host)s:%(port)s"),
-                 {'name': self.name, 'host': self.host, 'port': self.port})
+                 {'name': self.name, 'host': host, 'port': port})
+        return sock
+
+    def _get_unix_socket(self, socket_file, socket_mode, backlog):
+        sock = eventlet.listen(socket_file, family=socket.AF_UNIX,
+                               backlog=backlog)
+        if socket_mode is not None:
+            os.chmod(socket_file, socket_mode)
+        LOG.info(_LI("%(name)s listening on %(socket_file)s:"),
+                 {'name': self.name, 'socket_file': socket_file})
+        return sock
 
     def start(self):
         """Start serving a WSGI application.
@@ -140,9 +165,7 @@ class Server(service.ServiceBase):
         # give bad file descriptor error. So duplicating the socket object,
         # to keep file descriptor usable.
 
-        self.dup_socket = self._socket.dup()
-
-        self.dup_socket = self._set_socket_opts(self.dup_socket)
+        self.dup_socket = self.socket.dup()
 
         if self._use_ssl:
             self.dup_socket = sslutils.wrap(self.conf, self.dup_socket)
