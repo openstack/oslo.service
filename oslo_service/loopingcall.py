@@ -169,7 +169,7 @@ class FixedIntervalLoopingCall(LoopingCallBase):
 
     def start(self, interval, initial_delay=None, stop_on_exception=True):
         def _idle_for(result, elapsed):
-            delay = elapsed - interval
+            delay = round(elapsed - interval, 2)
             if delay > 0:
                 func_name = reflection.get_callable_name(self.f)
                 LOG.warning(_LW('Function %(func_name)r run outlasted '
