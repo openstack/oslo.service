@@ -109,7 +109,8 @@ class ThreadGroup(object):
                 continue
             try:
                 action_func(x)
-            except eventlet.greenlet.GreenletExit:
+            except eventlet.greenlet.GreenletExit:  # nosec
+                # greenlet exited successfully
                 pass
             except Exception:
                 on_error_func(x)
@@ -145,7 +146,8 @@ class ThreadGroup(object):
         for x in self.timers:
             try:
                 x.wait()
-            except eventlet.greenlet.GreenletExit:
+            except eventlet.greenlet.GreenletExit:  # nosec
+                # greenlet exited successfully
                 pass
             except Exception:
                 LOG.exception(_LE('Error waiting on timer.'))
