@@ -505,10 +505,11 @@ class EventletServerTest(base.ServiceBaseTestCase):
         self.conf(args=[], default_config_files=[])
         self.addCleanup(self.conf.reset)
 
-    def run_server(self):
+    def run_server(self, workers=3):
         queue = multiprocessing.Queue()
         proc = multiprocessing.Process(target=eventlet_service.run,
-                                       kwargs={'port_queue': queue})
+                                       args=(queue,),
+                                       kwargs={'workers': workers})
         proc.start()
 
         port = queue.get()
