@@ -55,10 +55,19 @@ class ServiceManagerTestCase(test_base.BaseTestCase):
 
 
 class ServiceWithTimer(service.Service):
+    def __init__(self, ready_event=None):
+        super(ServiceWithTimer, self).__init__()
+        self.ready_event = ready_event
+
     def start(self):
         super(ServiceWithTimer, self).start()
         self.timer_fired = 0
         self.tg.add_timer(1, self.timer_expired)
+
+    def wait(self):
+        if self.ready_event:
+            self.ready_event.set()
+        super(ServiceWithTimer, self).wait()
 
     def timer_expired(self):
         self.timer_fired = self.timer_fired + 1
@@ -81,9 +90,9 @@ class ServiceTestBase(base.ServiceBaseTestCase):
             # os._exit() which doesn't have this problem.
             status = 0
             try:
-                serv = ServiceWithTimer()
+                serv = ServiceWithTimer(*args, **kwargs)
                 launcher = service.launch(self.conf, serv, workers=workers)
-                launcher.wait(*args, **kwargs)
+                launcher.wait()
             except SystemExit as exc:
                 status = exc.code
             except BaseException:
@@ -111,6 +120,7 @@ class ServiceTestBase(base.ServiceBaseTestCase):
         self.addCleanup(self.conf.reset)
         self.addCleanup(self.conf.reset)
         self.addCleanup(self._reap_pid)
+        self.pid = 0
 
     def _reap_pid(self):
         if self.pid:
@@ -228,7 +238,7 @@ class ServiceRestartTest(ServiceTestBase):
     def _spawn(self):
         ready_event = multiprocessing.Event()
         self.pid = self._spawn_service(workers=1,
-                                       ready_callback=ready_event.set)
+                                       ready_event=ready_event)
         return ready_event
 
     def test_service_restart(self):

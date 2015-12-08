@@ -248,7 +248,7 @@ class ServiceLauncher(Launcher):
             ('SIGTERM', 'SIGHUP', 'SIGINT'),
             self._handle_signal)
 
-    def _wait_for_exit_or_signal(self, ready_callback=None):
+    def _wait_for_exit_or_signal(self):
         status = None
         signo = 0
 
@@ -257,8 +257,6 @@ class ServiceLauncher(Launcher):
             self.conf.log_opt_values(LOG, logging.DEBUG)
 
         try:
-            if ready_callback:
-                ready_callback()
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
             signame = SignalHandler().signals_to_name[exc.signo]
@@ -269,10 +267,9 @@ class ServiceLauncher(Launcher):
             status = exc.code
         finally:
             self.stop()
-
         return status, signo
 
-    def wait(self, ready_callback=None):
+    def wait(self):
         """Wait for a service to terminate and restart it on SIGHUP.
 
         :returns: termination status
@@ -281,7 +278,7 @@ class ServiceLauncher(Launcher):
         SignalHandler().clear()
         while True:
             self.handle_signal()
-            status, signo = self._wait_for_exit_or_signal(ready_callback)
+            status, signo = self._wait_for_exit_or_signal()
             if not _is_sighup_and_daemon(signo):
                 return status
             self.restart()
