@@ -38,7 +38,7 @@ class SslutilsTestCase(base.ServiceBaseTestCase):
         self.key_file_name = os.path.join(SSL_CERT_DIR, 'privatekey.key')
         self.ca_file_name = os.path.join(SSL_CERT_DIR, 'ca.crt')
 
-    @mock.patch("exceptions.RuntimeError")
+    @mock.patch("%s.RuntimeError" % RuntimeError.__module__)
     @mock.patch("os.path.exists")
     def test_is_enabled(self, exists_mock, runtime_error_mock):
         exists_mock.return_value = True
