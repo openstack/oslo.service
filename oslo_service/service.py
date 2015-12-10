@@ -361,11 +361,11 @@ class ProcessLauncher(object):
         # Setup child signal handlers differently
 
         def _sigterm(*args):
-            SignalHandler().clear()
+            self.signal_handler.clear()
             self.launcher.stop()
 
         def _sighup(*args):
-            SignalHandler().clear()
+            self.signal_handler.clear()
             raise SignalExit(signal.SIGHUP)
 
         self.signal_handler.clear()
