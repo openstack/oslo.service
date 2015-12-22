@@ -283,9 +283,9 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         # Test task values
         self.assertEqual('bar', task_name)
         self.assertEqual(10, task._periodic_spacing)
-        self.assertEqual(True, task._periodic_enabled)
-        self.assertEqual(False, task._periodic_external_ok)
-        self.assertEqual(False, task._periodic_immediate)
+        self.assertTrue(task._periodic_enabled)
+        self.assertFalse(task._periodic_external_ok)
+        self.assertFalse(task._periodic_immediate)
         self.assertAlmostEqual(32503680000.0,
                                task._periodic_last_run)
 
@@ -326,9 +326,9 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         # Test task values
         self.assertEqual('bar', task_name)
         self.assertEqual(10, task._periodic_spacing)
-        self.assertEqual(True, task._periodic_enabled)
-        self.assertEqual(False, task._periodic_external_ok)
-        self.assertEqual(True, task._periodic_immediate)
+        self.assertTrue(task._periodic_enabled)
+        self.assertFalse(task._periodic_external_ok)
+        self.assertTrue(task._periodic_immediate)
         self.assertIsNone(task._periodic_last_run)
 
         # Test the manager's representation of those values
