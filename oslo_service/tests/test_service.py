@@ -481,7 +481,7 @@ def exercise_graceful_test_service(sleep_amount, time_to_wait, graceful):
 class ServiceTest(test_base.BaseTestCase):
     def test_graceful_stop(self):
         # Here we wait long enough for the task to gracefully finish.
-        self.assertEqual(None, exercise_graceful_test_service(1, 2, True))
+        self.assertIsNone(exercise_graceful_test_service(1, 2, True))
 
     def test_ungraceful_stop(self):
         # Here we stop ungracefully, and will never see the task finish.
@@ -536,7 +536,7 @@ class EventletServerTest(base.ServiceBaseTestCase):
         # we can not wait forever ... so 3 seconds are enough
         time.sleep(3)
 
-        self.assertEqual(True, proc.is_alive())
+        self.assertTrue(proc.is_alive())
 
         conn.close()
         proc.join()
@@ -549,9 +549,9 @@ class EventletServerTest(base.ServiceBaseTestCase):
 
         time_before = time.time()
         os.kill(proc.pid, signal.SIGTERM)
-        self.assertEqual(True, proc.is_alive())
+        self.assertTrue(proc.is_alive())
         proc.join()
-        self.assertFalse(False, proc.is_alive())
+        self.assertFalse(proc.is_alive())
         time_after = time.time()
 
         self.assertTrue(time_after - time_before > graceful_shutdown_timeout)
