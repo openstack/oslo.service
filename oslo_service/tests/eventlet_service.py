@@ -122,39 +122,21 @@ class Server(service.ServiceBase):
             pass
 
 
-class ServerWrapper(object):
-    """Wraps a Server with some launching info & capabilities."""
-
-    def __init__(self, server, workers):
-        self.server = server
-        self.workers = workers
-
-    def launch_with(self, launcher):
-        self.server.listen()
-        if self.workers > 1:
-            # Use multi-process launcher
-            launcher.launch_service(self.server, self.workers)
-        else:
-            # Use single process launcher
-            launcher.launch_service(self.server)
-
-
-def run(port_queue=None):
+def run(port_queue, workers=3):
     eventlet.patcher.monkey_patch()
-
-    launcher = service.ProcessLauncher(cfg.CONF)
 
     def hi_app(environ, start_response):
         start_response('200 OK', [('Content-Type', 'application/json')])
         yield 'hi'
 
-    server = ServerWrapper(Server(hi_app), workers=3)
-    server.launch_with(launcher)
+    server = Server(hi_app)
+    server.listen()
 
-    port = server.server.socket.getsockname()[1]
+    port = server.socket.getsockname()[1]
     port_queue.put(port)
 
     sys.stdout.flush()
+    launcher = service.launch(cfg.CONF, server, workers)
 
     launcher.wait()
 
