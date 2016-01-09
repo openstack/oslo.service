@@ -323,7 +323,7 @@ class Loader(object):
     def __init__(self, conf):
         """Initialize the loader, and attempt to find the config.
 
-        :param conf
+        :param conf: Application config
         :returns: None
 
         """
@@ -344,7 +344,7 @@ class Loader(object):
 
         :param name: Name of the application to load.
         :returns: Paste URLMap object wrapping the requested application.
-        :raises: `PasteAppNotFound`
+        :raises: PasteAppNotFound
 
         """
         try:
