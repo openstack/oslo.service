@@ -230,23 +230,34 @@ class ServiceLauncher(Launcher):
         :param conf: an instance of ConfigOpts
         """
         super(ServiceLauncher, self).__init__(conf)
+        self.signal_handler = SignalHandler()
 
-    def _handle_signal(self, signo, frame):
-        """Set signal handlers and raise an exception.
+    def _graceful_shutdown(self, *args):
+        self.signal_handler.clear()
+        if (self.conf.graceful_shutdown_timeout and
+                self.signal_handler.is_signal_supported('SIGALRM')):
+            signal.alarm(self.conf.graceful_shutdown_timeout)
+        self.stop()
 
-        :param signo: signal number
-        :param frame: current stack frame
-        :raises SignalExit
-        """
-        # Allow the process to be killed again and die from natural causes
-        SignalHandler().clear()
-        raise SignalExit(signo)
+    def _reload_service(self, *args):
+        self.signal_handler.clear()
+        raise SignalExit(signal.SIGHUP)
+
+    def _fast_exit(self, *args):
+        LOG.info(_LI('Caught SIGINT signal, instantaneous exiting'))
+        os._exit(1)
+
+    def _on_timeout_exit(self, *args):
+        LOG.info(_LI('Graceful shutdown timeout exceeded, '
+                     'instantaneous exiting'))
+        os._exit(1)
 
     def handle_signal(self):
         """Set self._handle_signal as a signal handler."""
-        SignalHandler().add_handlers(
-            ('SIGTERM', 'SIGHUP', 'SIGINT'),
-            self._handle_signal)
+        self.signal_handler.add_handler('SIGTERM', self._graceful_shutdown)
+        self.signal_handler.add_handler('SIGINT', self._fast_exit)
+        self.signal_handler.add_handler('SIGHUP', self._reload_service)
+        self.signal_handler.add_handler('SIGALRM', self._on_timeout_exit)
 
     def _wait_for_exit_or_signal(self):
         status = None
@@ -259,13 +270,13 @@ class ServiceLauncher(Launcher):
         try:
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
-            signame = SignalHandler().signals_to_name[exc.signo]
+            signame = self.signal_handler.signals_to_name[exc.signo]
             LOG.info(_LI('Caught %s, exiting'), signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
             status = exc.code
-        finally:
+        except Exception:
             self.stop()
         return status, signo
 
@@ -275,13 +286,16 @@ class ServiceLauncher(Launcher):
         :returns: termination status
         """
         systemd.notify_once()
-        SignalHandler().clear()
+        self.signal_handler.clear()
         while True:
             self.handle_signal()
             status, signo = self._wait_for_exit_or_signal()
             if not _is_sighup_and_daemon(signo):
-                return status
+                break
             self.restart()
+
+        super(ServiceLauncher, self).wait()
+        return status
 
 
 class ServiceWrapper(object):

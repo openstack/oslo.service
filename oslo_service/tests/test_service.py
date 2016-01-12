@@ -118,7 +118,6 @@ class ServiceTestBase(base.ServiceBaseTestCase):
         # NOTE(markmc): ConfigOpts.log_opt_values() uses CONF.config-file
         self.conf(args=[], default_config_files=[])
         self.addCleanup(self.conf.reset)
-        self.addCleanup(self.conf.reset)
         self.addCleanup(self._reap_pid)
         self.pid = 0
 
@@ -499,17 +498,18 @@ class ServiceTest(test_base.BaseTestCase):
                          exercise_graceful_test_service(1, 2, False))
 
 
-class EventletServerTest(base.ServiceBaseTestCase):
+class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
     def setUp(self):
-        super(EventletServerTest, self).setUp()
+        super(EventletServerProcessLauncherTest, self).setUp()
         self.conf(args=[], default_config_files=[])
         self.addCleanup(self.conf.reset)
+        self.workers = 3
 
-    def run_server(self, workers=3):
+    def run_server(self):
         queue = multiprocessing.Queue()
         proc = multiprocessing.Process(target=eventlet_service.run,
                                        args=(queue,),
-                                       kwargs={'workers': workers})
+                                       kwargs={'workers': self.workers})
         proc.start()
 
         port = queue.get()
@@ -566,3 +566,9 @@ class EventletServerTest(base.ServiceBaseTestCase):
         time_after = time.time()
 
         self.assertTrue(time_after - time_before > graceful_shutdown_timeout)
+
+
+class EventletServerServiceLauncherTest(EventletServerProcessLauncherTest):
+    def setUp(self):
+        super(EventletServerServiceLauncherTest, self).setUp()
+        self.workers = 1
