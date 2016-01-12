@@ -73,10 +73,19 @@ class ServiceWithTimer(service.Service):
         self.timer_fired = self.timer_fired + 1
 
 
+class ServiceCrashOnStart(ServiceWithTimer):
+    def start(self):
+        super(ServiceCrashOnStart, self).start()
+        raise ValueError
+
+
 class ServiceTestBase(base.ServiceBaseTestCase):
     """A base class for ServiceLauncherTest and ServiceRestartTest."""
 
-    def _spawn_service(self, workers=1, *args, **kwargs):
+    def _spawn_service(self,
+                       workers=1,
+                       service_to_launch=ServiceWithTimer,
+                       *args, **kwargs):
         self.workers = workers
         pid = os.fork()
         if pid == 0:
@@ -90,9 +99,9 @@ class ServiceTestBase(base.ServiceBaseTestCase):
             # os._exit() which doesn't have this problem.
             status = 0
             try:
-                serv = ServiceWithTimer(*args, **kwargs)
+                serv = service_to_launch(*args, **kwargs)
                 launcher = service.launch(self.conf, serv, workers=workers)
-                launcher.wait()
+                status = launcher.wait()
             except SystemExit as exc:
                 status = exc.code
             except BaseException:
@@ -103,7 +112,7 @@ class ServiceTestBase(base.ServiceBaseTestCase):
                     print("Couldn't print traceback")
                 status = 2
             # Really exit
-            os._exit(status)
+            os._exit(status or 0)
         return pid
 
     def _wait(self, cond, timeout):
@@ -202,6 +211,12 @@ class ServiceLauncherTest(ServiceTestBase):
         self.assertTrue(os.WIFEXITED(status))
         self.assertEqual(os.WEXITSTATUS(status), 0)
 
+    def test_crashed_service(self):
+        self.pid = self._spawn_service(service_to_launch=ServiceCrashOnStart)
+        status = self._reap_test()
+        self.assertTrue(os.WIFEXITED(status))
+        self.assertEqual(os.WEXITSTATUS(status), 1)
+
     def test_child_signal_sighup(self):
         start_workers = self._spawn()
 
@@ -291,7 +306,6 @@ class LauncherTest(base.ServiceBaseTestCase):
 
         launcher.stop()
         self.assertTrue(svc.cleaned_up)
-        self.assertTrue(svc._done.ready())
 
         # make sure stop can be called more than once.  (i.e. play nice with
         # unit test fixtures in nova bug #1199315)

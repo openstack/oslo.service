@@ -275,6 +275,7 @@ class ServiceLauncher(Launcher):
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
+            self.stop()
             status = exc.code
         except Exception:
             self.stop()
@@ -589,13 +590,8 @@ class Service(ServiceBase):
     def __init__(self, threads=1000):
         self.tg = threadgroup.ThreadGroup(threads)
 
-        # signal that the service is done shutting itself down:
-        self._done = event.Event()
-
     def reset(self):
         """Reset a service in case it received a SIGHUP."""
-        # NOTE(Fengqian): docs for Event.reset() recommend against using it
-        self._done = event.Event()
 
     def start(self):
         """Start a service."""
@@ -607,14 +603,10 @@ class Service(ServiceBase):
                or terminate them instantly
         """
         self.tg.stop(graceful)
-        self.tg.wait()
-        # Signal that service cleanup is done:
-        if not self._done.ready():
-            self._done.send()
 
     def wait(self):
         """Wait for a service to shut down."""
-        self._done.wait()
+        self.tg.wait()
 
 
 class Services(object):
@@ -668,8 +660,13 @@ class Services(object):
         :returns: None
 
         """
-        service.start()
-        done.wait()
+        try:
+            service.start()
+        except Exception:
+            LOG.exception(_LE('Error starting thread.'))
+            raise SystemExit(1)
+        else:
+            done.wait()
 
 
 def launch(conf, service, workers=1):
