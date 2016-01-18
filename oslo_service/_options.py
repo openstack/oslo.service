@@ -69,7 +69,7 @@ wsgi_opts = [
                help="Sets the value of TCP_KEEPIDLE in seconds for each "
                     "server socket. Not supported on OS X."),
     cfg.IntOpt('wsgi_default_pool_size',
-               default=1000,
+               default=100,
                help="Size of the pool of greenthreads used by wsgi"),
     cfg.IntOpt('max_header_line',
                default=16384,
