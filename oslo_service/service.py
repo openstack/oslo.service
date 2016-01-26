@@ -153,9 +153,25 @@ class SignalHandler(object):
             return
         signo = self._signals_by_name[sig]
         self._signal_handlers[signo].add(handler)
-        signal.signal(signo, self._handle_signals)
+        signal.signal(signo, self._handle_signal)
 
-    def _handle_signals(self, signo, frame):
+    def _handle_signal(self, signo, frame):
+        # This method can be called anytime, even between two Python
+        # instructions. It's scheduled by the C signal handler of Python using
+        # Py_AddPendingCall().
+        #
+        # We only do one thing: schedule a call to _handle_signal_cb() later.
+        # eventlet.spawn() is not signal-safe: _handle_signal() can be called
+        # during a call to eventlet.spawn(). This case is supported, it is
+        # ok to schedule multiple calls to _handle_signal() with the same
+        # signal number.
+        #
+        # To call to _handle_signal_cb() is delayed to avoid reentrant calls to
+        # _handle_signal_cb(). It avoids race conditions like reentrant call to
+        # clear(): clear() is not reentrant (bug #1538204).
+        eventlet.spawn(self._handle_signal_cb, signo, frame)
+
+    def _handle_signal_cb(self, signo, frame):
         for handler in self._signal_handlers[signo]:
             handler(signo, frame)
 

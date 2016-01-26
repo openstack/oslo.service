@@ -402,7 +402,7 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
                          mock_kill.mock_calls)
         mock_service_stop.assert_called_once_with()
 
-    def test__handle_signals(self):
+    def test__handle_signal(self):
         signal_handler = service.SignalHandler()
         signal_handler.clear()
         self.assertEqual(0,
@@ -412,7 +412,9 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
         signal_handler.add_handler('SIGTERM', call_2)
         self.assertEqual(2,
                          len(signal_handler._signal_handlers[signal.SIGTERM]))
-        signal_handler._handle_signals(signal.SIGTERM, 'test')
+        signal_handler._handle_signal(signal.SIGTERM, 'test')
+        # execute pending eventlet callbacks
+        time.sleep(0)
         for m in signal_handler._signal_handlers[signal.SIGTERM]:
             m.assert_called_once_with(signal.SIGTERM, 'test')
         signal_handler.clear()
