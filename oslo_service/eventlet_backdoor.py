@@ -48,14 +48,54 @@ def _dont_use_this():
     print("Don't use this, just disconnect instead")
 
 
+def _dump_frame(f, frame_chapter):
+    co = f.f_code
+    print(" %s Frame: %s" % (frame_chapter, co.co_name))
+    print("     File: %s" % (co.co_filename))
+    print("     Captured at line number: %s" % (f.f_lineno))
+    co_locals = set(co.co_varnames)
+    if len(co_locals):
+        not_set = co_locals.copy()
+        set_locals = {}
+        for var_name in f.f_locals.keys():
+            if var_name in co_locals:
+                set_locals[var_name] = f.f_locals[var_name]
+                not_set.discard(var_name)
+        if set_locals:
+            print("     %s set local variables:" % (len(set_locals)))
+            for var_name in sorted(set_locals.keys()):
+                print("       %s => %r" % (var_name, f.f_locals[var_name]))
+        else:
+            print("     0 set local variables.")
+        if not_set:
+            print("     %s not set local variables:" % (len(not_set)))
+            for var_name in sorted(not_set):
+                print("       %s" % (var_name))
+        else:
+            print("     0 not set local variables.")
+    else:
+        print("     0 Local variables.")
+
+
+def _detailed_dump_frames(f, thread_index):
+    i = 0
+    while f is not None:
+        _dump_frame(f, "%s.%s" % (thread_index, i + 1))
+        f = f.f_back
+        i += 1
+
+
 def _find_objects(t):
     return [o for o in gc.get_objects() if isinstance(o, t)]
 
 
-def _print_greenthreads():
+def _print_greenthreads(simple=True):
     for i, gt in enumerate(_find_objects(greenlet.greenlet)):
         print(i, gt)
-        traceback.print_stack(gt.gr_frame)
+        if simple:
+            traceback.print_stack(gt.gr_frame)
+        else:
+            _detailed_dump_frames(gt.gr_frame, i)
         print()
 
 
