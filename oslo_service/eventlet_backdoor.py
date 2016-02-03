@@ -133,6 +133,27 @@ def _listen(host, start_port, end_port, listen_func):
             try_port += 1
 
 
+def _try_open_unix_domain_socket(socket_path):
+    try:
+        return eventlet.listen(socket_path, socket.AF_UNIX)
+    except socket.error as e:
+        if e.errno != errno.EADDRINUSE:
+            # NOTE(harlowja): Some other non-address in use error
+            # occurred, since we aren't handling those, re-raise
+            # and give up...
+            raise
+        else:
+            # Attempt to remove the file before opening it again.
+            try:
+                os.unlink(socket_path)
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    # NOTE(harlowja): File existed, but we couldn't
+                    # delete it, give up...
+                    raise
+            return eventlet.listen(socket_path, socket.AF_UNIX)
+
+
 def _initialize_if_enabled(conf):
     conf.register_opts(_options.eventlet_backdoor_opts)
     backdoor_locals = {
@@ -143,10 +164,18 @@ def _initialize_if_enabled(conf):
         'pnt': _print_nativethreads,
     }
 
-    if conf.backdoor_port is None:
+    if conf.backdoor_port is None and conf.backdoor_socket is None:
         return None
 
-    start_port, end_port = _parse_port_range(str(conf.backdoor_port))
+    if conf.backdoor_socket is None:
+        start_port, end_port = _parse_port_range(str(conf.backdoor_port))
+        sock = _listen('localhost', start_port, end_port, eventlet.listen)
+        # In the case of backdoor port being zero, a port number is assigned by
+        # listen().  In any case, pull the port number out here.
+        where_running = sock.getsockname()[1]
+    else:
+        sock = _try_open_unix_domain_socket(conf.backdoor_socket)
+        where_running = conf.backdoor_socket
 
     # NOTE(johannes): The standard sys.displayhook will print the value of
     # the last expression and set it to __builtin__._, which overwrites
@@ -158,27 +187,23 @@ def _initialize_if_enabled(conf):
             pprint.pprint(val)
     sys.displayhook = displayhook
 
-    sock = _listen('localhost', start_port, end_port, eventlet.listen)
-
-    # In the case of backdoor port being zero, a port number is assigned by
-    # listen().  In any case, pull the port number out here.
-    port = sock.getsockname()[1]
     LOG.info(
-        _LI('Eventlet backdoor listening on %(port)s for process %(pid)d'),
-        {'port': port, 'pid': os.getpid()}
+        _LI('Eventlet backdoor listening on %(where_running)s for'
+            ' process %(pid)d'),
+        {'where_running': where_running, 'pid': os.getpid()}
     )
     thread = eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
                             locals=backdoor_locals)
-    return (port, thread)
+    return (where_running, thread)
 
 
 def initialize_if_enabled(conf):
-    port_thread = _initialize_if_enabled(conf)
-    if not port_thread:
+    where_running_thread = _initialize_if_enabled(conf)
+    if not where_running_thread:
         return None
     else:
-        port, _thread = port_thread
-        return port
+        where_running, _thread = where_running_thread
+        return where_running
 
 
 def _main():
@@ -193,11 +218,11 @@ def _main():
     conf.register_cli_opts(_options.eventlet_backdoor_opts)
     conf(sys.argv[1:])
 
-    port_thread = _initialize_if_enabled(conf)
-    if not port_thread:
-        raise RuntimeError("Did not create backdoor at requested port")
+    where_running_thread = _initialize_if_enabled(conf)
+    if not where_running_thread:
+        raise RuntimeError("Did not create backdoor at requested location")
     else:
-        _port, thread = port_thread
+        _where_running, thread = where_running_thread
         thread.wait()
 
 

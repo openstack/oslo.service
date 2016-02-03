@@ -18,6 +18,7 @@
 Unit Tests for eventlet backdoor
 """
 import errno
+import os
 import socket
 
 import eventlet
@@ -25,6 +26,63 @@ import mock
 
 from oslo_service import eventlet_backdoor
 from oslo_service.tests import base
+
+
+class BackdoorSocketPathTest(base.ServiceBaseTestCase):
+
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path(self, listen_mock, spawn_mock):
+        self.config(backdoor_socket="/tmp/my_special_socket")
+        listen_mock.side_effect = mock.MagicMock()
+        path = eventlet_backdoor.initialize_if_enabled(self.conf)
+        self.assertEqual(path, "/tmp/my_special_socket")
+
+    @mock.patch.object(os, 'unlink')
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path_already_exists(self, listen_mock,
+                                          spawn_mock, unlink_mock):
+        self.config(backdoor_socket="/tmp/my_special_socket")
+        sock = mock.MagicMock()
+        listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
+        path = eventlet_backdoor.initialize_if_enabled(self.conf)
+        self.assertEqual(path, "/tmp/my_special_socket")
+        unlink_mock.assert_called_with("/tmp/my_special_socket")
+
+    @mock.patch.object(os, 'unlink')
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path_already_exists_and_gone(self, listen_mock,
+                                                   spawn_mock, unlink_mock):
+        self.config(backdoor_socket="/tmp/my_special_socket")
+        sock = mock.MagicMock()
+        listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
+        unlink_mock.side_effect = OSError(errno.ENOENT, '')
+        path = eventlet_backdoor.initialize_if_enabled(self.conf)
+        self.assertEqual(path, "/tmp/my_special_socket")
+        unlink_mock.assert_called_with("/tmp/my_special_socket")
+
+    @mock.patch.object(os, 'unlink')
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path_already_exists_and_not_gone(self, listen_mock,
+                                                       spawn_mock,
+                                                       unlink_mock):
+        self.config(backdoor_socket="/tmp/my_special_socket")
+        listen_mock.side_effect = socket.error(errno.EADDRINUSE, '')
+        unlink_mock.side_effect = OSError(errno.EPERM, '')
+        self.assertRaises(OSError, eventlet_backdoor.initialize_if_enabled,
+                          self.conf)
+
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path_no_perms(self, listen_mock, spawn_mock):
+        self.config(backdoor_socket="/tmp/my_special_socket")
+        listen_mock.side_effect = socket.error(errno.EPERM, '')
+        self.assertRaises(socket.error,
+                          eventlet_backdoor.initialize_if_enabled,
+                          self.conf)
 
 
 class BackdoorPortTest(base.ServiceBaseTestCase):
