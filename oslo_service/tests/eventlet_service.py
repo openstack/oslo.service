@@ -131,12 +131,12 @@ def run(port_queue, workers=3):
 
     server = Server(hi_app)
     server.listen()
+    launcher = service.launch(cfg.CONF, server, workers)
 
     port = server.socket.getsockname()[1]
     port_queue.put(port)
 
     sys.stdout.flush()
-    launcher = service.launch(cfg.CONF, server, workers)
 
     launcher.wait()
 
