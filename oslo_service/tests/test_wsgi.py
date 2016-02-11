@@ -294,14 +294,10 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         fake_ssl_server.start()
         self.assertNotEqual(0, fake_ssl_server.port)
 
-        cli = eventlet.connect(("localhost", fake_ssl_server.port))
-        ca_certs_name = os.path.join(SSL_CERT_DIR, 'ca.crt')
-        cli = eventlet.wrap_ssl(cli, ca_certs=ca_certs_name)
-
-        cli.write('POST / HTTP/1.1\r\nHost: localhost\r\n'
-                  'Connection: close\r\nContent-length:4\r\n\r\nPING')
-        response = cli.read(8192)
-        self.assertEqual(response[-4:], "PONG")
+        response = requests.post(
+            'https://127.0.0.1:%s/' % fake_ssl_server.port,
+            verify=os.path.join(SSL_CERT_DIR, 'ca.crt'), data='PING')
+        self.assertEqual('PONG', response.text)
 
         fake_ssl_server.stop()
         fake_ssl_server.wait()
@@ -322,24 +318,20 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         fake_server.start()
         self.assertNotEqual(0, fake_server.port)
 
-        cli = eventlet.connect(("localhost", fake_ssl_server.port))
-        cli = eventlet.wrap_ssl(cli,
-                                ca_certs=os.path.join(SSL_CERT_DIR, 'ca.crt'))
+        response = requests.post(
+            'https://127.0.0.1:%s/' % fake_ssl_server.port,
+            verify=os.path.join(SSL_CERT_DIR, 'ca.crt'), data='PING')
+        self.assertEqual('PONG', response.text)
 
-        cli.write('POST / HTTP/1.1\r\nHost: localhost\r\n'
-                  'Connection: close\r\nContent-length:4\r\n\r\nPING')
-        response = cli.read(8192)
-        self.assertEqual(response[-4:], "PONG")
-
-        cli = eventlet.connect(("localhost", fake_server.port))
-
-        cli.sendall('POST / HTTP/1.1\r\nHost: localhost\r\n'
-                    'Connection: close\r\nContent-length:4\r\n\r\nPING')
-        response = cli.recv(8192)
-        self.assertEqual(response[-4:], "PONG")
+        response = requests.post(
+            'http://127.0.0.1:%s/' % fake_server.port, data='PING')
+        self.assertEqual('PONG', response.text)
 
         fake_ssl_server.stop()
         fake_ssl_server.wait()
+
+        fake_server.stop()
+        fake_server.wait()
 
     @testtools.skipIf(platform.mac_ver()[0] != '',
                       'SO_REUSEADDR behaves differently '
