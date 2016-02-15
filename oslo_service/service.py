@@ -568,7 +568,7 @@ class ProcessLauncher(object):
         except eventlet.greenlet.GreenletExit:
             LOG.info(_LI("Wait called after thread killed. Cleaning up."))
 
-        # if we are here it means that we try to do gracefull shutdown.
+        # if we are here it means that we are trying to do graceful shutdown.
         # add alarm watching that graceful_shutdown_timeout is not exceeded
         if (self.conf.graceful_shutdown_timeout and
                 self.signal_handler.is_signal_supported('SIGALRM')):
