@@ -29,9 +29,9 @@ eventlet_backdoor_opts = [
                help="Enable eventlet backdoor, using the provided path"
                     " as a unix socket that can receive connections. This"
                     " option is mutually exclusive with 'backdoor_port' in"
-                    " that only one should be be provided. If both are"
-                    " provided then the existence of this option overrides"
-                    " the usage of that option.")
+                    " that only one should be provided. If both are provided"
+                    " then the existence of this option overrides the usage of"
+                    " that option.")
 ]
 
 periodic_opts = [
