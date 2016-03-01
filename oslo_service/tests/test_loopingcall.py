@@ -12,11 +12,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
 from eventlet.green import threading as greenthreading
 import mock
 from oslotest import base as test_base
 
+import oslo_service
 from oslo_service import loopingcall
+
+threading = eventlet.patcher.original('threading')
+time = eventlet.patcher.original('time')
 
 
 class LoopingCallTestCase(test_base.BaseTestCase):
@@ -31,6 +36,61 @@ class LoopingCallTestCase(test_base.BaseTestCase):
 
         timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
         self.assertTrue(timer.start(interval=0.5).wait())
+
+    def test_monotonic_timer(self):
+        def _raise_it():
+            clock = eventlet.hubs.get_hub().clock
+            ok = (clock == oslo_service._monotonic)
+            raise loopingcall.LoopingCallDone(ok)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
+        self.assertTrue(timer.start(interval=0.5).wait())
+
+    def test_eventlet_clock(self):
+        # Make sure that by default the oslo_service.service_hub() kicks in,
+        # test in the main thread
+        hub = eventlet.hubs.get_hub()
+        self.assertEqual(hub.clock,
+                         oslo_service._monotonic)
+
+    def test_eventlet_use_hub_override(self):
+        ns = {}
+
+        def task():
+            try:
+                self._test_eventlet_use_hub_override()
+            except Exception as exc:
+                ns['result'] = exc
+            else:
+                ns['result'] = 'ok'
+
+        # test overriding the hub of in a new thread to not modify the hub
+        # of the main thread
+        thread = threading.Thread(target=task)
+        thread.start()
+        thread.join()
+        self.assertEqual(ns['result'], 'ok')
+
+    def _test_eventlet_use_hub_override(self):
+        # Make sure that by default the
+        # oslo_service.service_hub() kicks in
+        old_clock = eventlet.hubs.get_hub().clock
+        self.assertEqual(old_clock,
+                         oslo_service._monotonic)
+
+        # eventlet will use time.monotonic() by default, same clock than
+        # oslo.service_hub():
+        # https://github.com/eventlet/eventlet/pull/303
+        if not hasattr(time, 'monotonic'):
+            # If anyone wants to override it
+            try:
+                eventlet.hubs.use_hub('poll')
+            except Exception:
+                eventlet.hubs.use_hub('selects')
+
+            # then we get a new clock and the override works fine too!
+            clock = eventlet.hubs.get_hub().clock
+            self.assertNotEqual(old_clock, clock)
 
     def test_return_false(self):
         def _raise_it():
@@ -129,6 +189,15 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
     def test_return_true(self):
         def _raise_it():
             raise loopingcall.LoopingCallDone(True)
+
+        timer = loopingcall.DynamicLoopingCall(_raise_it)
+        self.assertTrue(timer.start().wait())
+
+    def test_monotonic_timer(self):
+        def _raise_it():
+            clock = eventlet.hubs.get_hub().clock
+            ok = (clock == oslo_service._monotonic)
+            raise loopingcall.LoopingCallDone(ok)
 
         timer = loopingcall.DynamicLoopingCall(_raise_it)
         self.assertTrue(timer.start().wait())
