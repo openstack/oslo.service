@@ -194,14 +194,19 @@ class Launcher(object):
         self.backdoor_port = (
             eventlet_backdoor.initialize_if_enabled(self.conf))
 
-    def launch_service(self, service):
+    def launch_service(self, service, workers=1):
         """Load and start the given service.
 
         :param service: The service you would like to start, must be an
                         instance of :class:`oslo_service.service.ServiceBase`
+        :param workers: This param makes this method compatible with
+                        ProcessLauncher.launch_service. It must be None, 1 or
+                        omitted.
         :returns: None
 
         """
+        if workers is not None and workers != 1:
+            raise ValueError(_("Launcher asked to start multiple workers"))
         _check_service_base(service)
         service.backdoor_port = self.backdoor_port
         self.services.add(service)
@@ -700,9 +705,8 @@ def launch(conf, service, workers=1):
 
     if workers is None or workers == 1:
         launcher = ServiceLauncher(conf)
-        launcher.launch_service(service)
     else:
         launcher = ProcessLauncher(conf)
-        launcher.launch_service(service, workers=workers)
+    launcher.launch_service(service, workers=workers)
 
     return launcher

@@ -84,8 +84,8 @@ class ServiceTestBase(base.ServiceBaseTestCase):
 
     def _spawn_service(self,
                        workers=1,
-                       service_to_launch=ServiceWithTimer,
-                       *args, **kwargs):
+                       service_maker=None,
+                       launcher_maker=None):
         self.workers = workers
         pid = os.fork()
         if pid == 0:
@@ -99,8 +99,12 @@ class ServiceTestBase(base.ServiceBaseTestCase):
             # os._exit() which doesn't have this problem.
             status = 0
             try:
-                serv = service_to_launch(*args, **kwargs)
-                launcher = service.launch(self.conf, serv, workers=workers)
+                serv = service_maker() if service_maker else ServiceWithTimer()
+                if launcher_maker:
+                    launcher = launcher_maker()
+                    launcher.launch_service(serv, workers=workers)
+                else:
+                    launcher = service.launch(self.conf, serv, workers=workers)
                 status = launcher.wait()
             except SystemExit as exc:
                 status = exc.code
@@ -212,7 +216,8 @@ class ServiceLauncherTest(ServiceTestBase):
         self.assertEqual(os.WEXITSTATUS(status), 0)
 
     def test_crashed_service(self):
-        self.pid = self._spawn_service(service_to_launch=ServiceCrashOnStart)
+        service_maker = lambda: ServiceCrashOnStart()
+        self.pid = self._spawn_service(service_maker=service_maker)
         status = self._reap_test()
         self.assertTrue(os.WIFEXITED(status))
         self.assertEqual(os.WEXITSTATUS(status), 1)
@@ -251,8 +256,8 @@ class ServiceRestartTest(ServiceTestBase):
 
     def _spawn(self):
         ready_event = multiprocessing.Event()
-        self.pid = self._spawn_service(workers=1,
-                                       ready_event=ready_event)
+        service_maker = lambda: ServiceWithTimer(ready_event=ready_event)
+        self.pid = self._spawn_service(service_maker=service_maker)
         return ready_event
 
     def test_service_restart(self):
@@ -315,7 +320,7 @@ class LauncherTest(base.ServiceBaseTestCase):
     def _test_launch_single(self, workers, mock_launch):
         svc = service.Service()
         service.launch(self.conf, svc, workers=workers)
-        mock_launch.assert_called_with(svc)
+        mock_launch.assert_called_with(svc, workers=workers)
 
     def test_launch_none(self):
         self._test_launch_single(None)
