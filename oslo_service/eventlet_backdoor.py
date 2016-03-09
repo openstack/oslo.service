@@ -28,7 +28,7 @@ import traceback
 import eventlet.backdoor
 import greenlet
 
-from oslo_service._i18n import _LI
+from oslo_service._i18n import _LI, _
 from oslo_service import _options
 
 
@@ -37,8 +37,8 @@ LOG = logging.getLogger(__name__)
 
 class EventletBackdoorConfigValueError(Exception):
     def __init__(self, port_range, help_msg, ex):
-        msg = ('Invalid backdoor_port configuration %(range)s: %(ex)s. '
-               '%(help)s' %
+        msg = (_('Invalid backdoor_port configuration %(range)s: %(ex)s. '
+               '%(help)s') %
                {'range': port_range, 'ex': ex, 'help': help_msg})
         super(EventletBackdoorConfigValueError, self).__init__(msg)
         self.port_range = port_range
@@ -220,7 +220,7 @@ def _main():
 
     where_running_thread = _initialize_if_enabled(conf)
     if not where_running_thread:
-        raise RuntimeError("Did not create backdoor at requested location")
+        raise RuntimeError(_("Did not create backdoor at requested location"))
     else:
         _where_running, thread = where_running_thread
         thread.wait()

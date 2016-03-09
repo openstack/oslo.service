@@ -263,9 +263,9 @@ class BackOffLoopingCall(LoopingCallBase):
     """
 
     _RNG = random.SystemRandom()
-    _KIND = 'Dynamic backoff interval looping call'
-    _RUN_ONLY_ONE_MESSAGE = ("A dynamic backoff interval looping call can"
-                             " only run one function at a time")
+    _KIND = _('Dynamic backoff interval looping call')
+    _RUN_ONLY_ONE_MESSAGE = _("A dynamic backoff interval looping call can"
+                              " only run one function at a time")
 
     def __init__(self, f=None, *args, **kw):
         super(BackOffLoopingCall, self).__init__(f=f, *args, **kw)

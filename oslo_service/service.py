@@ -35,7 +35,7 @@ from eventlet import event
 
 from oslo_concurrency import lockutils
 from oslo_service import eventlet_backdoor
-from oslo_service._i18n import _LE, _LI, _LW
+from oslo_service._i18n import _LE, _LI, _LW, _
 from oslo_service import _options
 from oslo_service import systemd
 from oslo_service import threadgroup
@@ -81,7 +81,7 @@ def _is_sighup_and_daemon(signo):
 
 def _check_service_base(service):
     if not isinstance(service, ServiceBase):
-        raise TypeError("Service %(service)s must an instance of %(base)s!"
+        raise TypeError(_("Service %(service)s must an instance of %(base)s!")
                         % {'service': service, 'base': ServiceBase})
 
 
@@ -696,7 +696,7 @@ def launch(conf, service, workers=1):
     """
 
     if workers is not None and workers <= 0:
-        raise ValueError("Number of workers should be positive!")
+        raise ValueError(_("Number of workers should be positive!"))
 
     if workers is None or workers == 1:
         launcher = ServiceLauncher(conf)
