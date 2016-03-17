@@ -93,6 +93,35 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         self.assertEqual(0, len(self.tg.threads))
         self.assertTrue(end_time - start_time >= 1)
 
+    def test_cancel_early(self):
+
+        def foo(*args, **kwargs):
+            time.sleep(1)
+        self.tg.add_thread(foo, 'arg', kwarg='kwarg')
+        self.tg.cancel()
+
+        self.assertEqual(0, len(self.tg.threads))
+
+    def test_cancel_late(self):
+
+        def foo(*args, **kwargs):
+            time.sleep(0.3)
+        self.tg.add_thread(foo, 'arg', kwarg='kwarg')
+        time.sleep(0)
+        self.tg.cancel()
+
+        self.assertEqual(1, len(self.tg.threads))
+
+    def test_cancel_timeout(self):
+
+        def foo(*args, **kwargs):
+            time.sleep(0.3)
+        self.tg.add_thread(foo, 'arg', kwarg='kwarg')
+        time.sleep(0)
+        self.tg.cancel(timeout=0.2, wait_time=0.1)
+
+        self.assertEqual(0, len(self.tg.threads))
+
     def test_stop_timers(self):
 
         def foo(*args, **kwargs):
