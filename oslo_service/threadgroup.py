@@ -11,16 +11,16 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import logging
 import threading
-import time
 
 import eventlet
 from eventlet import greenpool
 
 from oslo_service._i18n import _LE
 from oslo_service import loopingcall
-
+from oslo_utils import timeutils
 
 LOG = logging.getLogger(__name__)
 
@@ -178,10 +178,10 @@ class ThreadGroup(object):
         if timeout is None:
             return
         wait_time = kwargs.get('wait_time', 1)
-        start = time.time()
+        watch = timeutils.StopWatch(duration=timeout)
+        watch.start()
         while self._any_threads_alive():
-            run_time = time.time() - start
-            if run_time < timeout:
+            if not watch.expired():
                 eventlet.sleep(wait_time)
                 continue
             LOG.debug("Cancel timeout reached, stopping threads.")
