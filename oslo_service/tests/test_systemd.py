@@ -45,7 +45,7 @@ class SystemdTestCase(test_base.BaseTestCase):
                 self.closed = True
 
             def sendall(fs, data):
-                if data == 'READY=1':
+                if data == b'READY=1':
                     self.ready = True
 
         with mock.patch.object(socket, 'socket', new=FakeSocket):
@@ -67,7 +67,7 @@ class SystemdTestCase(test_base.BaseTestCase):
 
     @mock.patch("socket.socket")
     def test_onready(self, sock_mock):
-        recv_results = ['READY=1', '', socket.timeout]
+        recv_results = [b'READY=1', '', socket.timeout]
         expected_results = [0, 1, 2]
         for recv, expected in zip(recv_results, expected_results):
             if recv == socket.timeout:

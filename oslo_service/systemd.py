@@ -53,7 +53,7 @@ def notify():
     For details see
     http://www.freedesktop.org/software/systemd/man/sd_notify.html
     """
-    _sd_notify(False, 'READY=1')
+    _sd_notify(False, b'READY=1')
 
 
 def notify_once():
@@ -64,7 +64,7 @@ def notify_once():
     This method removes the NOTIFY_SOCKET environment variable to ensure
     notification is sent only once.
     """
-    _sd_notify(True, 'READY=1')
+    _sd_notify(True, b'READY=1')
 
 
 def onready(notify_socket, timeout):
@@ -86,7 +86,7 @@ def onready(notify_socket, timeout):
             msg = sock.recv(512)
         except socket.timeout:
             return 2
-        if 'READY=1' in msg:
+        if b'READY=1' == msg:
             return 0
         else:
             return 1
