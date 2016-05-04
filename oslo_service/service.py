@@ -43,6 +43,8 @@ from oslo_service import threadgroup
 
 LOG = logging.getLogger(__name__)
 
+_LAUNCHER_RESTART_METHODS = ['reload', 'mutate']
+
 
 def list_opts():
     """Entry point for oslo-config-generator."""
@@ -182,9 +184,12 @@ class SignalHandler(object):
 class Launcher(object):
     """Launch one or more services and wait for them to complete."""
 
-    def __init__(self, conf):
+    def __init__(self, conf, restart_method='reload'):
         """Initialize the service launcher.
 
+        :param restart_method: If 'reload', calls reload_config_files on
+            SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP. Other
+            values produce a ValueError.
         :returns: None
 
         """
@@ -193,6 +198,9 @@ class Launcher(object):
         self.services = Services()
         self.backdoor_port = (
             eventlet_backdoor.initialize_if_enabled(self.conf))
+        self.restart_method = restart_method
+        if restart_method not in _LAUNCHER_RESTART_METHODS:
+            raise ValueError(_("Invalid restart_method: %s") % restart_method)
 
     def launch_service(self, service, workers=1):
         """Load and start the given service.
@@ -230,10 +238,14 @@ class Launcher(object):
     def restart(self):
         """Reload config files and restart service.
 
-        :returns: None
+        :returns: The return value from reload_config_files or
+        mutate_config_files, according to the restart_method.
 
         """
-        self.conf.reload_config_files()
+        if self.restart_method == 'reload':
+            self.conf.reload_config_files()
+        elif self.restart_method == 'mutate':
+            self.conf.mutate_config_files()
         self.services.restart()
 
 
@@ -245,12 +257,14 @@ class SignalExit(SystemExit):
 
 class ServiceLauncher(Launcher):
     """Runs one or more service in a parent process."""
-    def __init__(self, conf):
+    def __init__(self, conf, restart_method='reload'):
         """Constructor.
 
         :param conf: an instance of ConfigOpts
+        :param restart_method: passed to super
         """
-        super(ServiceLauncher, self).__init__(conf)
+        super(ServiceLauncher, self).__init__(
+            conf, restart_method=restart_method)
         self.signal_handler = SignalHandler()
 
     def _graceful_shutdown(self, *args):
@@ -331,12 +345,15 @@ class ServiceWrapper(object):
 class ProcessLauncher(object):
     """Launch a service with a given number of workers."""
 
-    def __init__(self, conf, wait_interval=0.01):
+    def __init__(self, conf, wait_interval=0.01, restart_method='reload'):
         """Constructor.
 
         :param conf: an instance of ConfigOpts
         :param wait_interval: The interval to sleep for between checks
                               of child process exit.
+        :param restart_method: If 'reload', calls reload_config_files on
+            SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP. Other
+            values produce a ValueError.
         """
         self.conf = conf
         conf.register_opts(_options.service_opts)
@@ -349,6 +366,9 @@ class ProcessLauncher(object):
         self.readpipe = eventlet.greenio.GreenPipe(rfd, 'r')
         self.signal_handler = SignalHandler()
         self.handle_signal()
+        self.restart_method = restart_method
+        if restart_method not in _LAUNCHER_RESTART_METHODS:
+            raise ValueError(_("Invalid restart_method: %s") % restart_method)
 
     def handle_signal(self):
         """Add instance's signal handlers to class handlers."""
@@ -445,7 +465,7 @@ class ProcessLauncher(object):
         # Reseed random number generator
         random.seed()
 
-        launcher = Launcher(self.conf)
+        launcher = Launcher(self.conf, restart_method=self.restart_method)
         launcher.launch_service(service)
         return launcher
 
@@ -560,7 +580,10 @@ class ProcessLauncher(object):
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break
 
-                self.conf.reload_config_files()
+                if self.restart_method == 'reload':
+                    self.conf.reload_config_files()
+                elif self.restart_method == 'mutate':
+                    self.conf.mutate_config_files()
                 for service in set(
                         [wrap.service for wrap in self.children.values()]):
                     service.reset()
@@ -690,13 +713,16 @@ class Services(object):
             done.wait()
 
 
-def launch(conf, service, workers=1):
+def launch(conf, service, workers=1, restart_method='reload'):
     """Launch a service with a given number of workers.
 
     :param conf: an instance of ConfigOpts
     :param service: a service to launch, must be an instance of
            :class:`oslo_service.service.ServiceBase`
     :param workers: a number of processes in which a service will be running
+    :param restart_method: Passed to the constructed launcher. If 'reload', the
+        launcher will call reload_config_files on SIGHUP. If 'mutate', it will
+        call mutate_config_files on SIGHUP. Other values produce a ValueError.
     :returns: instance of a launcher that was used to launch the service
     """
 
@@ -704,9 +730,9 @@ def launch(conf, service, workers=1):
         raise ValueError(_("Number of workers should be positive!"))
 
     if workers is None or workers == 1:
-        launcher = ServiceLauncher(conf)
+        launcher = ServiceLauncher(conf, restart_method=restart_method)
     else:
-        launcher = ProcessLauncher(conf)
+        launcher = ProcessLauncher(conf, restart_method=restart_method)
     launcher.launch_service(service, workers=workers)
 
     return launcher
