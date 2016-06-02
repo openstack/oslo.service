@@ -535,6 +535,38 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
         serv = FooService()
         self.assertRaises(TypeError, launcher.launch_service, serv, 0)
 
+    @mock.patch("oslo_service.service.ProcessLauncher._start_child")
+    @mock.patch("oslo_service.service.ProcessLauncher.handle_signal")
+    @mock.patch("eventlet.greenio.GreenPipe")
+    @mock.patch("os.pipe")
+    def test_double_sighup(self, pipe_mock, green_pipe_mock,
+                           handle_signal_mock, start_child_mock):
+        # Test that issuing two SIGHUPs in a row does not exit; then send a
+        # TERM that does cause an exit.
+        pipe_mock.return_value = [None, None]
+        launcher = service.ProcessLauncher(self.conf)
+        serv = _Service()
+        launcher.launch_service(serv, workers=0)
+
+        def stager():
+            # -1: start state
+            # 0: post-init
+            # 1: first HUP sent
+            # 2: second HUP sent
+            # 3: TERM sent
+            stager.stage += 1
+            if stager.stage < 3:
+                launcher._handle_hup(1, mock.sentinel.frame)
+            elif stager.stage == 3:
+                launcher._handle_term(15, mock.sentinel.frame)
+            else:
+                self.fail("TERM did not kill launcher")
+        stager.stage = -1
+        handle_signal_mock.side_effect = stager
+
+        launcher.wait()
+        self.assertEqual(3, stager.stage)
+
 
 class GracefulShutdownTestService(service.Service):
     def __init__(self):

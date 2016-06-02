@@ -289,6 +289,7 @@ class ServiceLauncher(Launcher):
 
     def handle_signal(self):
         """Set self._handle_signal as a signal handler."""
+        self.signal_handler.clear()
         self.signal_handler.add_handler('SIGTERM', self._graceful_shutdown)
         self.signal_handler.add_handler('SIGINT', self._fast_exit)
         self.signal_handler.add_handler('SIGHUP', self._reload_service)
@@ -372,13 +373,13 @@ class ProcessLauncher(object):
 
     def handle_signal(self):
         """Add instance's signal handlers to class handlers."""
-        self.signal_handler.add_handlers(('SIGTERM', 'SIGHUP'),
-                                         self._handle_signal)
+        self.signal_handler.add_handler('SIGTERM', self._handle_term)
+        self.signal_handler.add_handler('SIGHUP', self._handle_hup)
         self.signal_handler.add_handler('SIGINT', self._fast_exit)
         self.signal_handler.add_handler('SIGALRM', self._on_alarm_exit)
 
-    def _handle_signal(self, signo, frame):
-        """Set signal handlers.
+    def _handle_term(self, signo, frame):
+        """Handle a TERM event.
 
         :param signo: signal number
         :param frame: current stack frame
@@ -388,6 +389,19 @@ class ProcessLauncher(object):
 
         # Allow the process to be killed again and die from natural causes
         self.signal_handler.clear()
+
+    def _handle_hup(self, signo, frame):
+        """Handle a HUP event.
+
+        :param signo: signal number
+        :param frame: current stack frame
+        """
+        self.sigcaught = signo
+        self.running = False
+
+        # Do NOT clear the signal_handler, allowing multiple SIGHUPs to be
+        # received swiftly. If a non-HUP is received before #wait loops, the
+        # second event will "overwrite" the HUP. This is fine.
 
     def _fast_exit(self, signo, frame):
         LOG.info(_LI('Caught SIGINT signal, instantaneous exiting'))
