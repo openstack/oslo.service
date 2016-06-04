@@ -1,0 +1,85 @@
+# Andi Chandler <andi@gowling.com>, 2016. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+msgid ""
+msgstr ""
+"Project-Id-Version: oslo.service 1.11.1.dev6\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-06-04 05:23+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2016-06-03 10:54+0000\n"
+"Last-Translator: Andi Chandler <andi@gowling.com>\n"
+"Language-Team: English (United Kingdom)\n"
+"Language: en-GB\n"
+"X-Generator: Zanata 3.7.3\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+#, python-format
+msgid "%(name)s listening on %(host)s:%(port)s"
+msgstr "%(name)s listening on %(host)s:%(port)s"
+
+#, python-format
+msgid "%(name)s listening on %(socket_file)s:"
+msgstr "%(name)s listening on %(socket_file)s:"
+
+#, python-format
+msgid "Caught %s, exiting"
+msgstr "Caught %s, exiting"
+
+#, python-format
+msgid "Caught %s, stopping children"
+msgstr "Caught %s, stopping children"
+
+msgid "Caught SIGINT signal, instantaneous exiting"
+msgstr "Caught SIGINT signal, instantaneous exiting"
+
+#, python-format
+msgid "Child %(pid)d killed by signal %(sig)d"
+msgstr "Child %(pid)d killed by signal %(sig)d"
+
+#, python-format
+msgid "Child %(pid)s exited with status %(code)d"
+msgstr "Child %(pid)s exited with status %(code)d"
+
+#, python-format
+msgid "Child caught %s, exiting"
+msgstr "Child caught %s, exiting"
+
+#, python-format
+msgid "Eventlet backdoor listening on %(where_running)s for process %(pid)d"
+msgstr "Eventlet backdoor listening on %(where_running)s for process %(pid)d"
+
+msgid "Forking too fast, sleeping"
+msgstr "Forking too fast, sleeping"
+
+msgid "Graceful shutdown timeout exceeded, instantaneous exiting"
+msgstr "Graceful shutdown timeout exceeded, instantaneous exiting"
+
+msgid "Parent process has died unexpectedly, exiting"
+msgstr "Parent process has died unexpectedly, exiting"
+
+#, python-format
+msgid "Skipping periodic task %(task)s because it is disabled"
+msgstr "Skipping periodic task %(task)s because it is disabled"
+
+#, python-format
+msgid "Skipping periodic task %(task)s because its interval is negative"
+msgstr "Skipping periodic task %(task)s because its interval is negative"
+
+#, python-format
+msgid "Starting %d workers"
+msgstr "Starting %d workers"
+
+msgid "Stopping WSGI server."
+msgstr "Stopping WSGI server."
+
+msgid "WSGI server has stopped."
+msgstr "WSGI server has stopped."
+
+msgid "Wait called after thread killed. Cleaning up."
+msgstr "Wait called after thread killed. Cleaning up."
+
+#, python-format
+msgid "Waiting on %d children to exit"
+msgstr "Waiting on %d children to exit"
