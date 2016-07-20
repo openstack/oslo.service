@@ -50,8 +50,8 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         # Make sure that by default the oslo_service.service_hub() kicks in,
         # test in the main thread
         hub = eventlet.hubs.get_hub()
-        self.assertEqual(hub.clock,
-                         oslo_service._monotonic)
+        self.assertEqual(oslo_service._monotonic,
+                         hub.clock)
 
     def test_eventlet_use_hub_override(self):
         ns = {}
@@ -69,14 +69,14 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         thread = threading.Thread(target=task)
         thread.start()
         thread.join()
-        self.assertEqual(ns['result'], 'ok')
+        self.assertEqual('ok', ns['result'])
 
     def _test_eventlet_use_hub_override(self):
         # Make sure that by default the
         # oslo_service.service_hub() kicks in
         old_clock = eventlet.hubs.get_hub().clock
-        self.assertEqual(old_clock,
-                         oslo_service._monotonic)
+        self.assertEqual(oslo_service._monotonic,
+                         old_clock)
 
         # eventlet will use time.monotonic() by default, same clock than
         # oslo.service_hub():

@@ -51,7 +51,7 @@ class ServiceManagerTestCase(test_base.BaseTestCase):
     def test_override_manager_method(self):
         serv = ExtendedService()
         serv.start()
-        self.assertEqual(serv.test_method(), 'service')
+        self.assertEqual('service', serv.test_method())
 
 
 class ServiceWithTimer(service.Service):
@@ -207,20 +207,20 @@ class ServiceLauncherTest(ServiceTestBase):
         self._terminate_with_signal(signal.SIGKILL)
         status = self._reap_test()
         self.assertTrue(os.WIFSIGNALED(status))
-        self.assertEqual(os.WTERMSIG(status), signal.SIGKILL)
+        self.assertEqual(signal.SIGKILL, os.WTERMSIG(status))
 
     def test_terminate_sigterm(self):
         self._terminate_with_signal(signal.SIGTERM)
         status = self._reap_test()
         self.assertTrue(os.WIFEXITED(status))
-        self.assertEqual(os.WEXITSTATUS(status), 0)
+        self.assertEqual(0, os.WEXITSTATUS(status))
 
     def test_crashed_service(self):
         service_maker = lambda: ServiceCrashOnStart()
         self.pid = self._spawn_service(service_maker=service_maker)
         status = self._reap_test()
         self.assertTrue(os.WIFEXITED(status))
-        self.assertEqual(os.WEXITSTATUS(status), 1)
+        self.assertEqual(1, os.WEXITSTATUS(status))
 
     def test_child_signal_sighup(self):
         start_workers = self._spawn()
@@ -282,7 +282,7 @@ class ServiceRestartTest(ServiceTestBase):
 
         status = self._reap_test()
         self.assertTrue(os.WIFEXITED(status))
-        self.assertEqual(os.WEXITSTATUS(status), 0)
+        self.assertEqual(0, os.WEXITSTATUS(status))
 
     def test_mutate_hook_service_launcher(self):
         """Test mutate_config_files is called by ServiceLauncher on SIGHUP.

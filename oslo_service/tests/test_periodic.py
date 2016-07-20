@@ -81,13 +81,13 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         serv.add_periodic_task(ext2)
         serv.run_periodic_tasks(None)
         # Time: 340
-        self.assertEqual(serv.called['doit'], 0)
-        self.assertEqual(serv.called['urg'], 0)
+        self.assertEqual(0, serv.called['doit'])
+        self.assertEqual(0, serv.called['urg'])
         # New last run will be 350
-        self.assertEqual(serv.called['ticks'], 1)
-        self.assertEqual(serv.called['tocks'], 0)
-        self.assertEqual(external_called['ext1'], 0)
-        self.assertEqual(external_called['ext2'], 0)
+        self.assertEqual(1, serv.called['ticks'])
+        self.assertEqual(0, serv.called['tocks'])
+        self.assertEqual(0, external_called['ext1'])
+        self.assertEqual(0, external_called['ext2'])
 
         time = time + periodic_task.DEFAULT_INTERVAL
         mock_now.return_value = time
@@ -95,33 +95,33 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
 
         # Time:400
         # New Last run: 420
-        self.assertEqual(serv.called['doit'], 1)
-        self.assertEqual(serv.called['urg'], 1)
+        self.assertEqual(1, serv.called['doit'])
+        self.assertEqual(1, serv.called['urg'])
         # Closest multiple of 70 is 420
-        self.assertEqual(serv.called['ticks'], 1)
-        self.assertEqual(serv.called['tocks'], 0)
-        self.assertEqual(external_called['ext1'], 1)
-        self.assertEqual(external_called['ext2'], 0)
+        self.assertEqual(1, serv.called['ticks'])
+        self.assertEqual(0, serv.called['tocks'])
+        self.assertEqual(1, external_called['ext1'])
+        self.assertEqual(0, external_called['ext2'])
 
         time = time + periodic_task.DEFAULT_INTERVAL / 2
         mock_now.return_value = time
         serv.run_periodic_tasks(None)
-        self.assertEqual(serv.called['doit'], 1)
-        self.assertEqual(serv.called['urg'], 1)
-        self.assertEqual(serv.called['ticks'], 2)
-        self.assertEqual(serv.called['tocks'], 1)
-        self.assertEqual(external_called['ext1'], 1)
-        self.assertEqual(external_called['ext2'], 1)
+        self.assertEqual(1, serv.called['doit'])
+        self.assertEqual(1, serv.called['urg'])
+        self.assertEqual(2, serv.called['ticks'])
+        self.assertEqual(1, serv.called['tocks'])
+        self.assertEqual(1, external_called['ext1'])
+        self.assertEqual(1, external_called['ext2'])
 
         time = time + periodic_task.DEFAULT_INTERVAL
         mock_now.return_value = time
         serv.run_periodic_tasks(None)
-        self.assertEqual(serv.called['doit'], 2)
-        self.assertEqual(serv.called['urg'], 2)
-        self.assertEqual(serv.called['ticks'], 3)
-        self.assertEqual(serv.called['tocks'], 2)
-        self.assertEqual(external_called['ext1'], 2)
-        self.assertEqual(external_called['ext2'], 2)
+        self.assertEqual(2, serv.called['doit'])
+        self.assertEqual(2, serv.called['urg'])
+        self.assertEqual(3, serv.called['ticks'])
+        self.assertEqual(2, serv.called['tocks'])
+        self.assertEqual(2, external_called['ext1'])
+        self.assertEqual(2, external_called['ext2'])
 
     @mock.patch('oslo_service.periodic_task.now')
     def test_called_correct(self, mock_now):
@@ -145,7 +145,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         serv = AService(self.conf)
         for i in range(200):
             serv.run_periodic_tasks(None)
-            self.assertEqual(serv.called['ticks'], int(i / test_spacing))
+            self.assertEqual(int(i / test_spacing), serv.called['ticks'])
             time += 1
             mock_now.return_value = time
 

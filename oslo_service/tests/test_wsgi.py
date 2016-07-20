@@ -130,8 +130,8 @@ class TestWSGIServer(WsgiTestCase):
     def test_custom_max_header_line(self):
         self.config(max_header_line=4096)  # Default value is 16384
         wsgi.Server(self.conf, "test_custom_max_header_line", None)
-        self.assertEqual(self.conf.max_header_line,
-                         eventlet.wsgi.MAX_HEADER_LINE)
+        self.assertEqual(eventlet.wsgi.MAX_HEADER_LINE,
+                         self.conf.max_header_line)
 
     def test_start_random_port(self):
         server = wsgi.Server(self.conf, "test_random_port", None,
@@ -212,14 +212,14 @@ class TestWSGIServer(WsgiTestCase):
         uri = "http://127.0.0.1:%d/%s" % (server.port, 10000 * 'x')
         resp = requests.get(uri, proxies={"http": ""})
         eventlet.sleep(0)
-        self.assertNotEqual(resp.status_code,
-                            requests.codes.REQUEST_URI_TOO_LARGE)
+        self.assertNotEqual(requests.codes.REQUEST_URI_TOO_LARGE,
+                            resp.status_code)
 
         uri = "http://127.0.0.1:%d/%s" % (server.port, 20000 * 'x')
         resp = requests.get(uri, proxies={"http": ""})
         eventlet.sleep(0)
-        self.assertEqual(resp.status_code,
-                         requests.codes.REQUEST_URI_TOO_LARGE)
+        self.assertEqual(requests.codes.REQUEST_URI_TOO_LARGE,
+                         resp.status_code)
         server.stop()
         server.wait()
 
@@ -230,12 +230,12 @@ class TestWSGIServer(WsgiTestCase):
 
         # Stopping the server, which in turn sets pool size to 0
         server.stop()
-        self.assertEqual(server._pool.size, 0)
+        self.assertEqual(0, server._pool.size)
 
         # Resetting pool size to default
         server.reset()
         server.start()
-        self.assertEqual(server._pool.size, CONF.wsgi_default_pool_size)
+        self.assertEqual(CONF.wsgi_default_pool_size, server._pool.size)
 
     def test_client_socket_timeout(self):
         self.config(client_socket_timeout=5)
