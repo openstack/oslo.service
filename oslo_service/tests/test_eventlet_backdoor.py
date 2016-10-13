@@ -34,7 +34,7 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_path(self, listen_mock, spawn_mock):
         self.config(backdoor_socket="/tmp/my_special_socket")
-        listen_mock.side_effect = mock.MagicMock()
+        listen_mock.side_effect = mock.Mock()
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual("/tmp/my_special_socket", path)
 
@@ -44,7 +44,7 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
     def test_backdoor_path_already_exists(self, listen_mock,
                                           spawn_mock, unlink_mock):
         self.config(backdoor_socket="/tmp/my_special_socket")
-        sock = mock.MagicMock()
+        sock = mock.Mock()
         listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual("/tmp/my_special_socket", path)
@@ -56,7 +56,7 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
     def test_backdoor_path_already_exists_and_gone(self, listen_mock,
                                                    spawn_mock, unlink_mock):
         self.config(backdoor_socket="/tmp/my_special_socket")
-        sock = mock.MagicMock()
+        sock = mock.Mock()
         listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
         unlink_mock.side_effect = OSError(errno.ENOENT, '')
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
@@ -91,7 +91,7 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_port(self, listen_mock, spawn_mock):
         self.config(backdoor_port=1234)
-        sock = mock.MagicMock()
+        sock = mock.Mock()
         sock.getsockname.return_value = ('127.0.0.1', 1234)
         listen_mock.return_value = sock
         port = eventlet_backdoor.initialize_if_enabled(self.conf)
@@ -109,7 +109,7 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_port_range(self, listen_mock, spawn_mock):
         self.config(backdoor_port='8800:8899')
-        sock = mock.MagicMock()
+        sock = mock.Mock()
         sock.getsockname.return_value = ('127.0.0.1', 8800)
         listen_mock.return_value = sock
         port = eventlet_backdoor.initialize_if_enabled(self.conf)
@@ -119,7 +119,7 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_port_range_one_inuse(self, listen_mock, spawn_mock):
         self.config(backdoor_port='8800:8900')
-        sock = mock.MagicMock()
+        sock = mock.Mock()
         sock.getsockname.return_value = ('127.0.0.1', 8801)
         listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
         port = eventlet_backdoor.initialize_if_enabled(self.conf)
