@@ -180,6 +180,15 @@ class LoopingCallTestCase(test_base.BaseTestCase):
                        (i, expected, actual))
             self.assertAlmostEqual(expected, actual, message=message)
 
+    def test_looping_call_timed_out(self):
+
+        def _fake_task():
+            pass
+
+        timer = loopingcall.FixedIntervalWithTimeoutLoopingCall(_fake_task)
+        self.assertRaises(loopingcall.LoopingCallTimeOut,
+                          timer.start(interval=0.1, timeout=0.3).wait)
+
 
 class DynamicLoopingCallTestCase(test_base.BaseTestCase):
     def setUp(self):
