@@ -30,7 +30,6 @@ import requests
 import webob
 
 from oslo_config import cfg
-from oslo_service import _options
 from oslo_service import sslutils
 from oslo_service.tests import base
 from oslo_service import wsgi
@@ -49,7 +48,6 @@ class WsgiTestCase(base.ServiceBaseTestCase):
 
     def setUp(self):
         super(WsgiTestCase, self).setUp()
-        self.conf_fixture.register_opts(_options.wsgi_opts)
         self.conf(args=[], default_config_files=[])
 
 
@@ -273,8 +271,6 @@ class TestWSGIServerWithSSL(WsgiTestCase):
 
     def setUp(self):
         super(TestWSGIServerWithSSL, self).setUp()
-        self.conf_fixture.register_opts(_options.ssl_opts,
-                                        sslutils.config_section)
         cert_file_name = os.path.join(SSL_CERT_DIR, 'certificate.crt')
         key_file_name = os.path.join(SSL_CERT_DIR, 'privatekey.key')
         eventlet.monkey_patch(os=False, thread=False)
