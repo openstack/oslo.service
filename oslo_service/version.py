@@ -15,4 +15,4 @@
 
 import pbr.version
 
-version_info = pbr.version.VersionInfo('oslo_service')
+version_info = pbr.version.VersionInfo('oslo.service')
