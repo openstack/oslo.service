@@ -41,9 +41,10 @@ class Thread(object):
      the :class:`ThreadGroup` when it has done so it can be removed from
      the threads list.
     """
-    def __init__(self, thread, group):
+    def __init__(self, thread, group, link=True):
         self.thread = thread
-        self.thread.link(_on_thread_done, group, self)
+        if link:
+            self.thread.link(_on_thread_done, group, self)
         self._ident = id(thread)
 
     @property
@@ -93,8 +94,9 @@ class ThreadGroup(object):
 
     def add_thread(self, callback, *args, **kwargs):
         gt = self.pool.spawn(callback, *args, **kwargs)
-        th = Thread(gt, self)
+        th = Thread(gt, self, link=False)
         self.threads.append(th)
+        gt.link(_on_thread_done, self, th)
         return th
 
     def thread_done(self, thread):
