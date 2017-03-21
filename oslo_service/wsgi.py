@@ -32,10 +32,10 @@ import webob.dec
 import webob.exc
 
 from oslo_log import log as logging
+from oslo_service._i18n import _
 from oslo_service import _options
 from oslo_service import service
 from oslo_service import sslutils
-from oslo_service._i18n import _, _LE, _LI
 
 
 LOG = logging.getLogger(__name__)
@@ -142,11 +142,11 @@ class Server(service.ServiceBase):
         try:
             sock = eventlet.listen(bind_addr, family, backlog=backlog)
         except EnvironmentError:
-            LOG.error(_LE("Could not bind to %(host)s:%(port)s"),
+            LOG.error("Could not bind to %(host)s:%(port)s",
                       {'host': host, 'port': port})
             raise
         sock = self._set_socket_opts(sock)
-        LOG.info(_LI("%(name)s listening on %(host)s:%(port)s"),
+        LOG.info("%(name)s listening on %(host)s:%(port)s",
                  {'name': self.name, 'host': host, 'port': port})
         return sock
 
@@ -155,7 +155,7 @@ class Server(service.ServiceBase):
                                backlog=backlog)
         if socket_mode is not None:
             os.chmod(socket_file, socket_mode)
-        LOG.info(_LI("%(name)s listening on %(socket_file)s:"),
+        LOG.info("%(name)s listening on %(socket_file)s:",
                  {'name': self.name, 'socket_file': socket_file})
         return sock
 
@@ -219,7 +219,7 @@ class Server(service.ServiceBase):
         :returns: None
 
         """
-        LOG.info(_LI("Stopping WSGI server."))
+        LOG.info("Stopping WSGI server.")
 
         if self._server is not None:
             # let eventlet close socket
@@ -240,7 +240,7 @@ class Server(service.ServiceBase):
                 LOG.debug("Waiting WSGI server to finish %d requests.", num)
                 self._pool.waitall()
         except greenlet.GreenletExit:
-            LOG.info(_LI("WSGI server has stopped."))
+            LOG.info("WSGI server has stopped.")
 
 
 class Request(webob.Request):
@@ -352,5 +352,5 @@ class Loader(object):
                       {'name': name, 'path': self.config_path})
             return deploy.loadapp("config:%s" % self.config_path, name=name)
         except LookupError:
-            LOG.exception(_LE("Couldn't lookup app: %s"), name)
+            LOG.exception("Couldn't lookup app: %s", name)
             raise PasteAppNotFound(name=name, path=self.config_path)

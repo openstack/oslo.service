@@ -34,9 +34,9 @@ import eventlet
 from eventlet import event
 
 from oslo_concurrency import lockutils
-from oslo_service import eventlet_backdoor
-from oslo_service._i18n import _LE, _LI, _LW, _
+from oslo_service._i18n import _
 from oslo_service import _options
+from oslo_service import eventlet_backdoor
 from oslo_service import systemd
 from oslo_service import threadgroup
 
@@ -279,12 +279,12 @@ class ServiceLauncher(Launcher):
         raise SignalExit(signal.SIGHUP)
 
     def _fast_exit(self, *args):
-        LOG.info(_LI('Caught SIGINT signal, instantaneous exiting'))
+        LOG.info('Caught SIGINT signal, instantaneous exiting')
         os._exit(1)
 
     def _on_timeout_exit(self, *args):
-        LOG.info(_LI('Graceful shutdown timeout exceeded, '
-                     'instantaneous exiting'))
+        LOG.info('Graceful shutdown timeout exceeded, '
+                 'instantaneous exiting')
         os._exit(1)
 
     def handle_signal(self):
@@ -307,7 +307,7 @@ class ServiceLauncher(Launcher):
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
             signame = self.signal_handler.signals_to_name[exc.signo]
-            LOG.info(_LI('Caught %s, exiting'), signame)
+            LOG.info('Caught %s, exiting', signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
@@ -404,12 +404,12 @@ class ProcessLauncher(object):
         # second event will "overwrite" the HUP. This is fine.
 
     def _fast_exit(self, signo, frame):
-        LOG.info(_LI('Caught SIGINT signal, instantaneous exiting'))
+        LOG.info('Caught SIGINT signal, instantaneous exiting')
         os._exit(1)
 
     def _on_alarm_exit(self, signo, frame):
-        LOG.info(_LI('Graceful shutdown timeout exceeded, '
-                     'instantaneous exiting'))
+        LOG.info('Graceful shutdown timeout exceeded, '
+                 'instantaneous exiting')
         os._exit(1)
 
     def _pipe_watcher(self):
@@ -417,7 +417,7 @@ class ProcessLauncher(object):
         # dies unexpectedly
         self.readpipe.read(1)
 
-        LOG.info(_LI('Parent process has died unexpectedly, exiting'))
+        LOG.info('Parent process has died unexpectedly, exiting')
 
         if self.launcher:
             self.launcher.stop()
@@ -453,13 +453,13 @@ class ProcessLauncher(object):
             launcher.wait()
         except SignalExit as exc:
             signame = self.signal_handler.signals_to_name[exc.signo]
-            LOG.info(_LI('Child caught %s, exiting'), signame)
+            LOG.info('Child caught %s, exiting', signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
             status = exc.code
         except BaseException:
-            LOG.exception(_LE('Unhandled exception'))
+            LOG.exception('Unhandled exception')
             status = 2
 
         return status, signo
@@ -490,7 +490,7 @@ class ProcessLauncher(object):
             # start up quickly but ensure we don't fork off children that
             # die instantly too quickly.
             if time.time() - wrap.forktimes[0] < wrap.workers:
-                LOG.info(_LI('Forking too fast, sleeping'))
+                LOG.info('Forking too fast, sleeping')
                 time.sleep(1)
 
             wrap.forktimes.pop(0)
@@ -529,7 +529,7 @@ class ProcessLauncher(object):
         _check_service_base(service)
         wrap = ServiceWrapper(service, workers)
 
-        LOG.info(_LI('Starting %d workers'), wrap.workers)
+        LOG.info('Starting %d workers', wrap.workers)
         while self.running and len(wrap.children) < wrap.workers:
             self._start_child(wrap)
 
@@ -546,15 +546,15 @@ class ProcessLauncher(object):
 
         if os.WIFSIGNALED(status):
             sig = os.WTERMSIG(status)
-            LOG.info(_LI('Child %(pid)d killed by signal %(sig)d'),
+            LOG.info('Child %(pid)d killed by signal %(sig)d',
                      dict(pid=pid, sig=sig))
         else:
             code = os.WEXITSTATUS(status)
-            LOG.info(_LI('Child %(pid)s exited with status %(code)d'),
+            LOG.info('Child %(pid)s exited with status %(code)d',
                      dict(pid=pid, code=code))
 
         if pid not in self.children:
-            LOG.warning(_LW('pid %d not in child list'), pid)
+            LOG.warning('pid %d not in child list', pid)
             return None
 
         wrap = self.children.pop(pid)
@@ -590,7 +590,7 @@ class ProcessLauncher(object):
                     return
 
                 signame = self.signal_handler.signals_to_name[self.sigcaught]
-                LOG.info(_LI('Caught %s, stopping children'), signame)
+                LOG.info('Caught %s, stopping children', signame)
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break
 
@@ -608,7 +608,7 @@ class ProcessLauncher(object):
                 self.running = True
                 self.sigcaught = None
         except eventlet.greenlet.GreenletExit:
-            LOG.info(_LI("Wait called after thread killed. Cleaning up."))
+            LOG.info("Wait called after thread killed. Cleaning up.")
 
         # if we are here it means that we are trying to do graceful shutdown.
         # add alarm watching that graceful_shutdown_timeout is not exceeded
@@ -637,7 +637,7 @@ class ProcessLauncher(object):
 
         # Wait for children to die
         if self.children:
-            LOG.info(_LI('Waiting on %d children to exit'), len(self.children))
+            LOG.info('Waiting on %d children to exit', len(self.children))
             while self.children:
                 self._wait_child()
 
@@ -721,7 +721,7 @@ class Services(object):
         try:
             service.start()
         except Exception:
-            LOG.exception(_LE('Error starting thread.'))
+            LOG.exception('Error starting thread.')
             raise SystemExit(1)
         else:
             done.wait()

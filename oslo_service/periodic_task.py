@@ -20,7 +20,7 @@ from monotonic import monotonic as now  # noqa
 from oslo_utils import reflection
 import six
 
-from oslo_service._i18n import _, _LE, _LI
+from oslo_service._i18n import _
 from oslo_service import _options
 
 
@@ -106,13 +106,13 @@ class _PeriodicTasksMeta(type):
         name = task._periodic_name
 
         if task._periodic_spacing < 0:
-            LOG.info(_LI('Skipping periodic task %(task)s because '
-                         'its interval is negative'),
+            LOG.info('Skipping periodic task %(task)s because '
+                     'its interval is negative',
                      {'task': name})
             return False
         if not task._periodic_enabled:
-            LOG.info(_LI('Skipping periodic task %(task)s because '
-                         'it is disabled'),
+            LOG.info('Skipping periodic task %(task)s because '
+                     'it is disabled',
                      {'task': name})
             return False
 
@@ -221,7 +221,7 @@ class PeriodicTasks(object):
             except Exception:
                 if raise_on_error:
                     raise
-                LOG.exception(_LE("Error during %(full_task_name)s"),
+                LOG.exception("Error during %(full_task_name)s",
                               {"full_task_name": full_task_name})
             time.sleep(0)
 

@@ -28,7 +28,7 @@ import traceback
 import eventlet.backdoor
 import greenlet
 
-from oslo_service._i18n import _LI, _
+from oslo_service._i18n import _
 from oslo_service import _options
 
 
@@ -188,8 +188,8 @@ def _initialize_if_enabled(conf):
     sys.displayhook = displayhook
 
     LOG.info(
-        _LI('Eventlet backdoor listening on %(where_running)s for'
-            ' process %(pid)d'),
+        'Eventlet backdoor listening on %(where_running)s for'
+        ' process %(pid)d',
         {'where_running': where_running, 'pid': os.getpid()}
     )
     thread = eventlet.spawn(eventlet.backdoor.backdoor_server, sock,

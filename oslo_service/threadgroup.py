@@ -18,7 +18,6 @@ import threading
 import eventlet
 from eventlet import greenpool
 
-from oslo_service._i18n import _LE
 from oslo_service import loopingcall
 from oslo_utils import timeutils
 
@@ -124,7 +123,7 @@ class ThreadGroup(object):
     def _stop_threads(self):
         self._perform_action_on_threads(
             lambda x: x.stop(),
-            lambda x: LOG.exception(_LE('Error stopping thread.')))
+            lambda x: LOG.exception('Error stopping thread.'))
 
     def stop_timers(self):
         for timer in self.timers:
@@ -156,10 +155,10 @@ class ThreadGroup(object):
                 # greenlet exited successfully
                 pass
             except Exception:
-                LOG.exception(_LE('Error waiting on timer.'))
+                LOG.exception('Error waiting on timer.')
         self._perform_action_on_threads(
             lambda x: x.wait(),
-            lambda x: LOG.exception(_LE('Error waiting on thread.')))
+            lambda x: LOG.exception('Error waiting on thread.'))
 
     def _any_threads_alive(self):
         current = threading.current_thread()
@@ -174,7 +173,7 @@ class ThreadGroup(object):
     def cancel(self, *throw_args, **kwargs):
         self._perform_action_on_threads(
             lambda x: x.cancel(*throw_args),
-            lambda x: LOG.exception(_LE('Error canceling thread.')))
+            lambda x: LOG.exception('Error canceling thread.'))
 
         timeout = kwargs.get('timeout', None)
         if timeout is None:

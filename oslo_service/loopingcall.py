@@ -27,7 +27,7 @@ from oslo_utils import reflection
 from oslo_utils import timeutils
 import six
 
-from oslo_service._i18n import _LE, _LW, _
+from oslo_service._i18n import _
 
 LOG = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def _safe_wrapper(f, kind, func_name):
         except LoopingCallDone:
             raise  # let the outer handler process this
         except Exception:
-            LOG.error(_LE('%(kind)s %(func_name)r failed'),
+            LOG.error('%(kind)s %(func_name)r failed',
                       {'kind': kind, 'func_name': func_name},
                       exc_info=True)
             return 0
@@ -149,7 +149,7 @@ class LoopingCallBase(object):
         except Exception:
             exc_info = sys.exc_info()
             try:
-                LOG.error(_LE('%(kind)s %(func_name)r failed'),
+                LOG.error('%(kind)s %(func_name)r failed',
                           {'kind': kind, 'func_name': func_name},
                           exc_info=exc_info)
                 self.done.send_exception(*exc_info)
@@ -173,8 +173,8 @@ class FixedIntervalLoopingCall(LoopingCallBase):
             delay = round(elapsed - interval, 2)
             if delay > 0:
                 func_name = reflection.get_callable_name(self.f)
-                LOG.warning(_LW('Function %(func_name)r run outlasted '
-                                'interval by %(delay).2f sec'),
+                LOG.warning('Function %(func_name)r run outlasted '
+                            'interval by %(delay).2f sec',
                             {'func_name': func_name, 'delay': delay})
             return -delay if delay < 0 else 0
         return self._start(_idle_for, initial_delay=initial_delay,
@@ -198,8 +198,8 @@ class FixedIntervalWithTimeoutLoopingCall(LoopingCallBase):
             delay = round(elapsed - interval, 2)
             if delay > 0:
                 func_name = reflection.get_callable_name(self.f)
-                LOG.warning(_LW('Function %(func_name)r run outlasted '
-                                'interval by %(delay).2f sec'),
+                LOG.warning('Function %(func_name)r run outlasted '
+                            'interval by %(delay).2f sec',
                             {'func_name': func_name, 'delay': delay})
             elapsed_time = time.time() - start_time
             if timeout > 0 and elapsed_time > timeout:
