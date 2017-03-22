@@ -39,7 +39,7 @@ class ServiceBaseTestCase(test_base.BaseTestCase):
     def get_new_temp_dir(self):
         """Create a new temporary directory.
 
-        :returns fixtures.TempDir
+        :returns: fixtures.TempDir
         """
         return self.useFixture(fixtures.TempDir())
 
@@ -48,7 +48,7 @@ class ServiceBaseTestCase(test_base.BaseTestCase):
 
         Returns the same directory during the whole test case.
 
-        :returns fixtures.TempDir
+        :returns: fixtures.TempDir
         """
         if not hasattr(self, '_temp_dir'):
             self._temp_dir = self.get_new_temp_dir()
@@ -67,7 +67,7 @@ class ServiceBaseTestCase(test_base.BaseTestCase):
         :type filename: string
         :param root: temporary directory to create a new file in
         :type root: fixtures.TempDir
-        :returns absolute file path string
+        :returns: absolute file path string
         """
         root = root or self.get_default_temp_dir()
         return root.join(filename)

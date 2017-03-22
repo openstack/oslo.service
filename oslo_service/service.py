@@ -239,8 +239,7 @@ class Launcher(object):
         """Reload config files and restart service.
 
         :returns: The return value from reload_config_files or
-        mutate_config_files, according to the restart_method.
-
+          mutate_config_files, according to the restart_method.
         """
         if self.restart_method == 'reload':
             self.conf.reload_config_files()
