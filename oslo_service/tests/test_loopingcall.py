@@ -326,16 +326,43 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
                           loopingcall.BackOffLoopingCall(false).start()
                           .wait)
 
-        expected_times = [mock.call(1.6000000000000001),
-                          mock.call(2.5600000000000005),
-                          mock.call(4.096000000000001),
-                          mock.call(6.5536000000000021),
-                          mock.call(10.485760000000004),
-                          mock.call(16.777216000000006),
-                          mock.call(26.843545600000013),
-                          mock.call(42.949672960000022),
-                          mock.call(68.719476736000033),
-                          mock.call(109.95116277760006)]
+        expected_times = [mock.call(1.6),
+                          mock.call(2.4000000000000004),
+                          mock.call(3.6),
+                          mock.call(5.4),
+                          mock.call(8.1),
+                          mock.call(12.15),
+                          mock.call(18.225),
+                          mock.call(27.337500000000002),
+                          mock.call(41.00625),
+                          mock.call(61.509375000000006),
+                          mock.call(92.26406250000001)]
+        self.assertEqual(expected_times, sleep_mock.call_args_list)
+
+    @mock.patch('random.SystemRandom.gauss')
+    @mock.patch('eventlet.greenthread.sleep')
+    def test_exponential_backoff_negative_value(self, sleep_mock, random_mock):
+        def false():
+            return False
+
+        # random.gauss() can return negative values
+        random_mock.return_value = -.8
+
+        self.assertRaises(loopingcall.LoopingCallTimeOut,
+                          loopingcall.BackOffLoopingCall(false).start()
+                          .wait)
+
+        expected_times = [mock.call(1.6),
+                          mock.call(2.4000000000000004),
+                          mock.call(3.6),
+                          mock.call(5.4),
+                          mock.call(8.1),
+                          mock.call(12.15),
+                          mock.call(18.225),
+                          mock.call(27.337500000000002),
+                          mock.call(41.00625),
+                          mock.call(61.509375000000006),
+                          mock.call(92.26406250000001)]
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
     @mock.patch('random.SystemRandom.gauss')
@@ -379,14 +406,15 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
                               max_interval=60)
                           .wait)
 
-        expected_times = [mock.call(1.6000000000000001),
-                          mock.call(2.5600000000000005),
-                          mock.call(4.096000000000001),
-                          mock.call(6.5536000000000021),
-                          mock.call(10.485760000000004),
-                          mock.call(16.777216000000006),
-                          mock.call(26.843545600000013),
-                          mock.call(42.949672960000022),
+        expected_times = [mock.call(1.6),
+                          mock.call(2.4000000000000004),
+                          mock.call(3.6),
+                          mock.call(5.4),
+                          mock.call(8.1),
+                          mock.call(12.15),
+                          mock.call(18.225),
+                          mock.call(27.337500000000002),
+                          mock.call(41.00625),
                           mock.call(60),
                           mock.call(60),
                           mock.call(60)]

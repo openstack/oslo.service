@@ -290,6 +290,8 @@ class BackOffLoopingCall(LoopingCallBase):
                    random.gauss(jitter, 0.1), with jitter as the mean for the
                    distribution. If set below .5, it can cause the calls to
                    come more rapidly after each failure.
+    :param min_interval: The minimum interval in seconds between calls to
+                         function.
     :raises: LoopingCallTimeout if time spent doing error retries would exceed
              timeout.
     """
@@ -305,7 +307,7 @@ class BackOffLoopingCall(LoopingCallBase):
         self._interval = 1
 
     def start(self, initial_delay=None, starting_interval=1, timeout=300,
-              max_interval=300, jitter=0.75):
+              max_interval=300, jitter=0.75, min_interval=0.001):
         if self._thread is not None:
             raise RuntimeError(self._RUN_ONLY_ONE_MESSAGE)
 
@@ -314,16 +316,20 @@ class BackOffLoopingCall(LoopingCallBase):
         self._interval = starting_interval
 
         def _idle_for(success, _elapsed):
-            random_jitter = self._RNG.gauss(jitter, 0.1)
+            random_jitter = abs(self._RNG.gauss(jitter, 0.1))
             if success:
                 # Reset error state now that it didn't error...
                 self._interval = starting_interval
                 self._error_time = 0
                 return self._interval * random_jitter
             else:
-                # Perform backoff
-                self._interval = idle = min(
-                    self._interval * 2 * random_jitter, max_interval)
+                # Perform backoff, random jitter around the next interval
+                # bounded by min_interval and max_interval.
+                idle = max(self._interval * 2 * random_jitter, min_interval)
+                idle = min(idle, max_interval)
+                # Calculate the next interval based on the mean, so that the
+                # backoff grows at the desired rate.
+                self._interval = max(self._interval * 2 * jitter, min_interval)
                 # Don't go over timeout, end early if necessary. If
                 # timeout is 0, keep going.
                 if timeout > 0 and self._error_time + idle > timeout:
