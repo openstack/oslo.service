@@ -3,7 +3,7 @@
 # process, which may cause wedges in the gate later.
 
 WebOb>=1.7.1 # MIT
-eventlet!=0.18.3,>=0.18.2 # MIT
+eventlet!=0.18.3,<0.21.0,>=0.18.2 # MIT
 greenlet>=0.3.2 # MIT
 monotonic>=0.6 # Apache-2.0
 oslo.utils>=3.20.0 # Apache-2.0
@@ -13,6 +13,5 @@ oslo.log>=3.22.0 # Apache-2.0
 six>=1.9.0 # MIT
 oslo.i18n>=2.1.0 # Apache-2.0
 PasteDeploy>=1.5.0 # MIT
-Routes!=2.0,!=2.1,!=2.3.0,>=1.12.3;python_version=='2.7' # MIT
-Routes!=2.0,!=2.3.0,>=1.12.3;python_version!='2.7' # MIT
+Routes>=2.3.1 # MIT
 Paste # MIT
