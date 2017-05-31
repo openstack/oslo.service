@@ -285,7 +285,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
         else:
             self.num_runs = self.num_runs - 1
 
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_timeout_task_without_return(self, sleep_mock):
         self.num_runs = 1
         timer = loopingcall.DynamicLoopingCall(
@@ -294,7 +294,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
         timer.start(periodic_interval_max=5).wait()
         sleep_mock.assert_has_calls([mock.call(5)])
 
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_interval_adjustment(self, sleep_mock):
         self.num_runs = 2
 
@@ -303,7 +303,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
 
         sleep_mock.assert_has_calls([mock.call(5), mock.call(1)])
 
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_initial_delay(self, sleep_mock):
         self.num_runs = 1
 
@@ -315,7 +315,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
 
 class TestBackOffLoopingCall(test_base.BaseTestCase):
     @mock.patch('random.SystemRandom.gauss')
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_exponential_backoff(self, sleep_mock, random_mock):
         def false():
             return False
@@ -340,7 +340,7 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
     @mock.patch('random.SystemRandom.gauss')
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_exponential_backoff_negative_value(self, sleep_mock, random_mock):
         def false():
             return False
@@ -366,7 +366,7 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
     @mock.patch('random.SystemRandom.gauss')
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_no_backoff(self, sleep_mock, random_mock):
         random_mock.return_value = 1
         func = mock.Mock()
@@ -381,7 +381,7 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         self.assertTrue(retvalue, 'return value')
 
     @mock.patch('random.SystemRandom.gauss')
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_no_sleep(self, sleep_mock, random_mock):
         # Any call that executes properly the first time shouldn't sleep
         random_mock.return_value = 1
@@ -394,7 +394,7 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         self.assertTrue(retvalue, 'return value')
 
     @mock.patch('random.SystemRandom.gauss')
-    @mock.patch('eventlet.greenthread.sleep')
+    @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
     def test_max_interval(self, sleep_mock, random_mock):
         def false():
             return False

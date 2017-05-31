@@ -17,6 +17,7 @@
 
 import random
 import sys
+import threading
 import time
 
 from eventlet import event
@@ -85,19 +86,25 @@ class LoopingCallBase(object):
         self.args = args
         self.kw = kw
         self.f = f
-        self._running = False
         self._thread = None
         self.done = None
+        self.abort = threading.Event()
+
+    @property
+    def _running(self):
+        return not self.abort.is_set()
 
     def stop(self):
-        self._running = False
+        self.abort.set()
 
     def wait(self):
         return self.done.wait()
 
     def _on_done(self, gt, *args, **kwargs):
         self._thread = None
-        self._running = False
+
+    def _sleep(self, timeout):
+        return self.abort.wait(timeout)
 
     def _start(self, idle_for, initial_delay=None, stop_on_exception=True):
         """Start the looping
@@ -114,8 +121,8 @@ class LoopingCallBase(object):
         """
         if self._thread is not None:
             raise RuntimeError(self._RUN_ONLY_ONE_MESSAGE)
-        self._running = True
         self.done = event.Event()
+        self.abort.clear()
         self._thread = greenthread.spawn(
             self._run_loop, idle_for,
             initial_delay=initial_delay, stop_on_exception=stop_on_exception)
@@ -129,7 +136,7 @@ class LoopingCallBase(object):
         func = self.f if stop_on_exception else _safe_wrapper(self.f, kind,
                                                               func_name)
         if initial_delay:
-            greenthread.sleep(initial_delay)
+            self._sleep(initial_delay)
         try:
             watch = timeutils.StopWatch()
             while self._running:
@@ -143,7 +150,7 @@ class LoopingCallBase(object):
                           'for %(idle).02f seconds',
                           {'func_name': func_name, 'idle': idle,
                            'kind': kind})
-                greenthread.sleep(idle)
+                self._sleep(idle)
         except LoopingCallDone as e:
             self.done.send(e.retvalue)
         except Exception:
