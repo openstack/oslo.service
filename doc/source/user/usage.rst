@@ -1,6 +1,6 @@
-=======
- Usage
-=======
+=====
+Usage
+=====
 
 To use oslo.service in a project::
 
@@ -23,7 +23,7 @@ configuration object:
 * :func:`~oslo_service.sslutils.wrap`
 
 When using service from oslo-incubator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
@@ -32,7 +32,7 @@ When using service from oslo-incubator
     launcher = service.launch(service, workers=2)
 
 When using oslo.service
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
@@ -43,7 +43,7 @@ When using oslo.service
     launcher = service.launch(CONF, service, workers=2)
 
 Using oslo.service with oslo-config-generator
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``oslo.service`` provides several entry points to generate a configuration
 files.
@@ -87,15 +87,15 @@ Launchers
 
 oslo_service.service module provides two launchers for running services:
 
-    * :py:class:`oslo_service.service.ServiceLauncher` - used for
-      running one or more service in a parent process.
-    * :py:class:`oslo_service.service.ProcessLauncher` - forks a given
-      number of workers in which service(s) are then started.
+* :py:class:`oslo_service.service.ServiceLauncher` - used for
+  running one or more service in a parent process.
+* :py:class:`oslo_service.service.ProcessLauncher` - forks a given
+  number of workers in which service(s) are then started.
 
 It is possible to initialize whatever launcher is needed and then
 launch a service using it.
 
-::
+.. code-block:: python
 
     from oslo_config import cfg
     from oslo_service import service
@@ -114,7 +114,7 @@ automatically pick an appropriate launcher based on a number of workers that
 are passed to it (ServiceLauncher in case workers=1 or None and
 ProcessLauncher in other case).
 
-::
+.. code-block:: python
 
     from oslo_config import cfg
     from oslo_service import service
@@ -154,7 +154,7 @@ spawned. Thus, SIGHUP can be used for changing config options on the go.
 Below is the example of a service with a reset method that allows reloading
 logging options by sending a SIGHUP.
 
-::
+.. code-block:: python
 
     from oslo_config import cfg
     from oslo_log import log as logging

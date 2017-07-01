@@ -1,6 +1,6 @@
-========================================================
- oslo.service -- Library for running OpenStack services
-========================================================
+======================================================
+oslo.service -- Library for running OpenStack services
+======================================================
 
 oslo.service provides a framework for defining new long-running
 services using the patterns established by other OpenStack
@@ -11,38 +11,14 @@ operations, interacting with systemd, etc.
 .. toctree::
    :maxdepth: 2
 
-   installation
-   usage
-   opts
-   contributing
+   install/index
+   user/index
+   configuration/index
+   reference/index
+   contributor/index
 
-API Documentation
-=================
-
-.. toctree::
-   :maxdepth: 2
-
-   api/eventlet_backdoor
-   api/loopingcall
-   api/periodic_task
-   api/service
-   api/sslutils
-   api/systemd
-   api/threadgroup
-
-Release Notes
-=============
-
-.. toctree::
-   :maxdepth: 1
-
-   history
-
-Indices and tables
-==================
+.. rubric:: Indices and tables
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-.. _oslo: https://wiki.openstack.org/wiki/Oslo
