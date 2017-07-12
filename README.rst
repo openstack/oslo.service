@@ -26,6 +26,6 @@ might need for working with SSL or WSGI, performing periodic
 operations, interacting with systemd, etc.
 
 * Free software: Apache license
-* Documentation: http://docs.openstack.org/developer/oslo.service
-* Source: http://git.openstack.org/cgit/openstack/oslo.service
-* Bugs: http://bugs.launchpad.net/oslo.service
+* Documentation: https://docs.openstack.org/oslo.service/latest/
+* Source: https://git.openstack.org/cgit/openstack/oslo.service
+* Bugs: https://bugs.launchpad.net/oslo.service
