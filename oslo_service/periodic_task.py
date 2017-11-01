@@ -167,7 +167,7 @@ def _nearest_boundary(last_run, spacing):
     delta = current_time - last_run
     offset = delta % spacing
     # Add up to 5% jitter
-    jitter = int(spacing * (random.random() / 20))
+    jitter = int(spacing * (random.random() / 20))  # nosec
     return current_time - offset + jitter
 
 
