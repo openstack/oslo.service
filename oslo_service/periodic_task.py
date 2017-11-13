@@ -218,7 +218,7 @@ class PeriodicTasks(object):
 
             try:
                 task(self, context)
-            except Exception:
+            except BaseException:
                 if raise_on_error:
                     raise
                 LOG.exception("Error during %(full_task_name)s",
