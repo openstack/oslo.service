@@ -21,6 +21,7 @@ import abc
 import collections
 import copy
 import errno
+import gc
 import io
 import logging
 import os
@@ -527,6 +528,13 @@ class ProcessLauncher(object):
         """
         _check_service_base(service)
         wrap = ServiceWrapper(service, workers)
+
+        # Hide existing objects from the garbage collector, so that most
+        # existing pages will remain in shared memory rather than being
+        # duplicated between subprocesses in the GC mark-and-sweep. (Requires
+        # Python 3.7 or later.)
+        if hasattr(gc, 'freeze'):
+            gc.freeze()
 
         LOG.info('Starting %d workers', wrap.workers)
         while self.running and len(wrap.children) < wrap.workers:
