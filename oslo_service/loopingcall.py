@@ -17,11 +17,13 @@
 
 import random
 import sys
+import threading
 import time
 
 from eventlet import event
 from eventlet import greenthread
 from oslo_log import log as logging
+from oslo_utils import eventletutils
 from oslo_utils import excutils
 from oslo_utils import reflection
 from oslo_utils import timeutils
@@ -75,6 +77,53 @@ def _safe_wrapper(f, kind, func_name):
     return func
 
 
+def _Event():
+    if eventletutils.is_monkey_patched('thread'):
+        return _ThreadingEvent()
+    else:
+        return _GreenEvent()
+
+
+class _ThreadingEvent(object):
+    def __init__(self):
+        self._abort = threading.Event()
+
+    def is_running(self):
+        return not self._abort.is_set()
+
+    def clear(self):
+        self._abort.clear()
+
+    def wait(self, timeout):
+        self._abort.wait(timeout)
+
+    def stop(self):
+        self._abort.set()
+
+    def done(self):
+        pass
+
+
+class _GreenEvent(object):
+    def __init__(self):
+        self._running = False
+
+    def is_running(self):
+        return self._running
+
+    def clear(self):
+        self._running = True
+
+    def wait(self, timeout):
+        greenthread.sleep(timeout)
+
+    def stop(self):
+        self._running = False
+
+    def done(self):
+        self._running = False
+
+
 class LoopingCallBase(object):
     _KIND = _("Unknown looping call")
 
@@ -85,19 +134,26 @@ class LoopingCallBase(object):
         self.args = args
         self.kw = kw
         self.f = f
-        self._running = False
         self._thread = None
         self.done = None
+        self._event = _Event()
+
+    @property
+    def _running(self):
+        return self._event.is_running()
 
     def stop(self):
-        self._running = False
+        self._event.stop()
 
     def wait(self):
         return self.done.wait()
 
     def _on_done(self, gt, *args, **kwargs):
         self._thread = None
-        self._running = False
+        self._event.done()
+
+    def _sleep(self, timeout):
+        self._event.wait(timeout)
 
     def _start(self, idle_for, initial_delay=None, stop_on_exception=True):
         """Start the looping
@@ -114,8 +170,8 @@ class LoopingCallBase(object):
         """
         if self._thread is not None:
             raise RuntimeError(self._RUN_ONLY_ONE_MESSAGE)
-        self._running = True
         self.done = event.Event()
+        self._event.clear()
         self._thread = greenthread.spawn(
             self._run_loop, idle_for,
             initial_delay=initial_delay, stop_on_exception=stop_on_exception)
@@ -129,7 +185,7 @@ class LoopingCallBase(object):
         func = self.f if stop_on_exception else _safe_wrapper(self.f, kind,
                                                               func_name)
         if initial_delay:
-            greenthread.sleep(initial_delay)
+            self._sleep(initial_delay)
         try:
             watch = timeutils.StopWatch()
             while self._running:
@@ -143,7 +199,7 @@ class LoopingCallBase(object):
                           'for %(idle).02f seconds',
                           {'func_name': func_name, 'idle': idle,
                            'kind': kind})
-                greenthread.sleep(idle)
+                self._sleep(idle)
         except LoopingCallDone as e:
             self.done.send(e.retvalue)
         except Exception:
