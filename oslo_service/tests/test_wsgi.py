@@ -353,6 +353,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
 
     @testtools.skipIf(not netutils.is_ipv6_enabled(), "no ipv6 support")
     @testtools.skipIf(six.PY3, "bug/1482633: test hangs on Python 3")
+    @testtools.skip("using raw IPv6 addresses with SSL certs is broken")
     def test_app_using_ipv6_and_ssl(self):
         greetings = 'Hello, World!!!'
 
