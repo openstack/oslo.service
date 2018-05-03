@@ -454,9 +454,10 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
 
         self.assertFalse(launcher.running)
         self.assertFalse(launcher.children)
-        self.assertEqual([mock.call(222, signal_mock.SIGTERM),
-                          mock.call(22, signal_mock.SIGTERM)],
-                         mock_kill.mock_calls)
+        mock_kill.assert_has_calls([mock.call(222, signal_mock.SIGTERM),
+                                    mock.call(22, signal_mock.SIGTERM)],
+                                   any_order=True)
+        self.assertEqual(2, mock_kill.call_count)
         mock_service_stop.assert_called_once_with()
 
     def test__handle_signal(self):
