@@ -21,7 +21,9 @@ import abc
 import collections
 import copy
 import errno
+import functools
 import gc
+import inspect
 import io
 import logging
 import os
@@ -129,6 +131,9 @@ class SignalHandler(object):
 
     def __init__(self, *args, **kwargs):
         super(SignalHandler, self).__init__(*args, **kwargs)
+
+        self.__setup_signal_interruption()
+
         # Map all signal names to signal integer values and create a
         # reverse mapping (for easier + quick lookup).
         self._ignore_signals = ('SIG_DFL', 'SIG_IGN')
@@ -173,6 +178,64 @@ class SignalHandler(object):
         # _handle_signal_cb(). It avoids race conditions like reentrant call to
         # clear(): clear() is not reentrant (bug #1538204).
         eventlet.spawn(self._handle_signal_cb, signo, frame)
+
+        # On Python >= 3.5, ensure that eventlet's poll() or sleep() call is
+        # interrupted by raising an exception. If the signal handler does not
+        # raise an exception then due to PEP 475 the call will not return until
+        # an event is detected on a file descriptor or the timeout is reached,
+        # and thus eventlet will not wake up and notice that there has been a
+        # new thread spawned.
+        if self.__force_interrupt_on_signal:
+            try:
+                interrupted_frame = inspect.stack(context=0)[1]
+            except IndexError:
+                pass
+            else:
+                if ((interrupted_frame.function == 'do_poll' and
+                     interrupted_frame.filename == self.__hub_module_file) or
+                    (interrupted_frame.function == 'do_sleep' and
+                     interrupted_frame.filename == __file__)):
+                    raise IOError(errno.EINTR, 'Interrupted')
+
+    def __setup_signal_interruption(self):
+        """Set up to do the Right Thing with signals during poll() and sleep().
+
+        For Python 3.5 and later, deal with the changes in PEP 475 that prevent
+        a signal from interrupting eventlet's call to poll() or sleep().
+        """
+        self.__force_interrupt_on_signal = sys.version_info >= (3, 5)
+
+        if self.__force_interrupt_on_signal:
+            try:
+                from eventlet.hubs import poll as poll_hub
+            except ImportError:
+                pass
+            else:
+                # This is a function we can test for in the stack when handling
+                # a signal - it's safe to raise an IOError with EINTR anywhere
+                # in this function.
+                def do_sleep(time_sleep_func, seconds):
+                    return time_sleep_func(seconds)
+
+                time_sleep = eventlet.patcher.original('time').sleep
+
+                # Wrap time.sleep to ignore the interruption error we're
+                # injecting from the signal handler. This makes the behaviour
+                # the same as sleep() in Python 2, where EINTR causes the
+                # sleep to be interrupted (and not resumed), but no exception
+                # is raised.
+                @functools.wraps(time_sleep)
+                def sleep_wrapper(seconds):
+                    try:
+                        return do_sleep(time_sleep, seconds)
+                    except (IOError, InterruptedError) as err:
+                        if err.errno != errno.EINTR:
+                            raise
+
+                poll_hub.sleep = sleep_wrapper
+
+            hub = eventlet.hubs.get_hub()
+            self.__hub_module_file = sys.modules[hub.__module__].__file__
 
     def _handle_signal_cb(self, signo, frame):
         for handler in self._signal_handlers[signo]:
