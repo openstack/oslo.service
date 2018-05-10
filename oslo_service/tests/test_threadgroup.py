@@ -80,6 +80,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         self.assertEqual(0, len(self.tg.threads))
         self.assertTrue(end_time - start_time < 1)
+        self.assertEqual(0, len(self.tg.timers))
 
     def test_stop_gracefully(self):
 
@@ -92,6 +93,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         self.assertEqual(0, len(self.tg.threads))
         self.assertTrue(end_time - start_time >= 1)
+        self.assertEqual(0, len(self.tg.timers))
 
     def test_cancel_early(self):
 

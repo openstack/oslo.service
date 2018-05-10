@@ -125,9 +125,11 @@ class ThreadGroup(object):
             lambda x: x.stop(),
             lambda x: LOG.exception('Error stopping thread.'))
 
-    def stop_timers(self):
+    def stop_timers(self, wait=False):
         for timer in self.timers:
             timer.stop()
+        if wait:
+            self._wait_timers()
         self.timers = []
 
     def stop(self, graceful=False):
@@ -137,17 +139,17 @@ class ThreadGroup(object):
           Never kill threads.
         * In case of graceful=False, kill threads immediately.
         """
-        self.stop_timers()
+        self.stop_timers(wait=graceful)
         if graceful:
             # In case of graceful=True, wait for all threads to be
             # finished, never kill threads
-            self.wait()
+            self._wait_threads()
         else:
             # In case of graceful=False(Default), kill threads
             # immediately
             self._stop_threads()
 
-    def wait(self):
+    def _wait_timers(self):
         for x in self.timers:
             try:
                 x.wait()
@@ -156,9 +158,15 @@ class ThreadGroup(object):
                 pass
             except Exception:
                 LOG.exception('Error waiting on timer.')
+
+    def _wait_threads(self):
         self._perform_action_on_threads(
             lambda x: x.wait(),
             lambda x: LOG.exception('Error waiting on thread.'))
+
+    def wait(self):
+        self._wait_timers()
+        self._wait_threads()
 
     def _any_threads_alive(self):
         current = threading.current_thread()
