@@ -34,7 +34,6 @@ from oslo_service import sslutils
 from oslo_service.tests import base
 from oslo_service import wsgi
 from oslo_utils import netutils
-from oslotest import moxstubout
 
 
 SSL_CERT_DIR = os.path.normpath(os.path.join(
@@ -56,9 +55,10 @@ class TestLoaderNothingExists(WsgiTestCase):
 
     def setUp(self):
         super(TestLoaderNothingExists, self).setUp()
-        mox_fixture = self.useFixture(moxstubout.MoxStubout())
-        self.stubs = mox_fixture.stubs
-        self.stubs.Set(os.path, 'exists', lambda _: False)
+        mock_patcher = mock.patch.object(os.path, 'exists',
+                                         lambda _: False)
+        mock_patcher.start()
+        self.addCleanup(mock_patcher.stop)
 
     def test_relpath_config_not_found(self):
         self.config(api_paste_config='api-paste.ini')
