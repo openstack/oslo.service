@@ -29,3 +29,4 @@ operations, interacting with systemd, etc.
 * Documentation: https://docs.openstack.org/oslo.service/latest/
 * Source: https://git.openstack.org/cgit/openstack/oslo.service
 * Bugs: https://bugs.launchpad.net/oslo.service
+* Release notes: https://docs.openstack.org/releasenotes/oslo.service/
