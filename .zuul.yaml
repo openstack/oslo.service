@@ -1,4 +1,11 @@
 - project:
+    templates:
+      - openstack-python-jobs
+      - publish-openstack-docs-pti
+      - check-requirements
+      - lib-forward-testing
+      - release-notes-jobs-python3
+      - periodic-stable-jobs
     check:
       jobs:
         - openstack-tox-lower-constraints
