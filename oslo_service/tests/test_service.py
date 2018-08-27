@@ -477,6 +477,18 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
             m.assert_called_once_with(signal.SIGTERM, 'test')
         signal_handler.clear()
 
+    @mock.patch('sys.version_info', (3, 5))
+    @mock.patch.object(service, 'select', spec=[])
+    def test_setup_signal_interruption_no_select_poll(self, mock_select):
+        # NOTE(claudiub): SignalHandler is a singleton, which means that it
+        # might already be initialized. We need to clear to clear the cache
+        # in order to prevent race conditions between tests.
+        service.SignalHandler.__class__._instances.clear()
+        signal_handler = service.SignalHandler()
+        self.addCleanup(service.SignalHandler.__class__._instances.clear)
+        self.assertFalse(
+            signal_handler._SignalHandler__force_interrupt_on_signal)
+
     @mock.patch('signal.alarm')
     @mock.patch("os.kill")
     @mock.patch("oslo_service.service.ProcessLauncher.stop")

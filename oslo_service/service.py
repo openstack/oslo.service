@@ -28,6 +28,7 @@ import io
 import logging
 import os
 import random
+import select
 import signal
 import six
 import sys
@@ -203,7 +204,8 @@ class SignalHandler(object):
         For Python 3.5 and later, deal with the changes in PEP 475 that prevent
         a signal from interrupting eventlet's call to poll() or sleep().
         """
-        self.__force_interrupt_on_signal = sys.version_info >= (3, 5)
+        self.__force_interrupt_on_signal = (sys.version_info >= (3, 5) and
+                                            hasattr(select, 'poll'))
 
         if self.__force_interrupt_on_signal:
             try:
