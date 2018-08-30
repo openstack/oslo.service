@@ -53,45 +53,6 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         self.assertEqual(oslo_service._monotonic,
                          hub.clock)
 
-    def test_eventlet_use_hub_override(self):
-        ns = {}
-
-        def task():
-            try:
-                self._test_eventlet_use_hub_override()
-            except Exception as exc:
-                ns['result'] = exc
-            else:
-                ns['result'] = 'ok'
-
-        # test overriding the hub of in a new thread to not modify the hub
-        # of the main thread
-        thread = threading.Thread(target=task)
-        thread.start()
-        thread.join()
-        self.assertEqual('ok', ns['result'])
-
-    def _test_eventlet_use_hub_override(self):
-        # Make sure that by default the
-        # oslo_service.service_hub() kicks in
-        old_clock = eventlet.hubs.get_hub().clock
-        self.assertEqual(oslo_service._monotonic,
-                         old_clock)
-
-        # eventlet will use time.monotonic() by default, same clock than
-        # oslo.service_hub():
-        # https://github.com/eventlet/eventlet/pull/303
-        if not hasattr(time, 'monotonic'):
-            # If anyone wants to override it
-            try:
-                eventlet.hubs.use_hub('poll')
-            except Exception:
-                eventlet.hubs.use_hub('selects')
-
-            # then we get a new clock and the override works fine too!
-            clock = eventlet.hubs.get_hub().clock
-            self.assertNotEqual(old_clock, clock)
-
     def test_return_false(self):
         def _raise_it():
             raise loopingcall.LoopingCallDone(False)
