@@ -21,6 +21,8 @@ time = eventlet.patcher.original('time')
 
 LOG = logging.getLogger(__name__)
 
+# TODO(bnemec): When we have a minimum dependency on a version of eventlet
+# that uses monotonic by default, remove this monkey patching.
 if hasattr(time, 'monotonic'):
     # Use builtin monotonic clock, Python 3.3+
     _monotonic = time.monotonic
