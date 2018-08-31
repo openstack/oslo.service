@@ -638,13 +638,19 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
 
     def run_server(self):
         queue = multiprocessing.Queue()
+        # NOTE(bnemec): process_time of 5 needs to be longer than the graceful
+        # shutdown timeout in the "exceeded" test below, but also needs to be
+        # shorter than the timeout in the regular graceful shutdown test.
         proc = multiprocessing.Process(target=eventlet_service.run,
                                        args=(queue,),
-                                       kwargs={'workers': self.workers})
+                                       kwargs={'workers': self.workers,
+                                               'process_time': 5})
         proc.start()
 
         port = queue.get()
         conn = socket.create_connection(('127.0.0.1', port))
+        # Send request to make the connection active.
+        conn.sendall(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
 
         # NOTE(blk-u): The sleep shouldn't be necessary. There must be a bug in
         # the server implementation where it takes some time to set up the
@@ -673,10 +679,14 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
         # connected.
         os.kill(proc.pid, signal.SIGTERM)
 
-        # server with graceful shutdown must wait forewer if
+        # server with graceful shutdown must wait forever if
         # option graceful_shutdown_timeout is not specified.
-        # we can not wait forever ... so 3 seconds are enough
-        time.sleep(3)
+        # we can not wait forever ... so 1 second is enough.
+        # NOTE(bnemec): In newer versions of eventlet that drop idle
+        # connections, this needs to be long enough to allow the signal
+        # handler to fire but short enough that our request doesn't complete
+        # or the connection will be closed and the server will stop.
+        time.sleep(1)
 
         self.assertTrue(proc.is_alive())
 

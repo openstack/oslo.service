@@ -17,6 +17,7 @@
 
 import socket
 import sys
+import time
 
 import eventlet.wsgi
 import greenlet
@@ -122,10 +123,13 @@ class Server(service.ServiceBase):
             pass
 
 
-def run(port_queue, workers=3):
+def run(port_queue, workers=3, process_time=0):
     eventlet.patcher.monkey_patch()
 
     def hi_app(environ, start_response):
+        # Some requests need to take time to process so the connection
+        # remains active.
+        time.sleep(process_time)
         start_response('200 OK', [('Content-Type', 'application/json')])
         yield 'hi'
 
