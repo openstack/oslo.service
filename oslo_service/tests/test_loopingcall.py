@@ -20,9 +20,6 @@ from oslotest import base as test_base
 import oslo_service
 from oslo_service import loopingcall
 
-threading = eventlet.patcher.original('threading')
-time = eventlet.patcher.original('time')
-
 
 class LoopingCallTestCase(test_base.BaseTestCase):
 
