@@ -121,7 +121,8 @@ class LoopingCallBase(object):
         return not self._abort.is_set()
 
     def stop(self):
-        self._abort.set()
+        if self._running:
+            self._abort.set()
 
     def wait(self):
         return self.done.wait()
