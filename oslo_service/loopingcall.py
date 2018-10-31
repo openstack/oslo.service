@@ -143,7 +143,8 @@ class LoopingCallBase(object):
         return self._event.is_running()
 
     def stop(self):
-        self._event.stop()
+        if self._running:
+            self._event.stop()
 
     def wait(self):
         return self.done.wait()

@@ -103,6 +103,16 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         wait_ev.set()
         timer.wait()
 
+    def test_no_double_stop(self):
+        def _raise_it():
+            raise loopingcall.LoopingCallDone(False)
+
+        timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
+        timer.start(interval=0.5)
+
+        timer.stop()
+        timer.stop()
+
     def test_repeat(self):
         self.num_runs = 2
 
