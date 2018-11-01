@@ -49,4 +49,4 @@ class SleepFixture(fixtures.Fixture):
     def _setUp(self):
         # Provide access to the mock so that calls to it can be asserted
         self.mock_wait = self.useFixture(fixtures.MockPatch(
-            'oslo_service.loopingcall._Event.wait')).mock
+            'oslo_utils.eventletutils.EventletEvent.wait')).mock

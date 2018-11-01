@@ -21,8 +21,8 @@ import time
 
 from eventlet import event
 from eventlet import greenthread
-from eventlet import timeout as eventlettimeout
 from oslo_log import log as logging
+from oslo_utils import eventletutils
 from oslo_utils import excutils
 from oslo_utils import reflection
 from oslo_utils import timeutils
@@ -76,32 +76,6 @@ def _safe_wrapper(f, kind, func_name):
     return func
 
 
-class _Event(object):
-    """A class that provides consistent eventlet/threading Event API.
-
-    It's a copy from the oslo_utils repository, as we need the private version
-    because we don't want to use the threading.Event version.
-    """
-    def __init__(self, *args, **kwargs):
-        self.clear()
-
-    def clear(self):
-        self._set = False
-        self._event = event.Event()
-
-    def is_set(self):
-        return self._set
-
-    def set(self):
-        self._set = True
-        self._event.send(True)
-
-    def wait(self, timeout=None):
-        with eventlettimeout.Timeout(timeout, False):
-            self._event.wait()
-        return self.is_set()
-
-
 class LoopingCallBase(object):
     _KIND = _("Unknown looping call")
 
@@ -114,7 +88,7 @@ class LoopingCallBase(object):
         self.f = f
         self._thread = None
         self.done = None
-        self._abort = _Event()
+        self._abort = eventletutils.EventletEvent()
 
     @property
     def _running(self):
@@ -156,6 +130,11 @@ class LoopingCallBase(object):
         self._thread.link(self._on_done)
         return self.done
 
+    # NOTE(bnemec): This is just a wrapper function we can mock so we aren't
+    # affected by other users of the StopWatch class.
+    def _elapsed(self, watch):
+        return watch.elapsed()
+
     def _run_loop(self, idle_for_func,
                   initial_delay=None, stop_on_exception=True):
         kind = self._KIND
@@ -172,7 +151,7 @@ class LoopingCallBase(object):
                 watch.stop()
                 if not self._running:
                     break
-                idle = idle_for_func(result, watch.elapsed())
+                idle = idle_for_func(result, self._elapsed(watch))
                 LOG.trace('%(kind)s %(func_name)r sleeping '
                           'for %(idle).02f seconds',
                           {'func_name': func_name, 'idle': idle,
