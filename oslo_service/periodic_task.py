@@ -16,7 +16,11 @@ import logging
 import random
 import time
 
-from monotonic import monotonic as now  # noqa
+if hasattr(time, 'monotonic'):
+    now = time.monotonic
+else:
+    from monotonic import monotonic as now  # noqa
+
 from oslo_utils import reflection
 import six
 

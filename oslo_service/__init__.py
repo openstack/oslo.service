@@ -13,7 +13,6 @@
 import os
 
 import eventlet.patcher
-import monotonic
 from oslo_log import log as logging
 
 time = eventlet.patcher.original('time')
@@ -27,6 +26,7 @@ if hasattr(time, 'monotonic'):
     # Use builtin monotonic clock, Python 3.3+
     _monotonic = time.monotonic
 else:
+    import monotonic
     _monotonic = monotonic.monotonic
 
 
