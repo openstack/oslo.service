@@ -18,6 +18,7 @@ import mock
 from oslotest import base as test_base
 
 import oslo_service
+from oslo_service import fixture
 from oslo_service import loopingcall
 
 
@@ -72,6 +73,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
             raise RuntimeError()
 
     def test_do_not_stop_on_exception(self):
+        self.useFixture(fixture.SleepFixture())
         self.num_runs = 2
 
         timer = loopingcall.FixedIntervalLoopingCall(self._raise_and_then_done)
@@ -111,6 +113,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         timer.stop()
 
     def test_repeat(self):
+        self.useFixture(fixture.SleepFixture())
         self.num_runs = 2
 
         timer = loopingcall.FixedIntervalLoopingCall(self._wait_for_zero)
@@ -218,6 +221,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
             raise RuntimeError()
 
     def test_do_not_stop_on_exception(self):
+        self.useFixture(fixture.SleepFixture())
         self.num_runs = 2
 
         timer = loopingcall.DynamicLoopingCall(self._raise_and_then_done)
@@ -233,6 +237,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
             return sleep_for
 
     def test_repeat(self):
+        self.useFixture(fixture.SleepFixture())
         self.num_runs = 2
 
         timer = loopingcall.DynamicLoopingCall(self._wait_for_zero)
