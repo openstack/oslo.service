@@ -18,6 +18,7 @@
 import random
 import sys
 import time
+import warnings
 
 from eventlet import event
 from eventlet import greenthread
@@ -100,6 +101,21 @@ class _Event(object):
         with eventlettimeout.Timeout(timeout, False):
             self._event.wait()
         return self.is_set()
+
+    def is_running(self):
+        warnings.warn("This private API is removed in the next minor release.",
+                      DeprecationWarning)
+        return not self.is_set()
+
+    def done(self):
+        warnings.warn("This private API is removed in the next minor release.",
+                      DeprecationWarning)
+        return self.set()
+
+
+# For backwards compatibility with tests in consumers that were relying on the
+# private interface.
+_ThreadingEvent = _Event
 
 
 class LoopingCallBase(object):
