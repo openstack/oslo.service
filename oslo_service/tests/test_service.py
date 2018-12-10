@@ -227,7 +227,7 @@ class ServiceLauncherTest(ServiceTestBase):
 
         os.kill(start_workers[0], signal.SIGHUP)
         # Wait at most 5 seconds to respawn a worker
-        cond = lambda: start_workers == self._get_workers()
+        cond = lambda: start_workers != self._get_workers()
         timeout = 5
         self._wait(cond, timeout)
 
