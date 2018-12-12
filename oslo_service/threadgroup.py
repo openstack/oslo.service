@@ -16,6 +16,7 @@ import logging
 import threading
 import warnings
 
+from debtcollector import removals
 import eventlet
 from eventlet import greenpool
 
@@ -374,8 +375,13 @@ class ThreadGroup(object):
                 return True
         return False
 
+    @removals.remove(removal_version='?')
     def cancel(self, *throw_args, **kwargs):
         """Cancel unstarted threads in the group, and optionally stop the rest.
+
+        .. warning::
+            This method is deprecated and should not be used. It will be
+            removed in a future release.
 
         If called without the ``timeout`` argument, this does **not** stop any
         running threads, but prevents any threads in the group that have not
