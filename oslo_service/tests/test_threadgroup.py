@@ -55,7 +55,8 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         self.tg.add_dynamic_timer_args(foo, ['arg'], {'kwarg': 'kwarg'},
                                        initial_delay=1,
-                                       periodic_interval_max=2)
+                                       periodic_interval_max=2,
+                                       stop_on_exception=False)
 
         self.assertEqual(1, len(self.tg.timers))
 
@@ -83,7 +84,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
             pass
 
         self.tg.add_timer_args(1, foo, ['arg'], {'kwarg': 'kwarg'},
-                               initial_delay=1)
+                               initial_delay=1, stop_on_exception=False)
 
         self.assertEqual(1, len(self.tg.timers))
 

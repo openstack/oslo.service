@@ -89,12 +89,14 @@ class ThreadGroup(object):
             periodic_interval_max=periodic_interval_max)
 
     def add_dynamic_timer_args(self, callback, args=None, kwargs=None,
-                               initial_delay=None, periodic_interval_max=None):
+                               initial_delay=None, periodic_interval_max=None,
+                               stop_on_exception=True):
         args = args or []
         kwargs = kwargs or {}
         timer = loopingcall.DynamicLoopingCall(callback, *args, **kwargs)
         timer.start(initial_delay=initial_delay,
-                    periodic_interval_max=periodic_interval_max)
+                    periodic_interval_max=periodic_interval_max,
+                    stop_on_exception=stop_on_exception)
         self.timers.append(timer)
         return timer
 
@@ -109,12 +111,13 @@ class ThreadGroup(object):
                                    initial_delay=initial_delay)
 
     def add_timer_args(self, interval, callback, args=None, kwargs=None,
-                       initial_delay=None):
+                       initial_delay=None, stop_on_exception=True):
         args = args or []
         kwargs = kwargs or {}
         pulse = loopingcall.FixedIntervalLoopingCall(callback, *args, **kwargs)
         pulse.start(interval=interval,
-                    initial_delay=initial_delay)
+                    initial_delay=initial_delay,
+                    stop_on_exception=stop_on_exception)
         self.timers.append(pulse)
         return pulse
 
