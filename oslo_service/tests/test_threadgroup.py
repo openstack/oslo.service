@@ -49,6 +49,49 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         self.assertEqual(('arg',), timer.args)
         self.assertEqual({'kwarg': 'kwarg'}, timer.kw)
 
+    def test_add_dynamic_timer_args(self):
+        def foo(*args, **kwargs):
+            pass
+
+        self.tg.add_dynamic_timer_args(foo, ['arg'], {'kwarg': 'kwarg'},
+                                       initial_delay=1,
+                                       periodic_interval_max=2)
+
+        self.assertEqual(1, len(self.tg.timers))
+
+        timer = self.tg.timers[0]
+        self.assertTrue(timer._running)
+        self.assertEqual(('arg',), timer.args)
+        self.assertEqual({'kwarg': 'kwarg'}, timer.kw)
+
+    def test_add_timer(self):
+        def foo(*args, **kwargs):
+            pass
+
+        self.tg.add_timer(1, foo, 1,
+                          'arg', kwarg='kwarg')
+
+        self.assertEqual(1, len(self.tg.timers))
+
+        timer = self.tg.timers[0]
+        self.assertTrue(timer._running)
+        self.assertEqual(('arg',), timer.args)
+        self.assertEqual({'kwarg': 'kwarg'}, timer.kw)
+
+    def test_add_timer_args(self):
+        def foo(*args, **kwargs):
+            pass
+
+        self.tg.add_timer_args(1, foo, ['arg'], {'kwarg': 'kwarg'},
+                               initial_delay=1)
+
+        self.assertEqual(1, len(self.tg.timers))
+
+        timer = self.tg.timers[0]
+        self.assertTrue(timer._running)
+        self.assertEqual(('arg',), timer.args)
+        self.assertEqual({'kwarg': 'kwarg'}, timer.kw)
+
     def test_stop_current_thread(self):
 
         stop_event = event.Event()

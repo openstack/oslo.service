@@ -14,6 +14,7 @@
 
 import logging
 import threading
+import warnings
 
 import eventlet
 from eventlet import greenpool
@@ -77,6 +78,20 @@ class ThreadGroup(object):
 
     def add_dynamic_timer(self, callback, initial_delay=None,
                           periodic_interval_max=None, *args, **kwargs):
+        if args or kwargs:
+            warnings.warn("Calling add_dynamic_timer() with arguments to the "
+                          "callback function is deprecated. Use "
+                          "add_dynamic_timer_args() instead.",
+                          DeprecationWarning)
+        return self.add_dynamic_timer_args(
+            callback, args, kwargs,
+            initial_delay=initial_delay,
+            periodic_interval_max=periodic_interval_max)
+
+    def add_dynamic_timer_args(self, callback, args=None, kwargs=None,
+                               initial_delay=None, periodic_interval_max=None):
+        args = args or []
+        kwargs = kwargs or {}
         timer = loopingcall.DynamicLoopingCall(callback, *args, **kwargs)
         timer.start(initial_delay=initial_delay,
                     periodic_interval_max=periodic_interval_max)
@@ -85,6 +100,18 @@ class ThreadGroup(object):
 
     def add_timer(self, interval, callback, initial_delay=None,
                   *args, **kwargs):
+        if args or kwargs:
+            warnings.warn("Calling add_timer() with arguments to the callback "
+                          "function is deprecated. Use add_timer_args() "
+                          "instead.",
+                          DeprecationWarning)
+        return self.add_timer_args(interval, callback, args, kwargs,
+                                   initial_delay=initial_delay)
+
+    def add_timer_args(self, interval, callback, args=None, kwargs=None,
+                       initial_delay=None):
+        args = args or []
+        kwargs = kwargs or {}
         pulse = loopingcall.FixedIntervalLoopingCall(callback, *args, **kwargs)
         pulse.start(interval=interval,
                     initial_delay=initial_delay)
