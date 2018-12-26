@@ -23,10 +23,12 @@ import os
 import pprint
 import socket
 import sys
+import tempfile
 import traceback
 
 import eventlet.backdoor
 import greenlet
+import yappi
 
 from oslo_service._i18n import _
 from oslo_service import _options
@@ -87,6 +89,30 @@ def _detailed_dump_frames(f, thread_index):
 
 def _find_objects(t):
     return [o for o in gc.get_objects() if isinstance(o, t)]
+
+
+def _capture_profile(fname=''):
+    if not fname:
+        yappi.set_clock_type('cpu')
+        # We need to set context to greenlet to profile greenlets
+        # https://bitbucket.org/sumerc/yappi/pull-requests/3
+        yappi.set_context_id_callback(
+            lambda: id(greenlet.getcurrent()))
+        yappi.set_context_name_callback(
+            lambda: greenlet.getcurrent().__class__.__name__)
+        yappi.start()
+    else:
+        yappi.stop()
+        stats = yappi.get_func_stats()
+        # User should provide filename. This file with a suffix .prof
+        # will be created in temp directory.
+        try:
+            stats_file = os.path.join(tempfile.gettempdir(), fname + '.prof')
+            stats.save(stats_file, "pstat")
+        except Exception as e:
+            print("Error while saving the trace stats ", str(e))
+        finally:
+            yappi.clear_stats()
 
 
 def _print_greenthreads(simple=True):
@@ -162,6 +188,7 @@ def _initialize_if_enabled(conf):
         'fo': _find_objects,
         'pgt': _print_greenthreads,
         'pnt': _print_nativethreads,
+        'prof': _capture_profile,
     }
 
     if conf.backdoor_port is None and conf.backdoor_socket is None:

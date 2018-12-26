@@ -179,3 +179,40 @@ logging options by sending a SIGHUP.
             logging.setup(cfg.CONF, 'foo')
 
 
+Profiling
+~~~~~~~~~
+
+Processes spawned through oslo_service.service can be profiled (function
+calltrace) through eventlet_backdoor module. Service has to configure
+backdoor_port option to enable it's workers to listen on TCP ports.
+Then user can send "prof()" command to capture worker processes function
+calltrace.
+
+1) To start profiling send "prof()" command on processes listening port
+
+2) To stop profiling and capture "pstat" calltrace to a file, send prof
+   command with filename as argument i.e "prof(filename)"
+   on worker processes listening port. Stats file (in pstat format) with
+   user provided filename by adding .prof as suffix will be generated
+   in temp directory.
+
+For example, to profile neutron server process (which is listening on
+port 8002 configured through backdoor_port option),
+
+.. code-block:: bash
+
+    $ echo "prof()" | nc localhost 8002
+    $ neutron net-create n1; neutron port-create --name p1 n1;
+    $ neutron port-delete p1; neutron port-delete p1
+    $ echo "prof('neutron')" | nc localhost 8002
+
+
+This will generate "/tmp/neutron.prof" as stats file. Later user can print
+the stats from the trace file like below
+
+.. code-block:: python
+
+    import pstats
+
+    stats = pstats.Stats('/tmp/neutron.prof')
+    stats.print_stats()
