@@ -139,8 +139,8 @@ class SignalHandler(object):
         self._ignore_signals = ('SIG_DFL', 'SIG_IGN')
         self._signals_by_name = dict((name, getattr(signal, name))
                                      for name in dir(signal)
-                                     if name.startswith("SIG")
-                                     and name not in self._ignore_signals)
+                                     if name.startswith("SIG") and
+                                     name not in self._ignore_signals)
         self.signals_to_name = dict(
             (sigval, name)
             for (name, sigval) in self._signals_by_name.items())
