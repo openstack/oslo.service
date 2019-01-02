@@ -106,6 +106,14 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
                           eventlet_backdoor.initialize_if_enabled, self.conf)
 
     @mock.patch.object(eventlet, 'spawn')
+    def test_backdoor_port_range_inuse(self, spawn_mock):
+        self.config(backdoor_port='8800:8801')
+        port = eventlet_backdoor.initialize_if_enabled(self.conf)
+        self.assertEqual(8800, port)
+        port = eventlet_backdoor.initialize_if_enabled(self.conf)
+        self.assertEqual(8801, port)
+
+    @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_port_range(self, listen_mock, spawn_mock):
         self.config(backdoor_port='8800:8899')
