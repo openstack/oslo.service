@@ -21,13 +21,13 @@ import gc
 import logging
 import os
 import pprint
-import socket
 import sys
 import traceback
 
 import eventlet.backdoor
 import greenlet
 
+from eventlet.green import socket
 from oslo_service._i18n import _
 from oslo_service import _options
 
@@ -121,11 +121,24 @@ def _parse_port_range(port_range):
             port_range, ex, _options.help_for_backdoor_port)
 
 
-def _listen(host, start_port, end_port, listen_func):
+def _listen_func(host, port):
+    # eventlet is setting SO_REUSEPORT by default from v0.20.
+    # But we can configure it by passing reuse_port argument
+    # from v0.22
+    try:
+        return eventlet.listen((host, port), reuse_port=False)
+    except TypeError:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((host, port))
+        sock.listen(50)
+        return sock
+
+
+def _listen(host, start_port, end_port):
     try_port = start_port
     while True:
         try:
-            return listen_func((host, try_port))
+            return _listen_func(host, try_port)
         except socket.error as exc:
             if (exc.errno != errno.EADDRINUSE or
                try_port >= end_port):
@@ -169,7 +182,7 @@ def _initialize_if_enabled(conf):
 
     if conf.backdoor_socket is None:
         start_port, end_port = _parse_port_range(str(conf.backdoor_port))
-        sock = _listen('localhost', start_port, end_port, eventlet.listen)
+        sock = _listen('localhost', start_port, end_port)
         # In the case of backdoor port being zero, a port number is assigned by
         # listen().  In any case, pull the port number out here.
         where_running = sock.getsockname()[1]
