@@ -38,7 +38,7 @@ oslo.context==2.19.2
 oslo.i18n==3.15.3
 oslo.log==3.36.0
 oslo.serialization==2.18.0
-oslo.utils==3.38.0
+oslo.utils==3.40.2
 oslotest==3.2.0
 Paste==2.0.2
 PasteDeploy==1.5.0
