@@ -14,19 +14,17 @@
 import copy
 import logging
 import random
+import six
 import time
+
+from oslo_service._i18n import _
+from oslo_service import _options
+from oslo_utils import reflection
 
 if hasattr(time, 'monotonic'):
     now = time.monotonic
 else:
     from monotonic import monotonic as now  # noqa
-
-from oslo_utils import reflection
-import six
-
-from oslo_service._i18n import _
-from oslo_service import _options
-
 
 LOG = logging.getLogger(__name__)
 
