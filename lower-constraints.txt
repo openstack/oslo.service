@@ -72,4 +72,4 @@ traceback2==1.4.0
 unittest2==1.1.0
 WebOb==1.7.1
 wrapt==1.7.0
-Yappi==0.98
+Yappi==1.0
