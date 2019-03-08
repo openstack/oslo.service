@@ -261,12 +261,10 @@ class Launcher(object):
         """
         self.conf = conf
         conf.register_opts(_options.service_opts)
-        self.services = Services()
+        self.services = Services(restart_method=restart_method)
         self.backdoor_port = (
             eventlet_backdoor.initialize_if_enabled(self.conf))
         self.restart_method = restart_method
-        if restart_method not in _LAUNCHER_RESTART_METHODS:
-            raise ValueError(_("Invalid restart_method: %s") % restart_method)
 
     def launch_service(self, service, workers=1):
         """Load and start the given service.
@@ -309,7 +307,7 @@ class Launcher(object):
         """
         if self.restart_method == 'reload':
             self.conf.reload_config_files()
-        elif self.restart_method == 'mutate':
+        else:  # self.restart_method == 'mutate'
             self.conf.mutate_config_files()
         self.services.restart()
 
@@ -372,7 +370,7 @@ class ServiceLauncher(Launcher):
             super(ServiceLauncher, self).wait()
         except SignalExit as exc:
             signame = self.signal_handler.signals_to_name[exc.signo]
-            LOG.info('Caught %s, exiting', signame)
+            LOG.info('Caught %s, handling', signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
@@ -518,7 +516,7 @@ class ProcessLauncher(object):
             launcher.wait()
         except SignalExit as exc:
             signame = self.signal_handler.signals_to_name[exc.signo]
-            LOG.info('Child caught %s, exiting', signame)
+            LOG.info('Child caught %s, handling', signame)
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
@@ -668,16 +666,18 @@ class ProcessLauncher(object):
                 if not _is_sighup_and_daemon(self.sigcaught):
                     break
 
+                child_signal = signal.SIGTERM
                 if self.restart_method == 'reload':
                     self.conf.reload_config_files()
                 elif self.restart_method == 'mutate':
                     self.conf.mutate_config_files()
+                    child_signal = signal.SIGHUP
                 for service in set(
                         [wrap.service for wrap in self.children.values()]):
                     service.reset()
 
                 for pid in self.children:
-                    os.kill(pid, signal.SIGTERM)
+                    os.kill(pid, child_signal)
 
                 self.running = True
                 self.sigcaught = None
@@ -743,7 +743,10 @@ class Service(ServiceBase):
 
 class Services(object):
 
-    def __init__(self):
+    def __init__(self, restart_method='reload'):
+        if restart_method not in _LAUNCHER_RESTART_METHODS:
+            raise ValueError(_("Invalid restart_method: %s") % restart_method)
+        self.restart_method = restart_method
         self.services = []
         self.tg = threadgroup.ThreadGroup()
         self.done = event.Event()
@@ -776,12 +779,23 @@ class Services(object):
         self.tg.wait()
 
     def restart(self):
-        """Reset services and start them in new threads."""
-        self.stop()
-        self.done = event.Event()
+        """Reset services.
+
+        The behavior of this function varies depending on the value of the
+        restart_method member. If the restart_method is `reload`, then it
+        will stop the services, reset them, and start them in new threads.
+        If the restart_method is `mutate`, then it will just reset the
+        services without restarting them.
+        """
+        if self.restart_method == 'reload':
+            self.stop()
+            self.done = event.Event()
         for restart_service in self.services:
             restart_service.reset()
-            self.tg.add_thread(self.run_service, restart_service, self.done)
+            if self.restart_method == 'reload':
+                self.tg.add_thread(self.run_service,
+                                   restart_service,
+                                   self.done)
 
     @staticmethod
     def run_service(service, done):
