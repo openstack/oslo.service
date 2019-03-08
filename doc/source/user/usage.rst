@@ -143,10 +143,15 @@ requests have been fully served.
 
 To force instantaneous termination SIGINT signal must be sent.
 
-On receiving SIGHUP configuration files are reloaded and a service
-is being reset and started again. Then all child workers are gracefully
-stopped using SIGTERM and workers with new configuration are
-spawned. Thus, SIGHUP can be used for changing config options on the go.
+The behavior on receiving SIGHUP varies based on how the service is configured.
+If the launcher uses the ``reload`` restart_method (the default), then the
+service will reload its configuration and any threads will be completely
+restarted. If the ``mutate`` restart_method is used, then only the
+configuration options marked as mutable will be reloaded and the service
+threads will not be restarted.
+
+See :py:class:`oslo_service.service.Launcher` for more details on the
+``restart_method`` parameter.
 
 *NOTE:* SIGHUP is not supported on Windows.
 *NOTE:* Config option graceful_shutdown_timeout is not supported on Windows.
