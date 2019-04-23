@@ -1,6 +1,6 @@
-==============
- Installation
-==============
+============
+Installation
+============
 
 At the command line::
 
