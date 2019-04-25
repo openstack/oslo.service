@@ -807,12 +807,16 @@ def launch(conf, service, workers=1, restart_method='reload'):
     :param conf: an instance of ConfigOpts
     :param service: a service to launch, must be an instance of
            :class:`oslo_service.service.ServiceBase`
-    :param workers: a number of processes in which a service will be running
+    :param workers: a number of processes in which a service will be running,
+        type should be int.
     :param restart_method: Passed to the constructed launcher. If 'reload', the
         launcher will call reload_config_files on SIGHUP. If 'mutate', it will
         call mutate_config_files on SIGHUP. Other values produce a ValueError.
     :returns: instance of a launcher that was used to launch the service
     """
+
+    if workers is not None and not isinstance(workers, six.integer_types):
+        raise TypeError(_("Type of workers should be int!"))
 
     if workers is not None and workers <= 0:
         raise ValueError(_("Number of workers should be positive!"))

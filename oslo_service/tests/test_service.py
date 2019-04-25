@@ -385,6 +385,9 @@ class LauncherTest(base.ServiceBaseTestCase):
         for num_workers in [0, -1]:
             self.assertRaises(ValueError, service.launch, self.conf,
                               svc, num_workers)
+        for num_workers in ["0", "a", "1"]:
+            self.assertRaises(TypeError, service.launch, self.conf,
+                              svc, num_workers)
 
     @mock.patch('signal.alarm')
     @mock.patch('oslo_service.service.ProcessLauncher.launch_service')
