@@ -214,8 +214,16 @@ def _initialize_if_enabled(conf):
         # listen().  In any case, pull the port number out here.
         where_running = sock.getsockname()[1]
     else:
-        sock = _try_open_unix_domain_socket(conf.backdoor_socket)
-        where_running = conf.backdoor_socket
+        try:
+            backdoor_socket_path = conf.backdoor_socket.format(pid=os.getpid())
+        except (KeyError, IndexError, ValueError) as e:
+            backdoor_socket_path = conf.backdoor_socket
+            LOG.warning("Could not apply format string to eventlet "
+                        "backdoor socket path ({}) - continuing with "
+                        "unformatted path"
+                        "".format(e))
+        sock = _try_open_unix_domain_socket(backdoor_socket_path)
+        where_running = backdoor_socket_path
 
     # NOTE(johannes): The standard sys.displayhook will print the value of
     # the last expression and set it to __builtin__._, which overwrites
