@@ -457,8 +457,10 @@ class ProcessLauncher(object):
             status = exc.code
             signo = exc.signo
         except SystemExit as exc:
+            launcher.stop()
             status = exc.code
         except BaseException:
+            launcher.stop()
             LOG.exception(_LE('Unhandled exception'))
             status = 2
 
