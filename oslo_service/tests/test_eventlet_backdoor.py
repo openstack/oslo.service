@@ -38,6 +38,30 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual("/tmp/my_special_socket", path)
 
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path_with_format_string(self, listen_mock, spawn_mock):
+        self.config(backdoor_socket="/tmp/my_special_socket-{pid}")
+        listen_mock.side_effect = mock.Mock()
+        path = eventlet_backdoor.initialize_if_enabled(self.conf)
+        expected_path = "/tmp/my_special_socket-{}".format(os.getpid())
+        self.assertEqual(expected_path, path)
+
+    @mock.patch.object(eventlet, 'spawn')
+    @mock.patch.object(eventlet, 'listen')
+    def test_backdoor_path_with_broken_format_string(self, listen_mock,
+                                                     spawn_mock):
+        broken_socket_paths = [
+            "/tmp/my_special_socket-{}",
+            "/tmp/my_special_socket-{broken",
+            "/tmp/my_special_socket-{broken}",
+        ]
+        for socket_path in broken_socket_paths:
+            self.config(backdoor_socket=socket_path)
+            listen_mock.side_effect = mock.Mock()
+            path = eventlet_backdoor.initialize_if_enabled(self.conf)
+            self.assertEqual(socket_path, path)
+
     @mock.patch.object(os, 'unlink')
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')

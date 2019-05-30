@@ -31,7 +31,8 @@ eventlet_backdoor_opts = [
                     " option is mutually exclusive with 'backdoor_port' in"
                     " that only one should be provided. If both are provided"
                     " then the existence of this option overrides the usage of"
-                    " that option.")
+                    " that option. Inside the path {pid} will be replaced with"
+                    " the PID of the current process.")
 ]
 
 periodic_opts = [
