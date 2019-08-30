@@ -45,21 +45,32 @@ When using oslo.service
 Using oslo.service with oslo-config-generator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``oslo.service`` provides several entry points to generate a configuration
+The ``oslo.service`` provides several entry points to generate configuration
 files.
 
 * :func:`oslo.service.service <oslo_service.service.list_opts>`
-    The options from the service and eventlet_backdoor modules for
-    the [DEFAULT] section.
+    The options from the :mod:`~oslo_service.service` and
+    :mod:`~oslo_service.eventlet_backdoor` modules for the ``[DEFAULT]``
+    section.
 
 * :func:`oslo.service.periodic_task <oslo_service.periodic_task.list_opts>`
-    The options from the periodic_task module for the [DEFAULT] section.
+    The options from the :mod:`~oslo_service.periodic_task` module for the
+    ``[DEFAULT]`` section.
 
 * :func:`oslo.service.sslutils <oslo_service.sslutils.list_opts>`
-    The options from the sslutils module for the [ssl] section.
+    The options from the :mod:`~oslo_service.sslutils` module for the
+    :oslo.config:group:`ssl` section.
 
 * :func:`oslo.service.wsgi <oslo_service.wsgi.list_opts>`
-    The options from the wsgi module for the [DEFAULT] section.
+    The options from the :mod:`~oslo_service.wsgi` module for the ``[DEFAULT]``
+    section.
+
+.. todo:: The ref page for oslo_service.wsgi doesn't seem to be rendering, so
+          the above doesn't link.
+
+.. todo:: Attempting to use :oslo.config:group:`DEFAULT` above only links to
+          the first DEFAULT section in the configuration/index doc because the
+          #DEFAULT anchor is duplicated for each of the show-options sections.
 
 **ATTENTION:** The library doesn't provide an oslo.service entry point.
 
@@ -72,7 +83,7 @@ files.
 Launching and controlling services
 ==================================
 
-oslo_service.service module provides tools for launching OpenStack
+The :mod:`oslo_service.service` module provides tools for launching OpenStack
 services and controlling their lifecycles.
 
 A service is an instance of any class that
@@ -85,7 +96,8 @@ serve as a base for constructing new services.
 Launchers
 ~~~~~~~~~
 
-oslo_service.service module provides two launchers for running services:
+The :mod:`oslo_service.service` module provides two launchers for running
+services:
 
 * :py:class:`oslo_service.service.ServiceLauncher` - used for
   running one or more service in a parent process.
@@ -111,8 +123,9 @@ launch a service using it.
 
 Or one can simply call :func:`oslo_service.service.launch` which will
 automatically pick an appropriate launcher based on a number of workers that
-are passed to it (ServiceLauncher in case workers=1 or None and
-ProcessLauncher in other case).
+are passed to it (:py:class:`~oslo_service.service.ServiceLauncher` if
+``workers=1`` or ``None`` and :py:class:`~oslo_service.service.ProcessLauncher`
+in other case).
 
 .. code-block:: python
 
@@ -123,41 +136,43 @@ ProcessLauncher in other case).
 
     launcher = service.launch(CONF, service.Service(), workers=3)
 
-*NOTE:* Please be informed that it is highly recommended to use no
-more than one instance of ServiceLauncher and ProcessLauncher classes
-per process.
+.. note:: It is highly recommended to use no more than one instance of the
+          :py:class:`~oslo_service.service.ServiceLauncher` or
+          :py:class:`~oslo_service.service.ProcessLauncher` class per process.
 
 Signal handling
 ~~~~~~~~~~~~~~~
 
-oslo_service.service provides handlers for such signals as SIGTERM, SIGINT
-and SIGHUP.
+:mod:`oslo_service.service` provides handlers for such signals as ``SIGTERM``,
+``SIGINT``, and ``SIGHUP``.
 
-SIGTERM is used for graceful termination of services. This can allow a
+``SIGTERM`` is used for graceful termination of services. This can allow a
 server to wait for all clients to close connections while rejecting new
-incoming requests. Config option graceful_shutdown_timeout specifies how
-many seconds after receiving a SIGTERM signal, a server should continue
-to run, handling the existing connections. Setting graceful_shutdown_timeout
-to zero means that the server will wait indefinitely until all remaining
-requests have been fully served.
+incoming requests. Config option
+:oslo.config:option:`graceful_shutdown_timeout` specifies how many seconds
+after receiving a ``SIGTERM`` signal a server should continue to run, handling
+the existing connections. Setting
+:oslo.config:option:`graceful_shutdown_timeout` to zero means that the server
+will wait indefinitely until all remaining requests have been fully served.
 
-To force instantaneous termination SIGINT signal must be sent.
+To force instantaneous termination the ``SIGINT`` signal must be sent.
 
-The behavior on receiving SIGHUP varies based on how the service is configured.
-If the launcher uses the ``reload`` restart_method (the default), then the
-service will reload its configuration and any threads will be completely
-restarted. If the ``mutate`` restart_method is used, then only the
+The behavior on receiving ``SIGHUP`` varies based on how the service is
+configured. If the launcher uses ``restart_method='reload'`` (the default),
+then the service will reload its configuration and any threads will be
+completely restarted. If ``restart_method='mutate'`` is used, then only the
 configuration options marked as mutable will be reloaded and the service
 threads will not be restarted.
 
 See :py:class:`oslo_service.service.Launcher` for more details on the
 ``restart_method`` parameter.
 
-*NOTE:* SIGHUP is not supported on Windows.
-*NOTE:* Config option graceful_shutdown_timeout is not supported on Windows.
+.. note:: ``SIGHUP`` is not supported on Windows.
+.. note:: Config option :oslo.config:option:`graceful_shutdown_timeout` is not
+          supported on Windows.
 
-Below is the example of a service with a reset method that allows reloading
-logging options by sending a SIGHUP.
+Below is an example of a service with a reset method that allows reloading
+logging options by sending a ``SIGHUP``.
 
 .. code-block:: python
 
@@ -187,22 +202,23 @@ logging options by sending a SIGHUP.
 Profiling
 ~~~~~~~~~
 
-Processes spawned through oslo_service.service can be profiled (function
-calltrace) through eventlet_backdoor module. Service has to configure
-backdoor_port option to enable it's workers to listen on TCP ports.
-Then user can send "prof()" command to capture worker processes function
-calltrace.
+Processes spawned through :mod:`oslo_service.service` can be profiled (function
+calltrace) through the :mod:`~oslo_service.eventlet_backdoor` module. The
+service must be configured with the :oslo.config:option:`backdoor_port` option
+to enable its workers to listen on TCP ports. The user can then send the
+``prof()`` command to capture the worker process's function calltrace.
 
-1) To start profiling send "prof()" command on processes listening port
+1) To start profiling send the ``prof()`` command on the process's listening
+   port
 
-2) To stop profiling and capture "pstat" calltrace to a file, send prof
-   command with filename as argument i.e "prof(filename)"
-   on worker processes listening port. Stats file (in pstat format) with
-   user provided filename by adding .prof as suffix will be generated
-   in temp directory.
+2) To stop profiling and capture pstat calltrace to a file, send the
+   ``prof()`` command with a file basename as an argument (``prof(basename)``)
+   to the worker process's listening port. A stats file (in pstat format) will
+   be generated in the temp directory with the user-provided basename with a
+   ``.prof`` suffix .
 
-For example, to profile neutron server process (which is listening on
-port 8002 configured through backdoor_port option),
+For example, to profile a neutron server process (which is listening on
+port 8002 configured through the :oslo.config:option:`backdoor_port` option):
 
 .. code-block:: bash
 
@@ -211,9 +227,8 @@ port 8002 configured through backdoor_port option),
     $ neutron port-delete p1; neutron port-delete p1
     $ echo "prof('neutron')" | nc localhost 8002
 
-
-This will generate "/tmp/neutron.prof" as stats file. Later user can print
-the stats from the trace file like below
+This will generate a stats file in ``/tmp/neutron.prof``. Stats can be printed
+from the trace file as follows:
 
 .. code-block:: python
 
