@@ -1,0 +1,10 @@
+---
+fixes:
+  - |
+    ``SIGHUP`` is now handled properly with ``restart_method='mutate'``, no
+    longer restarting child processes. See `bug 1794708`_ for details. In
+    conjunction with the fix for `bug 1715374`_ in oslo.privsep, the
+    nova-compute service now behaves correctly when  it receives ``SIGHUP``.
+
+    .. _`bug 1794708`: https://bugs.launchpad.net/oslo.service/+bug/1794708
+    .. _`bug 1715374`: https://bugs.launchpad.net/nova/+bug/1715374
