@@ -37,6 +37,8 @@ def service_hub():
     # to ensure that things like loopingcall work properly.
     hub = eventlet.hubs.get_default_hub().Hub()
     hub.clock = _monotonic
+    # get_default_hub() will return a hub that is supported on this platform
+    hub.is_available = lambda: True
     return hub
 
 
