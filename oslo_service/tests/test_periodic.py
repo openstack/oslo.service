@@ -14,11 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit Tests for periodic_task decorator and PeriodicTasks class.
-"""
+"""Unit Tests for periodic_task decorator and PeriodicTasks class."""
 
-import mock
+from unittest import mock
+
 from testtools import matchers
 
 from oslo_service import periodic_task

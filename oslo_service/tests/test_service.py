@@ -14,9 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit Tests for service class
-"""
+"""Unit Tests for service class"""
 
 from __future__ import print_function
 
@@ -27,10 +25,10 @@ import signal
 import socket
 import time
 import traceback
+from unittest import mock
 
 import eventlet
 from eventlet import event
-import mock
 from oslotest import base as test_base
 
 from oslo_service import service

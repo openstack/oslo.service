@@ -14,15 +14,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Unit Tests for eventlet backdoor
-"""
+"""Unit Tests for eventlet backdoor."""
 import errno
 import os
 import socket
+from unittest import mock
 
 import eventlet
-import mock
 
 from oslo_service import eventlet_backdoor
 from oslo_service.tests import base

@@ -22,10 +22,10 @@ import six
 import socket
 import tempfile
 import testtools
+from unittest import mock
 
 import eventlet
 import eventlet.wsgi
-import mock
 import requests
 import webob
 
