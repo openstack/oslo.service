@@ -119,10 +119,11 @@ class Singleton(type):
     _semaphores = lockutils.Semaphores()
 
     def __call__(cls, *args, **kwargs):
-        with lockutils.lock('singleton_lock', semaphores=cls._semaphores):
-            if cls not in cls._instances:
-                cls._instances[cls] = super(Singleton, cls).__call__(
-                    *args, **kwargs)
+        if cls not in cls._instances:
+            with lockutils.lock('singleton_lock', semaphores=cls._semaphores):
+                if cls not in cls._instances:
+                    cls._instances[cls] = super(Singleton, cls).__call__(
+                        *args, **kwargs)
         return cls._instances[cls]
 
 
