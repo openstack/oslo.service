@@ -8,6 +8,9 @@ applications. It also includes utilities long-running applications
 might need for working with SSL or WSGI, performing periodic
 operations, interacting with systemd, etc.
 
+Contents
+========
+
 .. toctree::
    :maxdepth: 2
 
@@ -17,7 +20,16 @@ operations, interacting with systemd, etc.
    reference/index
    contributor/index
 
-.. rubric:: Indices and tables
+
+Release Notes
+=============
+
+Read also the `oslo.service Release Notes
+<https://docs.openstack.org/releasenotes/oslo.service/>`_.
+
+
+Indices and tables
+==================
 
 * :ref:`genindex`
 * :ref:`modindex`
