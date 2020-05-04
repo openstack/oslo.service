@@ -11,13 +11,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import time
 from unittest import mock
 
 import eventlet
 from eventlet.green import threading as greenthreading
 from oslotest import base as test_base
 
-import oslo_service
 from oslo_service import fixture
 from oslo_service import loopingcall
 
@@ -38,7 +38,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
     def test_monotonic_timer(self):
         def _raise_it():
             clock = eventlet.hubs.get_hub().clock
-            ok = (clock == oslo_service._monotonic)
+            ok = (clock == time.monotonic)
             raise loopingcall.LoopingCallDone(ok)
 
         timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
@@ -48,7 +48,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         # Make sure that by default the oslo_service.service_hub() kicks in,
         # test in the main thread
         hub = eventlet.hubs.get_hub()
-        self.assertEqual(oslo_service._monotonic,
+        self.assertEqual(time.monotonic,
                          hub.clock)
 
     def test_return_false(self):
@@ -172,7 +172,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
     def test_monotonic_timer(self):
         def _raise_it():
             clock = eventlet.hubs.get_hub().clock
-            ok = (clock == oslo_service._monotonic)
+            ok = (clock == time.monotonic)
             raise loopingcall.LoopingCallDone(ok)
 
         timer = loopingcall.DynamicLoopingCall(_raise_it)

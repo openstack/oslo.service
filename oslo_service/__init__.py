@@ -20,15 +20,6 @@ time = eventlet.patcher.original('time')
 
 LOG = logging.getLogger(__name__)
 
-# TODO(bnemec): When we have a minimum dependency on a version of eventlet
-# that uses monotonic by default, remove this monkey patching.
-if hasattr(time, 'monotonic'):
-    # Use builtin monotonic clock, Python 3.3+
-    _monotonic = time.monotonic
-else:
-    import monotonic
-    _monotonic = monotonic.monotonic
-
 
 def service_hub():
     # NOTE(dims): Add a custom impl for EVENTLET_HUB, so we can
@@ -36,7 +27,7 @@ def service_hub():
     # uses time.time() and we need to use a monotonic timer
     # to ensure that things like loopingcall work properly.
     hub = eventlet.hubs.get_default_hub().Hub()
-    hub.clock = _monotonic
+    hub.clock = time.monotonic
     # get_default_hub() will return a hub that is supported on this platform
     hub.is_available = lambda: True
     return hub
