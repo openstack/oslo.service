@@ -14,7 +14,6 @@
 import copy
 import logging
 import random
-import six
 import time
 from time import monotonic as now
 
@@ -169,8 +168,7 @@ def _nearest_boundary(last_run, spacing):
     return current_time - offset + jitter
 
 
-@six.add_metaclass(_PeriodicTasksMeta)
-class PeriodicTasks(object):
+class PeriodicTasks(metaclass=_PeriodicTasksMeta):
     def __init__(self, conf):
         super(PeriodicTasks, self).__init__()
         self.conf = conf

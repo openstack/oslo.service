@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import random
 import sys
 import time
@@ -26,7 +27,6 @@ from oslo_utils import eventletutils
 from oslo_utils import excutils
 from oslo_utils import reflection
 from oslo_utils import timeutils
-import six
 
 from oslo_service._i18n import _
 
@@ -428,7 +428,7 @@ class RetryDecorator(object):
                         return self._sleep_time
             raise LoopingCallDone(result)
 
-        @six.wraps(f)
+        @functools.wraps(f)
         def func(*args, **kwargs):
             loop = DynamicLoopingCall(_func, *args, **kwargs)
             evt = loop.start(periodic_interval_max=self._max_sleep_time)
