@@ -265,6 +265,17 @@ class TestWSGIServer(WsgiTestCase):
             server.stop()
 
 
+def requesting(host, port, ca_certs, method="POST",
+               content_type="application/x-www-form-urlencoded"):
+    frame = bytes("{verb} / HTTP/1.1\r\n\r\n".format(verb=method), "utf-8")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        with eventlet.wrap_ssl(sock, ca_certs=ca_certs) as wrappedSocket:
+            wrappedSocket.connect((host, port))
+            wrappedSocket.send(frame)
+            data = wrappedSocket.recv(1024).decode()
+            return data
+
+
 class TestWSGIServerWithSSL(WsgiTestCase):
     """WSGI server with SSL tests."""
 
@@ -273,26 +284,29 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         cert_file_name = os.path.join(SSL_CERT_DIR, 'certificate.crt')
         key_file_name = os.path.join(SSL_CERT_DIR, 'privatekey.key')
         eventlet.monkey_patch(os=False, thread=False)
+        self.host = "127.0.0.1"
 
         self.config(cert_file=cert_file_name,
                     key_file=key_file_name,
                     group=sslutils.config_section)
 
-    @testtools.skip("bug/1482633: test hangs on Python 3")
     def test_ssl_server(self):
         def test_app(env, start_response):
             start_response('200 OK', {})
             return ['PONG']
 
         fake_ssl_server = wsgi.Server(self.conf, "fake_ssl", test_app,
-                                      host="127.0.0.1", port=0, use_ssl=True)
+                                      host=self.host, port=0, use_ssl=True)
         fake_ssl_server.start()
         self.assertNotEqual(0, fake_ssl_server.port)
 
-        response = requests.post(
-            'https://127.0.0.1:%s/' % fake_ssl_server.port,
-            verify=os.path.join(SSL_CERT_DIR, 'ca.crt'), data='PING')
-        self.assertEqual('PONG', response.text)
+        response = requesting(
+            method='GET',
+            host=self.host,
+            port=fake_ssl_server.port,
+            ca_certs=os.path.join(SSL_CERT_DIR, 'ca.crt'),
+        )
+        self.assertEqual('PONG', response[-4:])
 
         fake_ssl_server.stop()
         fake_ssl_server.wait()
