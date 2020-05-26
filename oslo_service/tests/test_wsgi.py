@@ -18,7 +18,6 @@
 
 import os
 import platform
-import six
 import socket
 import tempfile
 import testtools
@@ -279,7 +278,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
                     key_file=key_file_name,
                     group=sslutils.config_section)
 
-    @testtools.skipIf(six.PY3, "bug/1482633: test hangs on Python 3")
+    @testtools.skip("bug/1482633: test hangs on Python 3")
     def test_ssl_server(self):
         def test_app(env, start_response):
             start_response('200 OK', {})
@@ -298,7 +297,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         fake_ssl_server.stop()
         fake_ssl_server.wait()
 
-    @testtools.skipIf(six.PY3, "bug/1482633: test hangs on Python 3")
+    @testtools.skip("bug/1482633: test hangs on Python 3")
     def test_two_servers(self):
         def test_app(env, start_response):
             start_response('200 OK', {})
@@ -332,7 +331,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
     @testtools.skipIf(platform.mac_ver()[0] != '',
                       'SO_REUSEADDR behaves differently '
                       'on OSX, see bug 1436895')
-    @testtools.skipIf(six.PY3, "bug/1482633: test hangs on Python 3")
+    @testtools.skip("bug/1482633: test hangs on Python 3")
     def test_socket_options_for_ssl_server(self):
         # test normal socket options has set properly
         self.config(tcp_keepidle=500)
@@ -352,7 +351,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         server.wait()
 
     @testtools.skipIf(not netutils.is_ipv6_enabled(), "no ipv6 support")
-    @testtools.skipIf(six.PY3, "bug/1482633: test hangs on Python 3")
+    @testtools.skip("bug/1482633: test hangs on Python 3")
     @testtools.skip("using raw IPv6 addresses with SSL certs is broken")
     def test_app_using_ipv6_and_ssl(self):
         greetings = 'Hello, World!!!'

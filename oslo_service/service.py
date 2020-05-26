@@ -29,7 +29,6 @@ import logging
 import os
 import random
 import signal
-import six
 import sys
 import time
 
@@ -90,8 +89,7 @@ def _check_service_base(service):
                         % {'service': service, 'base': ServiceBase})
 
 
-@six.add_metaclass(abc.ABCMeta)
-class ServiceBase(object):
+class ServiceBase(metaclass=abc.ABCMeta):
     """Base class for all services."""
 
     @abc.abstractmethod
@@ -126,8 +124,7 @@ class Singleton(type):
         return cls._instances[cls]
 
 
-@six.add_metaclass(Singleton)
-class SignalHandler(object):
+class SignalHandler(metaclass=Singleton):
 
     def __init__(self, *args, **kwargs):
         super(SignalHandler, self).__init__(*args, **kwargs)
@@ -829,7 +826,7 @@ def launch(conf, service, workers=1, restart_method='reload'):
     :returns: instance of a launcher that was used to launch the service
     """
 
-    if workers is not None and not isinstance(workers, six.integer_types):
+    if workers is not None and not isinstance(workers, int):
         raise TypeError(_("Type of workers should be int!"))
 
     if workers is not None and workers <= 0:
