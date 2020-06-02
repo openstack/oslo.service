@@ -16,8 +16,6 @@
 
 """Unit Tests for service class"""
 
-from __future__ import print_function
-
 import logging
 import multiprocessing
 import os
