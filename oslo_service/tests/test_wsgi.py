@@ -346,7 +346,6 @@ class TestWSGIServerWithSSL(WsgiTestCase):
     @testtools.skipIf(platform.mac_ver()[0] != '',
                       'SO_REUSEADDR behaves differently '
                       'on OSX, see bug 1436895')
-    @testtools.skip("bug/1482633: test hangs on Python 3")
     def test_socket_options_for_ssl_server(self):
         # test normal socket options has set properly
         self.config(tcp_keepidle=500)
