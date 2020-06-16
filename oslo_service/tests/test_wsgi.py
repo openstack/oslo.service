@@ -265,15 +265,21 @@ class TestWSGIServer(WsgiTestCase):
             server.stop()
 
 
-def requesting(host, port, ca_certs, method="POST",
+def requesting(host, port, ca_certs=None, method="POST",
                content_type="application/x-www-form-urlencoded",
                address_familly=socket.AF_INET):
     frame = bytes("{verb} / HTTP/1.1\r\n\r\n".format(verb=method), "utf-8")
     with socket.socket(address_familly, socket.SOCK_STREAM) as sock:
-        with eventlet.wrap_ssl(sock, ca_certs=ca_certs) as wrappedSocket:
-            wrappedSocket.connect((host, port))
-            wrappedSocket.send(frame)
-            data = wrappedSocket.recv(1024).decode()
+        if ca_certs:
+            with eventlet.wrap_ssl(sock, ca_certs=ca_certs) as wrappedSocket:
+                wrappedSocket.connect((host, port))
+                wrappedSocket.send(frame)
+                data = wrappedSocket.recv(1024).decode()
+                return data
+        else:
+            sock.connect((host, port))
+            sock.send(frame)
+            data = sock.recv(1024).decode()
             return data
 
 
@@ -312,7 +318,6 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         fake_ssl_server.stop()
         fake_ssl_server.wait()
 
-    @testtools.skip("bug/1482633: test hangs on Python 3")
     def test_two_servers(self):
         def test_app(env, start_response):
             start_response('200 OK', {})
@@ -328,14 +333,20 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         fake_server.start()
         self.assertNotEqual(0, fake_server.port)
 
-        response = requests.post(
-            'https://127.0.0.1:%s/' % fake_ssl_server.port,
-            verify=os.path.join(SSL_CERT_DIR, 'ca.crt'), data='PING')
-        self.assertEqual('PONG', response.text)
+        response = requesting(
+            method='GET',
+            host='127.0.0.1',
+            port=fake_ssl_server.port,
+            ca_certs=os.path.join(SSL_CERT_DIR, 'ca.crt'),
+        )
+        self.assertEqual('PONG', response[-4:])
 
-        response = requests.post(
-            'http://127.0.0.1:%s/' % fake_server.port, data='PING')
-        self.assertEqual('PONG', response.text)
+        response = requesting(
+            method='GET',
+            host='127.0.0.1',
+            port=fake_server.port,
+        )
+        self.assertEqual('PONG', response[-4:])
 
         fake_ssl_server.stop()
         fake_ssl_server.wait()
