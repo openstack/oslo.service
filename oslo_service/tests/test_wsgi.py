@@ -266,9 +266,10 @@ class TestWSGIServer(WsgiTestCase):
 
 
 def requesting(host, port, ca_certs, method="POST",
-               content_type="application/x-www-form-urlencoded"):
+               content_type="application/x-www-form-urlencoded",
+               address_familly=socket.AF_INET):
     frame = bytes("{verb} / HTTP/1.1\r\n\r\n".format(verb=method), "utf-8")
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    with socket.socket(address_familly, socket.SOCK_STREAM) as sock:
         with eventlet.wrap_ssl(sock, ca_certs=ca_certs) as wrappedSocket:
             wrappedSocket.connect((host, port))
             wrappedSocket.send(frame)
@@ -364,9 +365,6 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         server.stop()
         server.wait()
 
-    @testtools.skipIf(not netutils.is_ipv6_enabled(), "no ipv6 support")
-    @testtools.skip("bug/1482633: test hangs on Python 3")
-    @testtools.skip("using raw IPv6 addresses with SSL certs is broken")
     def test_app_using_ipv6_and_ssl(self):
         greetings = 'Hello, World!!!'
 
@@ -382,9 +380,14 @@ class TestWSGIServerWithSSL(WsgiTestCase):
 
         server.start()
 
-        response = requests.get('https://[::1]:%d/' % server.port,
-                                verify=os.path.join(SSL_CERT_DIR, 'ca.crt'))
-        self.assertEqual(greetings, response.text)
+        response = requesting(
+            method='GET',
+            host='::1',
+            port=server.port,
+            ca_certs=os.path.join(SSL_CERT_DIR, 'ca.crt'),
+            address_familly=socket.AF_INET6
+        )
+        self.assertEqual(greetings, response[-15:])
 
         server.stop()
         server.wait()
