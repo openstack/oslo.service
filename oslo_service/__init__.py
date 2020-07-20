@@ -13,12 +13,9 @@
 import os
 
 import eventlet.patcher
-from oslo_log import log as logging
+
 
 time = eventlet.patcher.original('time')
-
-
-LOG = logging.getLogger(__name__)
 
 
 def service_hub():
