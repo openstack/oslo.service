@@ -164,8 +164,8 @@ class ServiceLauncherTest(ServiceTestBase):
         # Skip ps header
         f.readline()
 
-        processes = [tuple(int(p) for p in l.strip().split()[:2])
-                     for l in f]
+        processes = [tuple(int(p) for p in line.strip().split()[:2])
+                     for line in f]
         return [p for p, pp in processes if pp == self.pid]
 
     def test_killed_worker_recover(self):
