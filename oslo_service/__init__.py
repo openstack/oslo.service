@@ -31,3 +31,5 @@ def service_hub():
 
 
 os.environ['EVENTLET_HUB'] = 'oslo_service:service_hub'
+# reset hub in case it was initialized already by some imported module
+eventlet.hubs.use_hub(os.environ['EVENTLET_HUB'])
