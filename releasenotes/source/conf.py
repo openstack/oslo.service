@@ -60,8 +60,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'oslo.service Release Notes'
-copyright = u'2016, oslo.service Developers'
+project = 'oslo.service Release Notes'
+copyright = '2016, oslo.service Developers'
 
 # Release notes do not need a version in the title, they span
 # multiple versions.
@@ -208,8 +208,8 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     ('index', 'oslo.serviceReleaseNotes.tex',
-     u'oslo.service Release Notes Documentation',
-     u'oslo.service Developers', 'manual'),
+     'oslo.service Release Notes Documentation',
+     'oslo.service Developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -239,8 +239,8 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'oslo.serviceReleaseNotes',
-     u'oslo.service Release Notes Documentation',
-     [u'oslo.service Developers'], 1)
+     'oslo.service Release Notes Documentation',
+     ['oslo.service Developers'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -254,8 +254,8 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     ('index', 'oslo.serviceReleaseNotes',
-     u'oslo.service Release Notes Documentation',
-     u'oslo.service Developers', 'oslo.serviceReleaseNotes',
+     'oslo.service Release Notes Documentation',
+     'oslo.service Developers', 'oslo.serviceReleaseNotes',
      'Provides a framework for defining new long-running services using the'
      ' patterns established by other OpenStack applications',
      'Miscellaneous'),
