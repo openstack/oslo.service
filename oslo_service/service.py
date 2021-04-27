@@ -197,12 +197,11 @@ class SignalHandler(metaclass=Singleton):
     def __setup_signal_interruption(self):
         """Set up to do the Right Thing with signals during poll() and sleep().
 
-        For Python 3.5 and later, deal with the changes in PEP 475 that prevent
-        a signal from interrupting eventlet's call to poll() or sleep().
+        Deal with the changes introduced in PEP 475 that prevent a signal from
+        interrupting eventlet's call to poll() or sleep().
         """
         select_module = eventlet.patcher.original('select')
-        self.__force_interrupt_on_signal = (sys.version_info >= (3, 5) and
-                                            hasattr(select_module, 'poll'))
+        self.__force_interrupt_on_signal = hasattr(select_module, 'poll')
 
         if self.__force_interrupt_on_signal:
             try:
