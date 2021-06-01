@@ -476,7 +476,6 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
             m.assert_called_once_with(signal.SIGTERM, 'test')
         signal_handler.clear()
 
-    @mock.patch('sys.version_info', (3, 5))
     def test_setup_signal_interruption_no_select_poll(self):
         # NOTE(claudiub): SignalHandler is a singleton, which means that it
         # might already be initialized. We need to clear to clear the cache
@@ -490,7 +489,6 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
         self.assertFalse(
             signal_handler._SignalHandler__force_interrupt_on_signal)
 
-    @mock.patch('sys.version_info', (3, 5))
     def test_setup_signal_interruption_select_poll(self):
         # NOTE(claudiub): SignalHandler is a singleton, which means that it
         # might already be initialized. We need to clear to clear the cache
