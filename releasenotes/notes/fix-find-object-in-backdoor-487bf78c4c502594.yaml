@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fix the backdoor helper method fo() to also work when there are objects
+    present in the current python instance that do not have a __class__
+    attribute.
