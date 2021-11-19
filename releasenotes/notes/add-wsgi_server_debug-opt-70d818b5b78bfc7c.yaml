@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    A new config options, ``[DEFAULT] wsgi_server_debug``, has been added.
+    This allows admins to configure whether the server should send exception
+    tracebacks to the clients on HTTP 500 errors. This defaults to ``False``,
+    preserving previous behavior.

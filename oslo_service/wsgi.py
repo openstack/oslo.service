@@ -180,7 +180,7 @@ class Server(service.ServiceBase):
             'custom_pool': self._pool,
             'log': self._logger,
             'log_format': self.conf.wsgi_log_format,
-            'debug': False,
+            'debug': self.conf.wsgi_server_debug,
             'keepalive': self.conf.wsgi_keep_alive,
             'socket_timeout': self.client_socket_timeout
             }
