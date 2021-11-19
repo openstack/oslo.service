@@ -88,6 +88,11 @@ wsgi_opts = [
                     "If an incoming connection is idle for this number of "
                     "seconds it will be closed. A value of '0' means "
                     "wait forever."),
+    cfg.BoolOpt('wsgi_server_debug',
+                default=False,
+                help="True if the server should send exception tracebacks to "
+                     "the clients on 500 errors. If False, the server will "
+                     "respond with empty bodies."),
     ]
 
 ssl_opts = [
