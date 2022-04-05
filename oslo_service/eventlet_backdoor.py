@@ -86,7 +86,8 @@ def _detailed_dump_frames(f, thread_index):
 
 
 def _find_objects(t):
-    return [o for o in gc.get_objects() if isinstance(o, t)]
+    return [o for o in gc.get_objects()
+            if hasattr(o, "__class__") and isinstance(o, t)]
 
 
 def _capture_profile(fname=''):
