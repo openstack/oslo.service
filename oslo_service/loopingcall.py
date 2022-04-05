@@ -348,7 +348,7 @@ class BackOffLoopingCall(LoopingCallBase):
                 if timeout > 0 and self._error_time + idle > timeout:
                     raise LoopingCallTimeOut(
                         _('Looping call timed out after %.02f seconds')
-                        % self._error_time)
+                        % (self._error_time + idle))
                 self._error_time += idle
                 return idle
 
