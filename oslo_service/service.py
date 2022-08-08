@@ -34,6 +34,7 @@ import time
 
 import eventlet
 from eventlet import event
+from eventlet import tpool
 
 from oslo_concurrency import lockutils
 from oslo_service._i18n import _
@@ -560,6 +561,9 @@ class ProcessLauncher(object):
 
         pid = os.fork()
         if pid == 0:
+            # When parent used native threads the library on child needs to be
+            # "reset", otherwise native threads won't work on the child.
+            tpool.killall()
             self.launcher = self._child_process(wrap.service)
             while True:
                 self._child_process_handle_signal()
