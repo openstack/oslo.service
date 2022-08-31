@@ -347,7 +347,7 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
 
         expected_times = [mock.call(1), mock.call(1), mock.call(1)]
         self.assertEqual(expected_times, sleep_mock.call_args_list)
-        self.assertTrue(retvalue, 'return value')
+        self.assertEqual('return value', retvalue)
 
     @mock.patch('random.SystemRandom.gauss')
     @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
@@ -360,7 +360,7 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
 
         retvalue = loopingcall.BackOffLoopingCall(func).start().wait()
         self.assertFalse(sleep_mock.called)
-        self.assertTrue(retvalue, 'return value')
+        self.assertEqual('return value', retvalue)
 
     @mock.patch('random.SystemRandom.gauss')
     @mock.patch('oslo_service.loopingcall.LoopingCallBase._sleep')
