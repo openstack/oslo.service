@@ -1,14 +1,15 @@
 # Andi Chandler <andi@gowling.com>, 2017. #zanata
 # Andi Chandler <andi@gowling.com>, 2018. #zanata
+# Andi Chandler <andi@gowling.com>, 2023. #zanata
 msgid ""
 msgstr ""
 "Project-Id-Version: oslo.service Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2018-03-01 11:24+0000\n"
+"POT-Creation-Date: 2023-06-27 14:20+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2018-01-27 01:26+0000\n"
+"PO-Revision-Date: 2023-06-21 08:13+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -21,12 +22,81 @@ msgstr "1.17.0"
 msgid "1.19.0"
 msgstr "1.19.0"
 
+msgid "1.35.0"
+msgstr "1.35.0"
+
+msgid "1.37.0"
+msgstr "1.37.0"
+
+msgid "1.40.0"
+msgstr "1.40.0"
+
+msgid "1.40.2"
+msgstr "1.40.2"
+
+msgid "2.0.0"
+msgstr "2.0.0"
+
+msgid "2.4.1"
+msgstr "2.4.1"
+
+msgid "2.5.1"
+msgstr "2.5.1"
+
+msgid "2.6.1"
+msgstr "2.6.1"
+
+msgid "2.6.2"
+msgstr "2.6.2"
+
+msgid "2.7.0"
+msgstr "2.7.0"
+
+msgid "2.8.0"
+msgstr "2.8.0"
+
+msgid "2023.1 Series Release Notes"
+msgstr "2023.1 Series Release Notes"
+
+msgid ""
+"A new config options, ``[DEFAULT] wsgi_server_debug``, has been added. This "
+"allows admins to configure whether the server should send exception "
+"tracebacks to the clients on HTTP 500 errors. This defaults to ``False``, "
+"preserving previous behavior."
+msgstr ""
+"A new config options, ``[DEFAULT] wsgi_server_debug``, has been added. This "
+"allows admins to configure whether the server should send exception "
+"tracebacks to the clients on HTTP 500 errors. This defaults to ``False``, "
+"preserving previous behaviour."
+
 msgid ""
 "Add a new type of looping call: FixedIntervalWithTimeoutLoopingCall. It is a "
 "FixedIntervalLoopingCall with timeout checking."
 msgstr ""
 "Add a new type of looping call: FixedIntervalWithTimeoutLoopingCall. It is a "
 "FixedIntervalLoopingCall with timeout checking."
+
+msgid ""
+"Add support for profiling (capture function calltrace) service's worker "
+"processes."
+msgstr ""
+"Add support for profiling (capture function calltrace) service's worker "
+"processes."
+
+msgid "Bug Fixes"
+msgstr "Bug Fixes"
+
+msgid "Deprecation Notes"
+msgstr "Deprecation Notes"
+
+msgid ""
+"Fix the backdoor helper method fo() to also work when there are objects "
+"present in the current python instance that do not have a __class__ "
+"attribute."
+msgstr ""
+"Fix the backdoor helper method fo() to also work when there are objects "
+"present in the current Python instance that do not have a __class__ "
+"attribute."
 
 msgid "New Features"
 msgstr "New Features"
@@ -43,11 +113,112 @@ msgstr "Pike Series Release Notes"
 msgid "Queens Series Release Notes"
 msgstr "Queens Series Release Notes"
 
+msgid "Rocky Series Release Notes"
+msgstr "Rocky Series Release Notes"
+
+msgid "Stein Series Release Notes"
+msgstr "Stein Series Release Notes"
+
+msgid ""
+"Support for Python 2.7 has been dropped. The minimum version of Python now "
+"supported is Python 3.6."
+msgstr ""
+"Support for Python 2.7 has been dropped. The minimum version of Python now "
+"supported is Python 3.6."
+
 msgid "Switch to reno for managing release notes."
 msgstr "Switch to Reno for managing release notes."
 
+msgid ""
+"The API of the ThreadGroup add_timer() and add_dynamic_timer() methods has "
+"been identified as error-prone when passing arguments intended for the "
+"callback function. Passing callback arguments in this way is now deprecated. "
+"Callers should use the new add_timer_args() or add_dynamic_timer_args() "
+"methods (respectively) instead when it is necessary to pass arguments to the "
+"timer callback function."
+msgstr ""
+"The API of the ThreadGroup add_timer() and add_dynamic_timer() methods has "
+"been identified as error-prone when passing arguments intended for the "
+"callback function. Passing callback arguments in this way is now deprecated. "
+"Callers should use the new add_timer_args() or add_dynamic_timer_args() "
+"methods (respectively) instead when it is necessary to pass arguments to the "
+"timer callback function."
+
+msgid ""
+"The ThreadGroup add_timer_args() and add_dynamic_timer_args() methods now "
+"support passing a stop_on_exception=False argument to allow the timer to "
+"keep running even when an exception is raised by the callback function."
+msgstr ""
+"The ThreadGroup add_timer_args() and add_dynamic_timer_args() methods now "
+"support passing a stop_on_exception=False argument to allow the timer to "
+"keep running even when an exception is raised by the callback function."
+
+msgid ""
+"The ThreadGroup class has new add_timer_args() and add_dynamic_timer_args() "
+"methods to create timers passing the positional and keyword arguments to the "
+"callback as a sequence and a mapping. This API provides more flexibility for "
+"the addition of timer control options in the future."
+msgstr ""
+"The ThreadGroup class has new add_timer_args() and add_dynamic_timer_args() "
+"methods to create timers passing the positional and keyword arguments to the "
+"callback as a sequence and a mapping. This API provides more flexibility for "
+"the addition of timer control options in the future."
+
+msgid ""
+"The ``ThreadGroup.cancel()`` method is deprecated and will be removed in a "
+"future major release."
+msgstr ""
+"The ``ThreadGroup.cancel()`` method is deprecated and will be removed in a "
+"future major release."
+
+msgid ""
+"The config option backdoor_socket_path now is a format string that supports "
+"{pid}, which will be replaced with the PID of the current process. This "
+"makes the eventlet backdoor accessible when spawning multiple processes with "
+"the same backdoor_socket_path inside the configuration."
+msgstr ""
+"The config option backdoor_socket_path now is a format string that supports "
+"{pid}, which will be replaced with the PID of the current process. This "
+"makes the eventlet backdoor accessible when spawning multiple processes with "
+"the same backdoor_socket_path inside the configuration."
+
+msgid "Train Series Release Notes"
+msgstr "Train Series Release Notes"
+
 msgid "Unreleased Release Notes"
 msgstr "Unreleased Release Notes"
+
+msgid "Upgrade Notes"
+msgstr "Upgrade Notes"
+
+msgid "Ussuri Series Release Notes"
+msgstr "Ussuri Series Release Notes"
+
+msgid "Victoria Series Release Notes"
+msgstr "Victoria Series Release Notes"
+
+msgid "Wallaby Series Release Notes"
+msgstr "Wallaby Series Release Notes"
+
+msgid "Xena Series Release Notes"
+msgstr "Xena Series Release Notes"
+
+msgid "Yoga Series Release Notes"
+msgstr "Yoga Series Release Notes"
+
+msgid "Zed Series Release Notes"
+msgstr "Zed Series Release Notes"
+
+msgid ""
+"``SIGHUP`` is now handled properly with ``restart_method='mutate'``, no "
+"longer restarting child processes. See `bug 1794708`_ for details. In "
+"conjunction with the fix for `bug 1715374`_ in oslo.privsep, the nova-"
+"compute service now behaves correctly when  it receives ``SIGHUP``."
+msgstr ""
+"``SIGHUP`` is now handled properly with ``restart_method='mutate'``, no "
+"longer restarting child processes. See `bug 1794708`_ for details. In "
+"conjunction with the fix for `bug 1715374`_ in oslo.privsep, the nova-"
+"compute service now behaves correctly when it receives ``SIGHUP``."
 
 msgid "oslo.service Release Notes"
 msgstr "oslo.service Release Notes"
