@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    `Bug #1983949
+    <https://bugs.launchpad.net/oslo.service/+bug/1983949>`_: Fixed eventlet
+    native threads tpool on child process when parent process has used them
+    before launching the service.
+
