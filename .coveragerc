@@ -5,4 +5,4 @@ omit = oslo_service/tests/*
 
 [report]
 ignore_errors = True
-precision = 2
+
