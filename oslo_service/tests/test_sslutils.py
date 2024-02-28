@@ -78,24 +78,40 @@ class SslutilsTestCase(base.ServiceBaseTestCase):
                               group=sslutils.config_section)
         self.assertRaises(RuntimeError, sslutils.is_enabled, self.conf)
 
-    @mock.patch("ssl.wrap_socket")
+    @mock.patch("ssl.SSLContext")
     @mock.patch("os.path.exists")
-    def _test_wrap(self, exists_mock, wrap_socket_mock, **kwargs):
+    def _test_wrap(self, exists_mock, ssl_context_mock,
+                   ca_file=None,
+                   ciphers=None,
+                   ssl_version=None):
         exists_mock.return_value = True
         sock = mock.Mock()
+        context = mock.Mock()
+        ssl_context_mock.return_value = context
         self.conf.set_default("cert_file", self.cert_file_name,
                               group=sslutils.config_section)
         self.conf.set_default("key_file", self.key_file_name,
                               group=sslutils.config_section)
-        ssl_kwargs = {'server_side': True,
-                      'certfile': self.conf.ssl.cert_file,
-                      'keyfile': self.conf.ssl.key_file,
-                      'cert_reqs': ssl.CERT_NONE,
-                      }
-        if kwargs:
-            ssl_kwargs.update(**kwargs)
         sslutils.wrap(self.conf, sock)
-        wrap_socket_mock.assert_called_once_with(sock, **ssl_kwargs)
+        ssl_version = ssl_version or ssl.PROTOCOL_TLS_SERVER
+        ssl_context_mock.assert_called_once_with(ssl_version)
+        context.load_cert_chain.assert_called_once_with(
+            self.conf.ssl.cert_file,
+            self.conf.ssl.key_file,
+        )
+        if ca_file:
+            self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+            context.load_verify_locations.assert_called_once_with(
+                ca_file
+            )
+        else:
+            self.assertEqual(context.verify_mode, ssl.CERT_NONE)
+            self.assertFalse(context.check_hostname)
+        if ciphers:
+            context.set_ciphers.assert_called_once_with(
+                ciphers
+            )
+        context.wrap_socket.assert_called_once_with(sock, server_side=True)
 
     def test_wrap(self):
         self._test_wrap()
@@ -103,10 +119,7 @@ class SslutilsTestCase(base.ServiceBaseTestCase):
     def test_wrap_ca_file(self):
         self.conf.set_default("ca_file", self.ca_file_name,
                               group=sslutils.config_section)
-        ssl_kwargs = {'ca_certs': self.conf.ssl.ca_file,
-                      'cert_reqs': ssl.CERT_REQUIRED
-                      }
-        self._test_wrap(**ssl_kwargs)
+        self._test_wrap(ca_file=self.conf.ssl.ca_file)
 
     def test_wrap_ciphers(self):
         self.conf.set_default("ca_file", self.ca_file_name,
@@ -118,17 +131,13 @@ class SslutilsTestCase(base.ServiceBaseTestCase):
         )
         self.conf.set_default("ciphers", ciphers,
                               group=sslutils.config_section)
-        ssl_kwargs = {'ca_certs': self.conf.ssl.ca_file,
-                      'cert_reqs': ssl.CERT_REQUIRED,
-                      'ciphers': ciphers}
-        self._test_wrap(**ssl_kwargs)
+        self._test_wrap(ca_file=self.conf.ssl.ca_file,
+                        ciphers=self.conf.ssl.ciphers)
 
     def test_wrap_ssl_version(self):
         self.conf.set_default("ca_file", self.ca_file_name,
                               group=sslutils.config_section)
         self.conf.set_default("version", "tlsv1",
                               group=sslutils.config_section)
-        ssl_kwargs = {'ca_certs': self.conf.ssl.ca_file,
-                      'cert_reqs': ssl.CERT_REQUIRED,
-                      'ssl_version': ssl.PROTOCOL_TLSv1}
-        self._test_wrap(**ssl_kwargs)
+        self._test_wrap(ca_file=self.conf.ssl.ca_file,
+                        ssl_version=ssl.PROTOCOL_TLSv1)

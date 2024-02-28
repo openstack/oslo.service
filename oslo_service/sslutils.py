@@ -77,28 +77,27 @@ def is_enabled(conf):
 
 def wrap(conf, sock):
     conf.register_opts(_options.ssl_opts, config_section)
-    ssl_kwargs = {
-        'server_side': True,
-        'certfile': conf.ssl.cert_file,
-        'keyfile': conf.ssl.key_file,
-        'cert_reqs': ssl.CERT_NONE,
-    }
+
+    ssl_version = ssl.PROTOCOL_TLS_SERVER
+    if conf.ssl.version:
+        key = conf.ssl.version.lower()
+        try:
+            ssl_version = _SSL_PROTOCOLS[key]
+        except KeyError:
+            raise RuntimeError(
+                _("Invalid SSL version : %s") % conf.ssl.version)
+
+    context = ssl.SSLContext(ssl_version)
+    context.load_cert_chain(conf.ssl.cert_file, conf.ssl.key_file)
 
     if conf.ssl.ca_file:
-        ssl_kwargs['ca_certs'] = conf.ssl.ca_file
-        ssl_kwargs['cert_reqs'] = ssl.CERT_REQUIRED
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_verify_locations(conf.ssl.ca_file)
+    else:
+        context.check_hostname = False
+        context.verify_mode = ssl.CERT_NONE
 
-        if conf.ssl.version:
-            key = conf.ssl.version.lower()
-            try:
-                ssl_kwargs['ssl_version'] = _SSL_PROTOCOLS[key]
-            except KeyError:
-                raise RuntimeError(
-                    _("Invalid SSL version : %s") % conf.ssl.version)
+    if conf.ssl.ciphers:
+        context.set_ciphers(conf.ssl.ciphers)
 
-        if conf.ssl.ciphers:
-            ssl_kwargs['ciphers'] = conf.ssl.ciphers
-
-    # NOTE(eezhova): SSL/TLS protocol version is injected in ssl_kwargs above,
-    # so skipping bandit check
-    return ssl.wrap_socket(sock, **ssl_kwargs)  # nosec
+    return context.wrap_socket(sock, server_side=True)
