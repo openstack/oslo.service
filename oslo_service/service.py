@@ -141,7 +141,7 @@ class SignalHandler(metaclass=Singleton):
         self.signals_to_name = dict(
             (sigval, name)
             for (name, sigval) in self._signals_by_name.items())
-        self._signal_handlers = collections.defaultdict(set)
+        self._signal_handlers = collections.defaultdict(list)
         self.clear()
 
     def clear(self):
@@ -157,7 +157,7 @@ class SignalHandler(metaclass=Singleton):
         if not self.is_signal_supported(sig):
             return
         signo = self._signals_by_name[sig]
-        self._signal_handlers[signo].add(handler)
+        self._signal_handlers[signo].append(handler)
         signal.signal(signo, self._handle_signal)
 
     def _handle_signal(self, signo, frame):
@@ -236,7 +236,7 @@ class SignalHandler(metaclass=Singleton):
             self.__hub_module_file = sys.modules[hub.__module__].__file__
 
     def _handle_signal_cb(self, signo, frame):
-        for handler in self._signal_handlers[signo]:
+        for handler in reversed(self._signal_handlers[signo]):
             handler(signo, frame)
 
     def is_signal_supported(self, sig_name):
