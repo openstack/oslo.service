@@ -98,19 +98,13 @@ wsgi_opts = [
 ssl_opts = [
     cfg.StrOpt('ca_file',
                help="CA certificate file to use to verify "
-                    "connecting clients.",
-               deprecated_group='DEFAULT',
-               deprecated_name='ssl_ca_file'),
+                    "connecting clients."),
     cfg.StrOpt('cert_file',
                help="Certificate file to use when starting "
-                    "the server securely.",
-               deprecated_group='DEFAULT',
-               deprecated_name='ssl_cert_file'),
+                    "the server securely."),
     cfg.StrOpt('key_file',
                help="Private key file to use when starting "
-                    "the server securely.",
-               deprecated_group='DEFAULT',
-               deprecated_name='ssl_key_file'),
+                    "the server securely."),
     cfg.StrOpt('version',
                help='SSL version to use (valid only if SSL enabled). '
                     'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
