@@ -76,7 +76,7 @@ def _safe_wrapper(f, kind, func_name):
     return func
 
 
-class LoopingCallBase(object):
+class LoopingCallBase:
     _KIND = _("Unknown looping call")
 
     _RUN_ONLY_ONE_MESSAGE = _("A looping call can only run one function"
@@ -315,7 +315,7 @@ class BackOffLoopingCall(LoopingCallBase):
                               " only run one function at a time")
 
     def __init__(self, f=None, *args, **kw):
-        super(BackOffLoopingCall, self).__init__(f=f, *args, **kw)
+        super().__init__(f=f, *args, **kw)
         self._error_time = 0
         self._interval = 1
 
@@ -355,7 +355,7 @@ class BackOffLoopingCall(LoopingCallBase):
         return self._start(_idle_for, initial_delay=initial_delay)
 
 
-class RetryDecorator(object):
+class RetryDecorator:
     """Decorator for retrying a function upon suggested exceptions.
 
     The decorated function is retried for the given number of times, and the

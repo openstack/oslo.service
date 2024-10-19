@@ -43,7 +43,7 @@ def _sd_notify(unset_env, msg):
                 sock.sendall(msg)
                 if unset_env:
                     del os.environ['NOTIFY_SOCKET']
-            except EnvironmentError:
+            except OSError:
                 LOG.debug("Systemd notification failed", exc_info=True)
 
 

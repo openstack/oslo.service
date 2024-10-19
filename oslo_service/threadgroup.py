@@ -35,7 +35,7 @@ def _on_thread_done(_greenthread, group, thread):
     group.thread_done(thread)
 
 
-class Thread(object):
+class Thread:
     """Wrapper around a greenthread.
 
      Holds a reference to the :class:`ThreadGroup`. The Thread will notify
@@ -72,7 +72,7 @@ class Thread(object):
         self.thread.cancel(*throw_args)
 
 
-class ThreadGroup(object):
+class ThreadGroup:
     """A group of greenthreads and timers.
 
     The point of the ThreadGroup class is to:

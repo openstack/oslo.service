@@ -139,7 +139,7 @@ class Server(service.ServiceBase):
 
         try:
             sock = eventlet.listen(bind_addr, family, backlog=backlog)
-        except EnvironmentError:
+        except OSError:
             LOG.error("Could not bind to %(host)s:%(port)s",
                       {'host': host, 'port': port})
             raise
@@ -245,7 +245,7 @@ class Request(webob.Request):
     pass
 
 
-class Router(object):
+class Router:
     """WSGI middleware that maps incoming requests to WSGI apps."""
 
     def __init__(self, mapper):
@@ -305,17 +305,17 @@ class Router(object):
 class ConfigNotFound(Exception):
     def __init__(self, path):
         msg = _('Could not find config at %(path)s') % {'path': path}
-        super(ConfigNotFound, self).__init__(msg)
+        super().__init__(msg)
 
 
 class PasteAppNotFound(Exception):
     def __init__(self, name, path):
         msg = (_("Could not load paste app '%(name)s' from %(path)s") %
                {'name': name, 'path': path})
-        super(PasteAppNotFound, self).__init__(msg)
+        super().__init__(msg)
 
 
-class Loader(object):
+class Loader:
     """Used to load WSGI applications from paste configurations."""
 
     def __init__(self, conf):

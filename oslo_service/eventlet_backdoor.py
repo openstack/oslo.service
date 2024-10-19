@@ -40,7 +40,7 @@ class EventletBackdoorConfigValueError(Exception):
         msg = (_('Invalid backdoor_port configuration %(range)s: %(ex)s. '
                '%(help)s') %
                {'range': port_range, 'ex': ex, 'help': help_msg})
-        super(EventletBackdoorConfigValueError, self).__init__(msg)
+        super().__init__(msg)
         self.port_range = port_range
 
 
@@ -50,7 +50,7 @@ def _dont_use_this():
 
 def _dump_frame(f, frame_chapter):
     co = f.f_code
-    print(" %s Frame: %s" % (frame_chapter, co.co_name))
+    print(" {} Frame: {}".format(frame_chapter, co.co_name))
     print("     File: %s" % (co.co_filename))
     print("     Captured at line number: %s" % (f.f_lineno))
     co_locals = set(co.co_varnames)
@@ -64,7 +64,8 @@ def _dump_frame(f, frame_chapter):
         if set_locals:
             print("     %s set local variables:" % (len(set_locals)))
             for var_name in sorted(set_locals.keys()):
-                print("       %s => %r" % (var_name, f.f_locals[var_name]))
+                print("       {} => {!r}".format(
+                    var_name, f.f_locals[var_name]))
         else:
             print("     0 set local variables.")
         if not_set:
@@ -80,7 +81,7 @@ def _dump_frame(f, frame_chapter):
 def _detailed_dump_frames(f, thread_index):
     i = 0
     while f is not None:
-        _dump_frame(f, "%s.%s" % (thread_index, i + 1))
+        _dump_frame(f, "{}.{}".format(thread_index, i + 1))
         f = f.f_back
         i += 1
 
@@ -164,7 +165,7 @@ def _listen(host, start_port, end_port):
     while True:
         try:
             return _listen_func(host, try_port)
-        except socket.error as exc:
+        except OSError as exc:
             if (exc.errno != errno.EADDRINUSE or
                try_port >= end_port):
                 raise
@@ -174,7 +175,7 @@ def _listen(host, start_port, end_port):
 def _try_open_unix_domain_socket(socket_path):
     try:
         return eventlet.listen(socket_path, socket.AF_UNIX)
-    except socket.error as e:
+    except OSError as e:
         if e.errno != errno.EADDRINUSE:
             # NOTE(harlowja): Some other non-address in use error
             # occurred, since we aren't handling those, re-raise

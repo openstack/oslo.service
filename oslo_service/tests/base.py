@@ -23,7 +23,7 @@ from oslo_service import sslutils
 class ServiceBaseTestCase(test_base.BaseTestCase):
 
     def setUp(self):
-        super(ServiceBaseTestCase, self).setUp()
+        super().setUp()
         self.conf_fixture = self.useFixture(config.Config())
         self.conf_fixture.register_opts(_options.eventlet_backdoor_opts)
         self.conf_fixture.register_opts(_options.service_opts)

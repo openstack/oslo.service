@@ -125,7 +125,7 @@ class _PeriodicTasksMeta(type):
 
     def __init__(cls, names, bases, dict_):
         """Metaclass that allows us to collect decorated periodic tasks."""
-        super(_PeriodicTasksMeta, cls).__init__(names, bases, dict_)
+        super().__init__(names, bases, dict_)
 
         # NOTE(sirp): if the attribute is not present then we must be the base
         # class, so, go ahead an initialize it. If the attribute is present,
@@ -170,7 +170,7 @@ def _nearest_boundary(last_run, spacing):
 
 class PeriodicTasks(metaclass=_PeriodicTasksMeta):
     def __init__(self, conf):
-        super(PeriodicTasks, self).__init__()
+        super().__init__()
         self.conf = conf
         self.conf.register_opts(_options.periodic_opts)
         self._periodic_last_run = {}

@@ -52,18 +52,18 @@ class ServiceManagerTestCase(test_base.BaseTestCase):
 
 class ServiceWithTimer(service.Service):
     def __init__(self, ready_event=None):
-        super(ServiceWithTimer, self).__init__()
+        super().__init__()
         self.ready_event = ready_event
 
     def start(self):
-        super(ServiceWithTimer, self).start()
+        super().start()
         self.timer_fired = 0
         self.tg.add_timer(1, self.timer_expired)
 
     def wait(self):
         if self.ready_event:
             self.ready_event.set()
-        super(ServiceWithTimer, self).wait()
+        super().wait()
 
     def timer_expired(self):
         self.timer_fired = self.timer_fired + 1
@@ -71,7 +71,7 @@ class ServiceWithTimer(service.Service):
 
 class ServiceCrashOnStart(ServiceWithTimer):
     def start(self):
-        super(ServiceCrashOnStart, self).start()
+        super().start()
         raise ValueError
 
 
@@ -123,7 +123,7 @@ class ServiceTestBase(base.ServiceBaseTestCase):
             time.sleep(.1)
 
     def setUp(self):
-        super(ServiceTestBase, self).setUp()
+        super().setUp()
         # NOTE(markmc): ConfigOpts.log_opt_values() uses CONF.config-file
         self.conf(args=[], default_config_files=[])
         self.addCleanup(self.conf.reset)
@@ -335,7 +335,7 @@ class ServiceRestartTest(ServiceTestBase):
 
 class _Service(service.Service):
     def __init__(self):
-        super(_Service, self).__init__()
+        super().__init__()
         self.init = event.Event()
         self.cleaned_up = False
 
@@ -344,7 +344,7 @@ class _Service(service.Service):
 
     def stop(self):
         self.cleaned_up = True
-        super(_Service, self).stop()
+        super().stop()
 
 
 class LauncherTest(base.ServiceBaseTestCase):
@@ -418,7 +418,7 @@ class LauncherTest(base.ServiceBaseTestCase):
         initialize_if_enabled_mock.return_value = None
         launcher = service.Launcher(self.conf)
 
-        class FooService(object):
+        class FooService:
             def __init__(self):
                 pass
         serv = FooService()
@@ -552,7 +552,7 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
         pipe_mock.return_value = [None, None]
         launcher = service.ProcessLauncher(self.conf)
 
-        class FooService(object):
+        class FooService:
             def __init__(self):
                 pass
         serv = FooService()
@@ -593,7 +593,7 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
 
 class GracefulShutdownTestService(service.Service):
     def __init__(self):
-        super(GracefulShutdownTestService, self).__init__()
+        super().__init__()
         self.finished_task = event.Event()
 
     def start(self, sleep_amount):
@@ -628,7 +628,7 @@ class ServiceTest(test_base.BaseTestCase):
 
 class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
     def setUp(self):
-        super(EventletServerProcessLauncherTest, self).setUp()
+        super().setUp()
         self.conf(args=[], default_config_files=[])
         self.addCleanup(self.conf.reset)
         self.workers = 3
@@ -708,5 +708,5 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
 
 class EventletServerServiceLauncherTest(EventletServerProcessLauncherTest):
     def setUp(self):
-        super(EventletServerServiceLauncherTest, self).setUp()
+        super().setUp()
         self.workers = 1

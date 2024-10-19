@@ -120,7 +120,7 @@ class Singleton(type):
     def __call__(cls, *args, **kwargs):
         with lockutils.lock('singleton_lock', semaphores=cls._semaphores):
             if cls not in cls._instances:
-                cls._instances[cls] = super(Singleton, cls).__call__(
+                cls._instances[cls] = super().__call__(
                     *args, **kwargs)
         return cls._instances[cls]
 
@@ -128,20 +128,20 @@ class Singleton(type):
 class SignalHandler(metaclass=Singleton):
 
     def __init__(self, *args, **kwargs):
-        super(SignalHandler, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.__setup_signal_interruption()
 
         # Map all signal names to signal integer values and create a
         # reverse mapping (for easier + quick lookup).
         self._ignore_signals = ('SIG_DFL', 'SIG_IGN')
-        self._signals_by_name = dict((name, getattr(signal, name))
-                                     for name in dir(signal)
-                                     if name.startswith("SIG") and
-                                     name not in self._ignore_signals)
-        self.signals_to_name = dict(
-            (sigval, name)
-            for (name, sigval) in self._signals_by_name.items())
+        self._signals_by_name = {name: getattr(signal, name)
+                                 for name in dir(signal)
+                                 if name.startswith("SIG") and
+                                 name not in self._ignore_signals}
+        self.signals_to_name = {
+            sigval: name
+            for (name, sigval) in self._signals_by_name.items()}
         self._signal_handlers = collections.defaultdict(list)
         self.clear()
 
@@ -193,7 +193,7 @@ class SignalHandler(metaclass=Singleton):
                      interrupted_frame.filename == self.__hub_module_file) or
                     (interrupted_frame.function == 'do_sleep' and
                      interrupted_frame.filename == __file__)):
-                    raise IOError(errno.EINTR, 'Interrupted')
+                    raise OSError(errno.EINTR, 'Interrupted')
 
     def __setup_signal_interruption(self):
         """Set up to do the Right Thing with signals during poll() and sleep().
@@ -227,7 +227,7 @@ class SignalHandler(metaclass=Singleton):
                 def sleep_wrapper(seconds):
                     try:
                         return do_sleep(time_sleep, seconds)
-                    except (IOError, InterruptedError) as err:
+                    except (OSError, InterruptedError) as err:
                         if err.errno != errno.EINTR:
                             raise
 
@@ -244,7 +244,7 @@ class SignalHandler(metaclass=Singleton):
         return sig_name in self._signals_by_name
 
 
-class Launcher(object):
+class Launcher:
     """Launch one or more services and wait for them to complete."""
 
     def __init__(self, conf, restart_method='reload'):
@@ -311,7 +311,7 @@ class Launcher(object):
 
 class SignalExit(SystemExit):
     def __init__(self, signo, exccode=1):
-        super(SignalExit, self).__init__(exccode)
+        super().__init__(exccode)
         self.signo = signo
 
 
@@ -323,7 +323,7 @@ class ServiceLauncher(Launcher):
         :param conf: an instance of ConfigOpts
         :param restart_method: passed to super
         """
-        super(ServiceLauncher, self).__init__(
+        super().__init__(
             conf, restart_method=restart_method)
         self.signal_handler = SignalHandler()
 
@@ -364,7 +364,7 @@ class ServiceLauncher(Launcher):
             self.conf.log_opt_values(LOG, logging.DEBUG)
 
         try:
-            super(ServiceLauncher, self).wait()
+            super().wait()
         except SignalExit as exc:
             signame = self.signal_handler.signals_to_name[exc.signo]
             LOG.info('Caught %s, handling', signame)
@@ -391,11 +391,11 @@ class ServiceLauncher(Launcher):
                 break
             self.restart()
 
-        super(ServiceLauncher, self).wait()
+        super().wait()
         return status
 
 
-class ServiceWrapper(object):
+class ServiceWrapper:
     def __init__(self, service, workers):
         self.service = service
         self.workers = workers
@@ -403,7 +403,7 @@ class ServiceWrapper(object):
         self.forktimes = []
 
 
-class ProcessLauncher(object):
+class ProcessLauncher:
     """Launch a service with a given number of workers."""
 
     def __init__(self, conf, wait_interval=0.01, restart_method='reload'):
@@ -672,8 +672,8 @@ class ProcessLauncher(object):
                 elif self.restart_method == 'mutate':
                     self.conf.mutate_config_files()
                     child_signal = signal.SIGHUP
-                for service in set(
-                        [wrap.service for wrap in self.children.values()]):
+                for service in {
+                        wrap.service for wrap in self.children.values()}:
                     service.reset()
 
                 for pid in self.children:
@@ -697,8 +697,8 @@ class ProcessLauncher(object):
         self.running = False
 
         LOG.debug("Stop services.")
-        for service in set(
-                [wrap.service for wrap in self.children.values()]):
+        for service in {
+                wrap.service for wrap in self.children.values()}:
             service.stop()
 
         LOG.debug("Killing children.")
@@ -741,7 +741,7 @@ class Service(ServiceBase):
         self.tg.wait()
 
 
-class Services(object):
+class Services:
 
     def __init__(self, restart_method='reload'):
         if restart_method not in _LAUNCHER_RESTART_METHODS:

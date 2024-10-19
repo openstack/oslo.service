@@ -29,7 +29,7 @@ from oslo_service import threadgroup
 class ThreadGroupTestCase(test_base.BaseTestCase):
     """Test cases for thread group."""
     def setUp(self):
-        super(ThreadGroupTestCase, self).setUp()
+        super().setUp()
         self.tg = threadgroup.ThreadGroup()
         self.addCleanup(self.tg.stop)
 
