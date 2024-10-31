@@ -20,7 +20,7 @@ from oslo_service import loopingcall
 
 class FixtureTestCase(test_base.BaseTestCase):
     def setUp(self):
-        super(FixtureTestCase, self).setUp()
+        super().setUp()
         self.sleepfx = self.useFixture(fixture.SleepFixture())
 
     def test_sleep_fixture(self):

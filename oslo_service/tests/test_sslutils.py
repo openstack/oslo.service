@@ -33,7 +33,7 @@ class SslutilsTestCase(base.ServiceBaseTestCase):
     """Test cases for sslutils."""
 
     def setUp(self):
-        super(SslutilsTestCase, self).setUp()
+        super().setUp()
         self.cert_file_name = os.path.join(SSL_CERT_DIR, 'certificate.crt')
         self.key_file_name = os.path.join(SSL_CERT_DIR, 'privatekey.key')
         self.ca_file_name = os.path.join(SSL_CERT_DIR, 'ca.crt')

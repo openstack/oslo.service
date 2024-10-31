@@ -25,7 +25,7 @@ from oslo_service import loopingcall
 class LoopingCallTestCase(test_base.BaseTestCase):
 
     def setUp(self):
-        super(LoopingCallTestCase, self).setUp()
+        super().setUp()
         self.num_runs = 0
 
     def test_return_true(self):
@@ -159,7 +159,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
 
 class DynamicLoopingCallTestCase(test_base.BaseTestCase):
     def setUp(self):
-        super(DynamicLoopingCallTestCase, self).setUp()
+        super().setUp()
         self.num_runs = 0
 
     def test_return_true(self):

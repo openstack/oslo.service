@@ -45,7 +45,7 @@ class WsgiTestCase(base.ServiceBaseTestCase):
     """Base class for WSGI tests."""
 
     def setUp(self):
-        super(WsgiTestCase, self).setUp()
+        super().setUp()
         self.conf(args=[], default_config_files=[])
 
 
@@ -53,7 +53,7 @@ class TestLoaderNothingExists(WsgiTestCase):
     """Loader tests where os.path.exists always returns False."""
 
     def setUp(self):
-        super(TestLoaderNothingExists, self).setUp()
+        super().setUp()
         mock_patcher = mock.patch.object(os.path, 'exists',
                                          lambda _: False)
         mock_patcher.start()
@@ -86,7 +86,7 @@ document_root = /tmp
     """
 
     def setUp(self):
-        super(TestLoaderNormalFilesystem, self).setUp()
+        super().setUp()
         self.paste_config = tempfile.NamedTemporaryFile(mode="w+t")
         self.paste_config.write(self._paste_config.lstrip())
         self.paste_config.seek(0)
@@ -111,14 +111,14 @@ document_root = /tmp
 
     def tearDown(self):
         self.paste_config.close()
-        super(TestLoaderNormalFilesystem, self).tearDown()
+        super().tearDown()
 
 
 class TestWSGIServer(WsgiTestCase):
     """WSGI server tests."""
 
     def setUp(self):
-        super(TestWSGIServer, self).setUp()
+        super().setUp()
 
     def test_no_app(self):
         server = wsgi.Server(self.conf, "test_app", None)
@@ -287,7 +287,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
     """WSGI server with SSL tests."""
 
     def setUp(self):
-        super(TestWSGIServerWithSSL, self).setUp()
+        super().setUp()
         cert_file_name = os.path.join(SSL_CERT_DIR, 'certificate.crt')
         key_file_name = os.path.join(SSL_CERT_DIR, 'privatekey.key')
         eventlet.monkey_patch(os=False, thread=False)

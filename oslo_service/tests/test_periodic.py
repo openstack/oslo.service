@@ -41,7 +41,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         # the periodic task decorator
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
-                super(AService, self).__init__(conf)
+                super().__init__(conf)
                 self.called = {'doit': 0, 'urg': 0, 'ticks': 0, 'tocks': 0}
 
             @periodic_task.periodic_task
@@ -134,7 +134,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         # the periodic task decorator
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
-                super(AService, self).__init__(conf)
+                super().__init__(conf)
                 self.called = {'ticks': 0}
 
             @periodic_task.periodic_task(spacing=test_spacing)
@@ -155,7 +155,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
 
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
-                super(AService, self).__init__(conf)
+                super().__init__(conf)
                 self.called = {'urg': 0, }
 
             @periodic_task.periodic_task
@@ -174,7 +174,7 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
     def test_name(self):
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
-                super(AService, self).__init__(conf)
+                super().__init__(conf)
 
             @periodic_task.periodic_task(name='better-name')
             def tick(self, context):
@@ -234,7 +234,7 @@ class ManagerMetaTestCase(base.ServiceBaseTestCase):
 class ManagerTestCase(base.ServiceBaseTestCase):
     """Tests the periodic tasks portion of the manager class."""
     def setUp(self):
-        super(ManagerTestCase, self).setUp()
+        super().setUp()
 
     def test_periodic_tasks_with_idle(self):
         class Manager(periodic_task.PeriodicTasks):
