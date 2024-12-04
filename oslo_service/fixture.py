@@ -12,6 +12,18 @@
 
 import fixtures
 
+from debtcollector import removals
+
+removals.removed_module(
+    __name__,
+    replacement=None,
+    removal_version="2026.2",
+    message=(
+        "The 'oslo_service.fixture' module is deprecated and will be removed"
+        " in version 2026.2."
+    )
+)
+
 
 class SleepFixture(fixtures.Fixture):
     """A fixture for mocking the ``wait()`` within :doc:`loopingcall` events.

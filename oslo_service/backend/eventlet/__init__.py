@@ -15,19 +15,13 @@
 
 
 from oslo_service.backend.base import BaseBackend
-from oslo_service import loopingcall
-from oslo_service import service
-from oslo_service import threadgroup
+from oslo_service.backend.eventlet import loopingcall
+from oslo_service.backend.eventlet import service
+from oslo_service.backend.eventlet import threadgroup
 
 
 class EventletBackend(BaseBackend):
-    """Backend implementation for Eventlet.
-
-    In this revision, this is a "stub" for a real backend; right now it imports
-    the regular implementation of oslo.service, which will be moved
-    entirely into a backend in a subsequent patch.
-
-    """
+    """Backend implementation for Eventlet."""
 
     @staticmethod
     def get_service_components():
