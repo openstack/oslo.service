@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The following deprecated options have been removed. Use the ``[ssl]``
+    options instead.
+
+    - ``[DEFAULT] ssl_ca_file``
+    - ``[DEFAULT] ssl_cert_file``
+    - ``[DEFAULT] ssl_key_file``
