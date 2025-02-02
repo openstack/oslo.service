@@ -19,6 +19,18 @@ import ssl
 from oslo_service._i18n import _
 from oslo_service import _options
 
+from debtcollector import removals
+
+removals.removed_module(
+    __name__,
+    replacement=None,
+    removal_version="2026.2",
+    message=(
+        "The 'oslo_service.sslutils' module is deprecated and will be removed"
+        " in version 2026.2."
+    )
+)
+
 
 config_section = 'ssl'
 

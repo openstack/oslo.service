@@ -31,6 +31,19 @@ from eventlet.green import socket
 from oslo_service._i18n import _
 from oslo_service import _options
 
+from debtcollector import removals
+
+removals.removed_module(
+    __name__,
+    replacement=None,
+    removal_version="2026.2",
+    message=(
+        "The 'eventlet_backdoor' module is deprecated and will be removed in "
+        "version 2026.2. This module is not being replaced. Please migrate "
+        "away from using it and remove any dependencies on this module."
+    )
+)
+
 
 LOG = logging.getLogger(__name__)
 

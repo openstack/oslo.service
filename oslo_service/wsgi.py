@@ -35,6 +35,19 @@ from oslo_service import _options
 from oslo_service import service
 from oslo_service import sslutils
 
+from debtcollector import removals
+
+removals.removed_module(
+    __name__,
+    replacement="uwsgi",
+    removal_version="2026.2",
+    message=(
+        "The 'oslo_service.wsgi' module is deprecated and will be removed in "
+        "version 2026.2. We recommend transitioning to 'uwsgi' for serving "
+        "WSGI applications."
+    )
+)
+
 
 LOG = logging.getLogger(__name__)
 

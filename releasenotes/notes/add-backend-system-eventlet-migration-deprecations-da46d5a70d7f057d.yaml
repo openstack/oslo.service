@@ -1,0 +1,28 @@
+---
+features:
+  - |
+    A new backend system has been introduced to modularize and improve
+    the flexibility of the service implementation. This system allows
+    developers to choose or implement alternative backends.
+
+    By default, the ``eventlet`` backend is used, preserving the previous
+    behavior. The backend is dynamically loaded through the new
+    backend mechanism.
+deprecations:
+  - |
+    The following modules are now deprecated and will be removed in a
+    future release:
+
+    - ``oslo_service.wsgi``: Users are advised to migrate to ``uwsgi`` for
+      serving WSGI applications.
+
+    - ``oslo_service.eventlet_backdoor``: This module has been deprecated and
+      will be removed in version ``2026.2.`` It is no longer maintained.
+
+    - ``oslo_service.fixtures``: This module has been deprecated and
+      will be removed in version ``2026.2``. It is no longer maintained.
+
+    - ``oslo_service.sslutils``: This module has been deprecated and
+      will be removed in version ``2026.2``. It is no longer maintained.
+
+    Users should remove any dependencies on these modules as soon as possible.

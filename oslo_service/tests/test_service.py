@@ -438,7 +438,7 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
         fakeServiceWrapper = service.ServiceWrapper(service.Service(), 1)
         launcher.children = {pid_nums[0]: fakeServiceWrapper,
                              pid_nums[1]: fakeServiceWrapper}
-        with mock.patch('oslo_service.service.os.kill') as mock_kill:
+        with mock.patch('os.kill') as mock_kill:
             with mock.patch.object(launcher, '_wait_child') as _wait_child:
 
                 def fake_wait_child():

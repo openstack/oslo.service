@@ -23,6 +23,9 @@ from oslo_service.backend import init_backend
 
 
 class TestBackend(unittest.TestCase):
+    def setUp(self):
+        backend_module._reset_backend()
+
     def tearDown(self):
         backend_module._reset_backend()
 
