@@ -38,6 +38,7 @@ class EventletBackend(BaseBackend):
             "ServiceWrapper": service.ServiceWrapper,
             "SignalHandler": service.SignalHandler,
             "SignalExit": service.SignalExit,
+            "Singleton": service.Singleton,
 
             # Looping call-related classes
             "LoopingCallBase": loopingcall.LoopingCallBase,

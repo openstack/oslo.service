@@ -35,6 +35,7 @@ Services = get_component("Services")
 ServiceWrapper = get_component("ServiceWrapper")
 SignalHandler = get_component("SignalHandler")
 SignalExit = get_component("SignalExit")
+Singleton = get_component("Singleton")
 
 # Function exports
 launch = get_component("launch")
