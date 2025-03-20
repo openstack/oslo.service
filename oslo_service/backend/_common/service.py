@@ -38,11 +38,12 @@ def is_sighup_and_daemon(signo, signal_handler):
             signo == signal.SIGHUP and is_daemon())
 
 
-def get_signal_mappings(ignore=('SIG_DFL', 'SIG_IGN')):
+def get_signal_mappings():
     signals_by_name = {
         name: getattr(signal, name)
         for name in dir(signal)
-        if name.startswith('SIG') and name not in ignore
+        if name.startswith('SIG') and
+        isinstance(getattr(signal, name), signal.Signals)
     }
     signals_to_name = {v: k for k, v in signals_by_name.items()}
 
