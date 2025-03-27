@@ -35,34 +35,38 @@ class TestBackend(unittest.TestCase):
         self.assertEqual(backend.__class__.__name__, "EventletBackend")
 
     def test_init_backend_explicit(self):
-        """test that init_backend() can be called before get_backend()"""
-
+        """Test that init_backend() can be called before get_backend()."""
         init_backend(BackendType.EVENTLET)
-
         backend = get_backend()
         self.assertEqual(backend.__class__.__name__, "EventletBackend")
 
     def test_dont_reinit_backend_from_default(self):
-        """test that init_backend() can't be called after get_backend()"""
-
+        """Fail if init_backend() called after get_backend() with another."""
         get_backend()
-
         with self.assertRaisesRegex(
             exceptions.BackendAlreadySelected,
-            "The 'eventlet' backend is already set up",
+            "Backend already set to 'eventlet'",
         ):
-            init_backend(BackendType.EVENTLET)
+            init_backend(BackendType.THREADING)
 
     def test_dont_reinit_backend_explicit_init(self):
-        """test that init_backend() can't be called twice"""
-
+        """Fail if init_backend() called twice with different backend."""
         init_backend(BackendType.EVENTLET)
-
         with self.assertRaisesRegex(
             exceptions.BackendAlreadySelected,
-            "The 'eventlet' backend is already set up",
+            "Backend already set to 'eventlet'",
         ):
+            init_backend(BackendType.THREADING)
+
+    def test_reinit_backend_same_type_is_noop(self):
+        """init_backend() with same type is a no-op."""
+        init_backend(BackendType.EVENTLET)
+        try:
             init_backend(BackendType.EVENTLET)
+        except exceptions.BackendAlreadySelected:
+            self.fail(
+                "init_backend() should be a no-op if same type is passed"
+            )
 
     def test_cached_backend(self):
         """Test backend is cached after initial load."""
@@ -82,13 +86,46 @@ class TestBackend(unittest.TestCase):
 
     def test_backend_components(self):
         """Test that components are cached when init_backend is called."""
-
         init_backend(BackendType.EVENTLET)
-
         backend = get_backend()
-
         self.assertTrue(
             {"ServiceBase", "ServiceLauncher"}.intersection(
                 backend.get_service_components()
             )
         )
+
+    def test_get_backend_type(self):
+        """Ensure get_backend_type() returns the selected backend."""
+        self.assertIsNone(backend_module.get_backend_type())
+        init_backend(BackendType.THREADING)
+        self.assertEqual(
+            backend_module.get_backend_type(), BackendType.THREADING)
+
+
+class TestBackendHook(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        backend_module._reset_backend()
+
+    def test_hook_sets_default_backend_when_not_explicitly_initialized(self):
+        backend_module.register_backend_default_hook(
+            lambda: BackendType.THREADING)
+        result = backend_module.get_backend()
+        self.assertEqual(
+            backend_module._cached_backend_type, BackendType.THREADING)
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.get_service_components())
+
+    def test_hook_is_ignored_if_backend_already_initialized(self):
+        backend_module.init_backend(BackendType.EVENTLET)
+        backend_module.register_backend_default_hook(
+            lambda: BackendType.THREADING)
+        self.assertEqual(
+            backend_module._cached_backend_type, BackendType.EVENTLET)
+
+    def test_second_init_backend_raises_exception_even_with_hook(self):
+        backend_module.init_backend(BackendType.THREADING)
+        backend_module.register_backend_default_hook(
+            lambda: BackendType.EVENTLET)
+        with self.assertRaises(exceptions.BackendAlreadySelected):
+            backend_module.init_backend(BackendType.EVENTLET)

@@ -15,17 +15,16 @@
 
 from __future__ import annotations
 
-from abc import ABC
-from abc import abstractmethod
+import abc
 from typing import Any
 
 from oslo_service.backend.exceptions import BackendComponentNotAvailable
 
 
-class BaseBackend(ABC):
+class BaseBackend(abc.ABC):
     """Base class for all backend implementations."""
 
-    @abstractmethod
+    @abc.abstractmethod
     def get_service_components(self) -> dict[str, Any]:
         """Return the backend components.
 
@@ -42,6 +41,29 @@ class BaseBackend(ABC):
         pass
 
 
+class ServiceBase(metaclass=abc.ABCMeta):
+    """Base class for all services."""
+
+    @abc.abstractmethod
+    def start(self):
+        """Start service."""
+
+    @abc.abstractmethod
+    def stop(self):
+        """Stop service."""
+
+    @abc.abstractmethod
+    def wait(self):
+        """Wait for service to complete."""
+
+    @abc.abstractmethod
+    def reset(self):
+        """Reset service.
+
+        Called in case a service running in daemon mode receives SIGHUP.
+        """
+
+
 class ComponentRegistry:
     """A registry to manage access to backend components.
 
@@ -49,12 +71,13 @@ class ComponentRegistry:
     raises an explicit error, improving clarity and debugging. It acts
     as a centralized registry for backend components.
     """
+
     def __init__(self, components):
         """Initialize the registry with a dictionary of components.
 
-        :param components: A dictionary containing backend components, where
-                           the keys are component names and the values are
-                           the respective implementations.
+        :param components: A dictionary containing backend components,
+            where the keys are component names and the values are the
+            respective implementations.
         """
         self._components = components
 
@@ -62,8 +85,8 @@ class ComponentRegistry:
         """Retrieve a component by its key from the registry.
 
         :param key: The name of the component to retrieve.
-        :raises NotImplementedError: If the component is
-                                     not registered or available.
+        :raises NotImplementedError: If the component is not registered
+            or available.
         :return: The requested component instance.
         """
         if key not in self._components or self._components[key] is None:
@@ -75,7 +98,7 @@ class ComponentRegistry:
         """Check if a component is registered and available.
 
         :param key: The name of the component to check.
-        :return: True if the component is registered
-                 and available, False otherwise.
+        :return: True if the component is registered and available,
+            False otherwise.
         """
         return key in self._components and self._components[key] is not None

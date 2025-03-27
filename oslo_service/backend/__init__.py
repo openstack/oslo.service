@@ -12,12 +12,14 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
 import enum
 import importlib
 import logging
 from typing import Any
+from typing import Callable
 from typing import TYPE_CHECKING
 
 from . import exceptions
@@ -35,31 +37,61 @@ class BackendType(enum.Enum):
 
 DEFAULT_BACKEND_TYPE = BackendType.EVENTLET
 
-_cached_backend_type: BackendType | None = None  # backend type
-_cached_backend: BaseBackend | None = None  # current backend
-_cached_components: dict[str, Any] | None = None  # backend components
+_cached_backend_type: BackendType | None = None
+_cached_backend: BaseBackend | None = None
+_cached_components: dict[str, Any] | None = None
+
+# optional override hook
+_backend_hook: Callable[[], BackendType] | None = None
+
+
+def register_backend_default_hook(hook: Callable[[], BackendType]) -> None:
+    """Register a hook that decides the default backend type.
+
+    This is used when no init_backend() call has been made, and
+    get_backend() is called. The hook will be invoked to determine
+    the backend type to use *only if* no backend has been selected yet.
+
+    Example:
+
+        def my_hook():
+            return BackendType.THREADING
+
+        register_backend_default_hook(my_hook)
+
+    :param hook: A callable that returns a BackendType
+    """
+    global _backend_hook
+    _backend_hook = hook
 
 
 def _reset_backend() -> None:
-    """used by test functions to reset the selected backend"""
+    """Used by test functions to reset the selected backend."""
 
-    global _cached_backend, _cached_components, _cached_backend_type
+    global _cached_backend, _cached_components
+    global _cached_backend_type, _backend_hook
+
     _cached_backend_type = _cached_backend = _cached_components = None
+    _backend_hook = None
 
 
 def init_backend(type_: BackendType) -> None:
-    """establish which backend will be used when get_backend() is called"""
+    """Establish which backend will be used when get_backend() is called."""
 
     global _cached_backend, _cached_components, _cached_backend_type
 
     if _cached_backend_type is not None:
-        raise exceptions.BackendAlreadySelected(
-            f"The {_cached_backend_type.value!r} backend is already set up"
-        )
+        if _cached_backend_type != type_:
+            raise exceptions.BackendAlreadySelected(
+                f"Backend already set to {_cached_backend_type.value!r},"
+                f" cannot reinitialize with {type_.value!r}"
+            )
+
+        return  # already initialized with same value; no-op
 
     backend_name = type_.value
-
     LOG.info(f"Loading backend: {backend_name}")
+
     try:
         module_name = f"oslo_service.backend.{backend_name}"
         module = importlib.import_module(module_name)
@@ -81,15 +113,31 @@ def init_backend(type_: BackendType) -> None:
 
 
 def get_backend() -> BaseBackend:
-    """Load backend dynamically based on the default constant."""
+    """Load backend dynamically based on the default constant or hook."""
 
     global _cached_backend
     if _cached_backend is None:
-        init_backend(DEFAULT_BACKEND_TYPE)
+        type_ = DEFAULT_BACKEND_TYPE
+
+        if _backend_hook is not None:
+            try:
+                type_ = _backend_hook()
+                LOG.info(f"Backend hook selected: {type_.value}")
+            except Exception:
+                LOG.exception(
+                    "Backend hook raised an exception."
+                    " Falling back to default.")
+
+        init_backend(type_)
 
     assert _cached_backend is not None  # nosec B101 : this is for typing
 
     return _cached_backend
+
+
+def get_backend_type() -> BackendType | None:
+    """Return the type of the current backend, or None if not set."""
+    return _cached_backend_type
 
 
 def get_component(name: str) -> Any:
@@ -103,4 +151,5 @@ def get_component(name: str) -> Any:
 
     if name not in _cached_components:
         raise KeyError(f"Component {name!r} not found in backend.")
+
     return _cached_components[name]
