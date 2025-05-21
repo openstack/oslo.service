@@ -1,0 +1,64 @@
+features:
+  - |
+    Added a new `threading` backend to `oslo.service`, using standard Python
+    threads instead of `eventlet`. This includes a full implementation of:
+
+    - `Service`, `Launcher`, `ServiceLauncher`, and `ProcessLauncher` using
+      `cotyledon`
+    - `LoopingCall` variants (`FixedIntervalLoopingCall`,
+      `DynamicLoopingCall`, etc.) using `futurist.ThreadPoolExecutor`
+    - A new `ThreadGroup` and `Thread` abstraction to mimic `eventlet`-like
+      behavior
+    - A native `SignalHandler` implementation using standard Python signals
+
+    This backend provides a standard-thread-compatible alternative that avoids
+    monkey-patching, making it suitable for environments where `eventlet` is
+    problematic or undesirable.
+
+    Additionally:
+
+    - `ProcessLauncher` now supports a `no_fork=True` mode, allowing services
+      to run in the main process without forking. This is useful when `fork()`
+      is unsafe — for example, in threaded environments or with Python 3.12+
+      where the default multiprocessing start method has changed to `spawn`.
+
+    - A new `register_backend_default_hook()` API has been added. It allows
+      users to define a fallback backend type in case `init_backend()` was not
+      called early enough. This is helpful in environments where import order
+      or initialization timing cannot be guaranteed.
+
+      Example:
+
+      ```python
+      from oslo_service import backend
+      backend.register_backend_default_hook(lambda: backend.BackendType.THREADING)
+      ```
+
+      This hook will only be used if `init_backend()` has not already been called.
+
+upgrade:
+  - |
+    While Python 3.14 defaults to ``spawn`` as the multiprocessing start
+    method, `oslo.service` continues to rely on ``fork`` as the only supported
+    method for creating worker processes. Many parts of OpenStack depend on
+    objects that cannot be safely pickled (e.g. argparse parsers, thread locks,
+    lambdas in config defaults), which makes ``spawn`` currently impractical.
+
+    In the long term, process scaling should be handled externally (e.g. via
+    Kubernetes or systemd), rather than by the service itself.
+
+issues:
+  - |
+    When using the `threading` backend with multiple workers
+    (i.e. `ProcessLauncher` with `fork()`), **starting threads before the fork
+    occurs can lead to corrupted state** due to how `os.fork()` behaves in
+    multi-threaded processes. This is a known limitation in Python.
+
+    See: https://gibizer.github.io/posts/Eventlet-Removal-The-First-Threading-Bug/#threads--osfork--confused-threadpools
+
+    To avoid this issue, you can:
+
+    - Ensure that no threads are started before `oslo.service` forks the workers.
+    - Use `ProcessLauncher(no_fork=True)` to disable forking entirely.
+    - Explicitly manage thread lifecycle — for example, stop all threads before
+      forking, as currently done in Nova.

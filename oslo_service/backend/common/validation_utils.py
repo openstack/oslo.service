@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Hewlett-Packard Development Company, L.P.
+# Copyright (C) 2025 Red Hat, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -8,11 +8,16 @@
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied.
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import setuptools
+from oslo_service._i18n import _
+from oslo_service.backend.base import ServiceBase
 
-setuptools.setup(setup_requires=['pbr>=2.0.0'], pbr=True)
+
+def check_service_base(service):
+    if not isinstance(service, ServiceBase):
+        raise TypeError(
+            _("Service %(service)s must be an instance of %(base)s!")
+            % {'service': service, 'base': ServiceBase})

@@ -37,13 +37,13 @@ LOG = logging.getLogger(__name__)
 class LoopingCallDone(Exception):
     """Exception to break out and stop a LoopingCallBase.
 
-    The poll-function passed to LoopingCallBase can raise this exception to
-    break out of the loop normally. This is somewhat analogous to
+    The poll-function passed to LoopingCallBase can raise this exception
+    to break out of the loop normally. This is somewhat analogous to
     StopIteration.
 
-    An optional return-value can be included as the argument to the exception;
-    this return-value will be returned by LoopingCallBase.wait()
-
+    An optional return-value can be included as the argument to the
+    exception; this return-value will be returned by
+    LoopingCallBase.wait()
     """
 
     def __init__(self, retvalue=True):
@@ -109,16 +109,17 @@ class LoopingCallBase:
         self._abort.wait(timeout)
 
     def _start(self, idle_for, initial_delay=None, stop_on_exception=True):
-        """Start the looping
+        """Start the looping.
 
-        :param idle_for: Callable that takes two positional arguments, returns
-                         how long to idle for. The first positional argument is
-                         the last result from the function being looped and the
-                         second positional argument is the time it took to
-                         calculate that result.
-        :param initial_delay: How long to delay before starting the looping.
-                              Value is in seconds.
-        :param stop_on_exception: Whether to stop if an exception occurs.
+        :param idle_for: Callable that takes two positional arguments,
+            returns how long to idle for. The first positional argument
+            is the last result from the function being looped and the
+            second positional argument is the time it took to calculate
+            that result.
+        :param initial_delay: How long to delay before starting the
+            looping. Value is in seconds.
+        :param stop_on_exception: Whether to stop if an exception
+            occurs.
         :returns: eventlet event instance
         """
         if self._thread is not None:
@@ -359,33 +360,33 @@ class BackOffLoopingCall(LoopingCallBase):
 class RetryDecorator:
     """Decorator for retrying a function upon suggested exceptions.
 
-    The decorated function is retried for the given number of times, and the
-    sleep time between the retries is incremented until max sleep time is
-    reached. If the max retry count is set to -1, then the decorated function
-    is invoked indefinitely until an exception is thrown, and the caught
-    exception is not in the list of suggested exceptions.
+    The decorated function is retried for the given number of times, and
+    the sleep time between the retries is incremented until max sleep
+    time is reached. If the max retry count is set to -1, then the
+    decorated function is invoked indefinitely until an exception is
+    thrown, and the caught exception is not in the list of suggested
+    exceptions.
     """
 
     def __init__(self, max_retry_count=-1, inc_sleep_time=10,
                  max_sleep_time=60, exceptions=()):
         """Configure the retry object using the input params.
 
-        :param max_retry_count: maximum number of times the given function must
-                                be retried when one of the input 'exceptions'
-                                is caught. When set to -1, it will be retried
-                                indefinitely until an exception is thrown
-                                and the caught exception is not in param
-                                exceptions.
-        :param inc_sleep_time: incremental time in seconds for sleep time
-                               between retries
-        :param max_sleep_time: max sleep time in seconds beyond which the sleep
-                               time will not be incremented using param
-                               inc_sleep_time. On reaching this threshold,
-                               max_sleep_time will be used as the sleep time.
-        :param exceptions: suggested exceptions for which the function must be
-                           retried, if no exceptions are provided (the default)
-                           then all exceptions will be reraised, and no
-                           retrying will be triggered.
+        :param max_retry_count: maximum number of times the given
+            function must be retried when one of the input 'exceptions'
+            is caught. When set to -1, it will be retried indefinitely
+            until an exception is thrown and the caught exception is not
+            in param exceptions.
+        :param inc_sleep_time: incremental time in seconds for sleep
+            time between retries
+        :param max_sleep_time: max sleep time in seconds beyond which
+            the sleep time will not be incremented using param
+            inc_sleep_time. On reaching this threshold, max_sleep_time
+            will be used as the sleep time.
+        :param exceptions: suggested exceptions for which the function
+            must be retried, if no exceptions are provided (the default)
+            then all exceptions will be reraised, and no retrying will
+            be triggered.
         """
         self._max_retry_count = max_retry_count
         self._inc_sleep_time = inc_sleep_time

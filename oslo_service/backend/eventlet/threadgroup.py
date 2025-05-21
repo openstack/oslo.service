@@ -39,10 +39,11 @@ def _on_thread_done(_greenthread, group, thread):
 class Thread:
     """Wrapper around a greenthread.
 
-     Holds a reference to the :class:`ThreadGroup`. The Thread will notify
-     the :class:`ThreadGroup` when it has done so it can be removed from
-     the threads list.
+    Holds a reference to the :class:`ThreadGroup`. The Thread will notify
+    the :class:`ThreadGroup` when it has done so it can be removed from
+    the threads list.
     """
+
     def __init__(self, thread, group, link=True):
         self.thread = thread
         if link:
@@ -91,8 +92,8 @@ class ThreadGroup:
     def __init__(self, thread_pool_size=10):
         """Create a ThreadGroup with a pool of greenthreads.
 
-        :param thread_pool_size: the maximum number of threads allowed to run
-                                 concurrently.
+        :param thread_pool_size: the maximum number of threads allowed
+            to run concurrently.
         """
         self.pool = greenpool.GreenPool(thread_pool_size)
         self.threads = []
@@ -244,8 +245,8 @@ class ThreadGroup:
     def thread_done(self, thread):
         """Remove a completed thread from the group.
 
-        This method is automatically called on completion of a thread in the
-        group, and should not be called explicitly.
+        This method is automatically called on completion of a thread in
+        the group, and should not be called explicitly.
         """
         self.threads.remove(thread)
 

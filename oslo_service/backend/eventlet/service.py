@@ -14,17 +14,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-
 """Generic Node base class for all workers that run on hosts."""
 
-import abc
 import collections
 import errno
 import functools
 import gc
 import inspect
-import io
 import logging
 import os
 import random
@@ -36,87 +32,27 @@ import eventlet
 from eventlet import event
 from eventlet import tpool
 
-from oslo_concurrency import lockutils
 from oslo_service._i18n import _
 from oslo_service import _options
+from oslo_service.backend.base import ServiceBase
+from oslo_service.backend.common.constants import \
+    _LAUNCHER_RESTART_METHODS
+from oslo_service.backend.common.daemon_utils import \
+    is_sighup_and_daemon as _is_sighup_and_daemon
+from oslo_service.backend.common.signal_utils import \
+    get_signal_mappings
+from oslo_service.backend.common.signal_utils import \
+    SignalExit
+from oslo_service.backend.common.singleton import \
+    Singleton
+from oslo_service.backend.common.validation_utils import \
+    check_service_base as _check_service_base
 from oslo_service.backend.eventlet import threadgroup
 from oslo_service import eventlet_backdoor
 from oslo_service import systemd
 
 
 LOG = logging.getLogger(__name__)
-
-_LAUNCHER_RESTART_METHODS = ['reload', 'mutate']
-
-
-def _is_daemon():
-    # The process group for a foreground process will match the
-    # process group of the controlling terminal. If those values do
-    # not match, or ioctl() fails on the stdout file handle, we assume
-    # the process is running in the background as a daemon.
-    # http://www.gnu.org/software/bash/manual/bashref.html#Job-Control-Basics
-    try:
-        is_daemon = os.getpgrp() != os.tcgetpgrp(sys.stdout.fileno())
-    except io.UnsupportedOperation:
-        # Could not get the fileno for stdout, so we must be a daemon.
-        is_daemon = True
-    except OSError as err:
-        if err.errno == errno.ENOTTY:
-            # Assume we are a daemon because there is no terminal.
-            is_daemon = True
-        else:
-            raise
-    return is_daemon
-
-
-def _is_sighup_and_daemon(signo):
-    if not (SignalHandler().is_signal_supported('SIGHUP') and
-            signo == signal.SIGHUP):
-        # Avoid checking if we are a daemon, because the signal isn't
-        # SIGHUP.
-        return False
-    return _is_daemon()
-
-
-def _check_service_base(service):
-    if not isinstance(service, ServiceBase):
-        raise TypeError(_("Service %(service)s must an instance of %(base)s!")
-                        % {'service': service, 'base': ServiceBase})
-
-
-class ServiceBase(metaclass=abc.ABCMeta):
-    """Base class for all services."""
-
-    @abc.abstractmethod
-    def start(self):
-        """Start service."""
-
-    @abc.abstractmethod
-    def stop(self):
-        """Stop service."""
-
-    @abc.abstractmethod
-    def wait(self):
-        """Wait for service to complete."""
-
-    @abc.abstractmethod
-    def reset(self):
-        """Reset service.
-
-        Called in case service running in daemon mode receives SIGHUP.
-        """
-
-
-class Singleton(type):
-    _instances = {}
-    _semaphores = lockutils.Semaphores()
-
-    def __call__(cls, *args, **kwargs):
-        with lockutils.lock('singleton_lock', semaphores=cls._semaphores):
-            if cls not in cls._instances:
-                cls._instances[cls] = super().__call__(
-                    *args, **kwargs)
-        return cls._instances[cls]
 
 
 class SignalHandler(metaclass=Singleton):
@@ -128,14 +64,7 @@ class SignalHandler(metaclass=Singleton):
 
         # Map all signal names to signal integer values and create a
         # reverse mapping (for easier + quick lookup).
-        self._ignore_signals = ('SIG_DFL', 'SIG_IGN')
-        self._signals_by_name = {name: getattr(signal, name)
-                                 for name in dir(signal)
-                                 if name.startswith("SIG") and
-                                 name not in self._ignore_signals}
-        self.signals_to_name = {
-            sigval: name
-            for (name, sigval) in self._signals_by_name.items()}
+        self._signals_by_name, self.signals_to_name = get_signal_mappings()
         self._signal_handlers = collections.defaultdict(list)
         self.clear()
 
@@ -192,8 +121,8 @@ class SignalHandler(metaclass=Singleton):
     def __setup_signal_interruption(self):
         """Set up to do the Right Thing with signals during poll() and sleep().
 
-        Deal with the changes introduced in PEP 475 that prevent a signal from
-        interrupting eventlet's call to poll() or sleep().
+        Deal with the changes introduced in PEP 475 that prevent a
+        signal from interrupting eventlet's call to poll() or sleep().
         """
         select_module = eventlet.patcher.original('select')
         self.__force_interrupt_on_signal = hasattr(select_module, 'poll')
@@ -245,10 +174,9 @@ class Launcher:
         """Initialize the service launcher.
 
         :param restart_method: If 'reload', calls reload_config_files on
-            SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP. Other
-            values produce a ValueError.
+            SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP.
+            Other values produce a ValueError.
         :returns: None
-
         """
         self.conf = conf
         conf.register_opts(_options.service_opts)
@@ -266,7 +194,6 @@ class Launcher:
                         ProcessLauncher.launch_service. It must be None, 1 or
                         omitted.
         :returns: None
-
         """
         if workers is not None and workers != 1:
             raise ValueError(_("Launcher asked to start multiple workers"))
@@ -278,7 +205,6 @@ class Launcher:
         """Stop all services which are currently running.
 
         :returns: None
-
         """
         self.services.stop()
 
@@ -286,7 +212,6 @@ class Launcher:
         """Wait until all services have been stopped, and then return.
 
         :returns: None
-
         """
         self.services.wait()
 
@@ -294,7 +219,7 @@ class Launcher:
         """Reload config files and restart service.
 
         :returns: The return value from reload_config_files or
-          mutate_config_files, according to the restart_method.
+            mutate_config_files, according to the restart_method.
         """
         if self.restart_method == 'reload':
             self.conf.reload_config_files()
@@ -303,14 +228,9 @@ class Launcher:
         self.services.restart()
 
 
-class SignalExit(SystemExit):
-    def __init__(self, signo, exccode=1):
-        super().__init__(exccode)
-        self.signo = signo
-
-
 class ServiceLauncher(Launcher):
     """Runs one or more service in a parent process."""
+
     def __init__(self, conf, restart_method='reload'):
         """Constructor.
 
@@ -381,7 +301,7 @@ class ServiceLauncher(Launcher):
         while True:
             self.handle_signal()
             status, signo = self._wait_for_exit_or_signal()
-            if not _is_sighup_and_daemon(signo):
+            if not _is_sighup_and_daemon(signo, SignalHandler()):
                 break
             self.restart()
 
@@ -405,10 +325,10 @@ class ProcessLauncher:
 
         :param conf: an instance of ConfigOpts
         :param wait_interval: The interval to sleep for between checks
-                              of child process exit.
+            of child process exit.
         :param restart_method: If 'reload', calls reload_config_files on
-            SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP. Other
-            values produce a ValueError.
+            SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP.
+            Other values produce a ValueError.
         """
         self.conf = conf
         conf.register_opts(_options.service_opts)
@@ -563,7 +483,7 @@ class ProcessLauncher:
                 self._child_process_handle_signal()
                 status, signo = self._child_wait_for_exit_or_signal(
                     self.launcher)
-                if not _is_sighup_and_daemon(signo):
+                if not _is_sighup_and_daemon(signo, SignalHandler()):
                     self.launcher.wait()
                     break
                 self.launcher.restart()
@@ -580,10 +500,10 @@ class ProcessLauncher:
     def launch_service(self, service, workers=1):
         """Launch a service with a given number of workers.
 
-       :param service: a service to launch, must be an instance of
-              :class:`oslo_service.service.ServiceBase`
-       :param workers: a number of processes in which a service
-              will be running
+        :param service: a service to launch, must be an instance of
+               :class:`oslo_service.service.ServiceBase`
+        :param workers: a number of processes in which a service
+               will be running
         """
         _check_service_base(service)
         wrap = ServiceWrapper(service, workers)
@@ -657,7 +577,7 @@ class ProcessLauncher:
 
                 signame = self.signal_handler.signals_to_name[self.sigcaught]
                 LOG.info('Caught %s, stopping children', signame)
-                if not _is_sighup_and_daemon(self.sigcaught):
+                if not _is_sighup_and_daemon(self.sigcaught, SignalHandler()):
                     break
 
                 child_signal = signal.SIGTERM
@@ -725,8 +645,8 @@ class Service(ServiceBase):
     def stop(self, graceful=False):
         """Stop a service.
 
-        :param graceful: indicates whether to wait for all threads to finish
-               or terminate them instantly
+        :param graceful: indicates whether to wait for all threads to
+            finish or terminate them instantly
         """
         self.tg.stop(graceful)
 
@@ -798,7 +718,6 @@ class Services:
         :param service: service to run
         :param done: event to wait on until a shutdown is triggered
         :returns: None
-
         """
         try:
             service.start()

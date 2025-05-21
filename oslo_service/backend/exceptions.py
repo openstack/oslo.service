@@ -15,7 +15,7 @@
 
 
 class BackendAlreadySelected(Exception):
-    """raised when init_backend() is called more than once"""
+    """Raised when init_backend() is called more than once."""
     pass
 
 
