@@ -18,6 +18,7 @@ import signal
 import sys
 import threading
 import traceback
+import warnings
 
 import cotyledon
 from cotyledon import oslo_config_glue
@@ -211,16 +212,24 @@ class Services:
 
 
 class ProcessLauncher:
-    def __init__(self, conf, restart_method='reload', no_fork=False):
+    def __init__(
+            self, conf, wait_interval=None, restart_method='reload',
+            no_fork=False):
         self.conf = conf
         self.restart_method = restart_method
         self.no_fork = no_fork
         self._manager = None
-        self._service_instance = None
+
+        if wait_interval is not None:
+            warnings.warn(
+                "'wait_interval' is deprecated and has no effect in the"
+                " 'threading' backend. It is accepted only for compatibility"
+                " reasons and will be removed.",
+                category=DeprecationWarning,
+            )
 
     def launch_service(self, service, workers=1):
         _check_service_base(service)
-        self._service_instance = service
 
         if self.no_fork:
             LOG.warning("no_fork=True: running service in main process")
@@ -228,10 +237,11 @@ class ProcessLauncher:
             service.wait()
             return
 
-        self._manager = cotyledon.ServiceManager()
-        oslo_config_glue.setup(self._manager, self.conf)
-        self._manager.add(ServiceWrapper, workers,
-                          args=(self._service_instance,))
+        if self._manager is None:
+            self._manager = cotyledon.ServiceManager()
+            oslo_config_glue.setup(self._manager, self.conf)
+
+        self._manager.add(ServiceWrapper, workers, args=(service,))
 
     def wait(self):
         if self.no_fork:
