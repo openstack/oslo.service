@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    Fixed a crash that occurred during service shutdown in the threading
+    backend, caused by an incorrect call to the non-existent internal method
+    ``_terminate()`` on ``cotyledon.ServiceManager``. The shutdown process now
+    correctly uses the public ``shutdown()`` method, ensuring graceful and
+    reliable termination of services.

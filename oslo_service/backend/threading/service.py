@@ -131,7 +131,7 @@ class ServiceLauncher:
         self._manager.add(ServiceWrapper, workers, args=(service_instance,))
 
     def stop(self):
-        self._manager._terminate(None, None)
+        self._manager.shutdown()
 
     def wait(self):
         try:
@@ -251,7 +251,7 @@ class ProcessLauncher:
     def stop(self):
         LOG.info("Stopping service")
         if self._manager:
-            self._manager._terminate(None, None)
+            self._manager.shutdown()
 
 
 def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
