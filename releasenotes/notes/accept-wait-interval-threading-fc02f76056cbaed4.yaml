@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    The ``threading`` backend now accepts the ``wait_interval`` argument
+    in ``ProcessLauncher`` for compatibility with services like Neutron.
+    The parameter is still used in the ``eventlet`` backend to reduce CPU usage
+    during child monitoring loops, but has no effect in ``threading``.
+    A warning is logged if it is passed.
+    In addition, multiple calls to ``launch_service()`` on the same
+    ``ProcessLauncher`` instance are now supported, using a single
+    ``ServiceManager`` internally. This makes the threading backend fully
+    compatible with how the ``eventlet`` backend behaves.
