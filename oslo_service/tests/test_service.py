@@ -21,6 +21,7 @@ import multiprocessing
 import os
 import signal
 import socket
+import subprocess
 import time
 import traceback
 from unittest import mock
@@ -160,12 +161,14 @@ class ServiceLauncherTest(ServiceTestBase):
         return workers
 
     def _get_workers(self):
-        f = os.popen('ps ax -o pid,ppid,command')
+        proc = subprocess.Popen(
+            ['ps', 'ax', '-o', 'pid,ppid,command'],
+            stdout=subprocess.PIPE, encoding='utf-8')
         # Skip ps header
-        f.readline()
+        proc.stdout.readline()
 
         processes = [tuple(int(p) for p in line.strip().split()[:2])
-                     for line in f]
+                     for line in proc.stdout]
         return [p for p, pp in processes if pp == self.pid]
 
     def test_killed_worker_recover(self):
