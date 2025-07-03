@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The ``oslo_service.wsgi`` module has been undeprecated. It contains many
+    utilities besides the eventlet-based ``Server`` class. Instead, only the
+    ``Server`` class itself is now deprecated.

@@ -37,18 +37,6 @@ from oslo_service import sslutils
 
 from debtcollector import removals
 
-removals.removed_module(
-    __name__,
-    replacement="uwsgi",
-    removal_version="2026.2",
-    message=(
-        "The 'oslo_service.wsgi' module is deprecated and will be removed in "
-        "version 2026.2. We recommend transitioning to 'uwsgi' for serving "
-        "WSGI applications."
-    )
-)
-
-
 LOG = logging.getLogger(__name__)
 
 
@@ -67,6 +55,15 @@ class InvalidInput(Exception):
                 "Unexpected argument for periodic task creation: %(arg)s.")
 
 
+@removals.removed_class(
+    'Server',
+    removal_version="2026.2",
+    message=(
+        "The Server class utilises the eventlet service, and eventlet support "
+        "is deprecated for removal. You should remove use of eventlet servers "
+        "from your application and switch to deploying via WSGI."
+    )
+)
 class Server(service.ServiceBase):
     """Server class to manage a WSGI server, serving a WSGI application."""
 
