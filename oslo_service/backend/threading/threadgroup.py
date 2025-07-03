@@ -22,8 +22,6 @@ from oslo_service.backend.threading import loopingcall
 
 LOG = logging.getLogger(__name__)
 
-# --- New: Add a Thread wrapper to mimic the eventlet interface ---
-
 
 class Thread:
     """A simple wrapper around native threads.
@@ -62,8 +60,6 @@ class Thread:
     def cancel(self, *throw_args):
         # Optionally implement cancellation if required.
         pass
-
-# --- End of new Thread wrapper ---
 
 
 class ThreadGroup:
@@ -215,6 +211,9 @@ class ThreadGroup:
             self.threads = [t for t in self.threads if t is current]
 
     def waitall(self):
+        """Block until all timers and threads in the group are complete.
+
+        """
         with self._lock:
             threads_copy = list(self.threads)
             timers_copy = list(self.timers)
@@ -224,6 +223,9 @@ class ThreadGroup:
 
         for timer in timers_copy:
             timer.wait()
+
+    # NOTE(tkajinam): To keep interface consistent with eventlet version
+    wait = waitall
 
     def _set_attr(self, obj, attr, value):
         try:
