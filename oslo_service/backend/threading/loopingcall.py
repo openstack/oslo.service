@@ -98,7 +98,7 @@ class LoopingCallBase:
     _RUN_ONLY_ONE_MESSAGE = _(
         "A looping call can only run one function at a time")
 
-    def __init__(self, *args, f=None, **kwargs):
+    def __init__(self, f=None, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
         self.f = f
@@ -293,7 +293,7 @@ class BackOffLoopingCall(LoopingCallBase):
         "A dynamic backoff interval looping call can only run one function at"
         " a time")
 
-    def __init__(self, *args, f=None, **kwargs):
+    def __init__(self, f=None, *args, **kwargs):
         super().__init__(f=f, *args, **kwargs)
         self._error_time = 0
         self._interval = 1
