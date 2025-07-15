@@ -18,7 +18,7 @@ import threading
 import time
 import warnings
 
-from oslo_service.backend.threading import loopingcall
+from oslo_service.backend._threading import loopingcall
 
 LOG = logging.getLogger(__name__)
 

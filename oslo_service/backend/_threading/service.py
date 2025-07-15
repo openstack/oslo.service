@@ -24,13 +24,13 @@ import cotyledon
 from cotyledon import oslo_config_glue
 
 from oslo_service._i18n import _
+from oslo_service.backend._common.constants import _LAUNCHER_RESTART_METHODS
+from oslo_service.backend._common.service \
+    import check_service_base as _check_service_base
+from oslo_service.backend._common.service import get_signal_mappings
+from oslo_service.backend._common.service import Singleton
+from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import ServiceBase
-from oslo_service.backend.common.constants import _LAUNCHER_RESTART_METHODS
-from oslo_service.backend.common.signal_utils import get_signal_mappings
-from oslo_service.backend.common.singleton import Singleton
-from oslo_service.backend.common.validation_utils import \
-    check_service_base as _check_service_base
-from oslo_service.backend.threading import threadgroup
 
 LOG = logging.getLogger(__name__)
 

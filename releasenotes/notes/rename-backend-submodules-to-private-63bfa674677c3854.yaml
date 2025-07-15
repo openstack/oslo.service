@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    Internal backend modules have been renamed to **explicitly indicate that
+    they are** private:
+
+    * ``oslo_service.backend.common`` → ``oslo_service.backend._common``
+    * ``oslo_service.backend.threading`` → ``oslo_service.backend._threading``
+    * ``oslo_service.backend.eventlet`` → ``oslo_service.backend._eventlet``
+
+    These modules were never intended to be used directly. **This change makes
+    it clearer** that they are internal to ``oslo_service.backend``. Projects
+    should only interact with the backend system via the public interface
+    provided in ``oslo_service.backend.__init__``—**specifically through
+    functions like** ``get_component()``, ``get_backend()``, and
+    ``init_backend()``.
+
+    **If your project was** directly importing any of these modules, please
+    update the imports to use the public API instead.

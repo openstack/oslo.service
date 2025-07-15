@@ -18,7 +18,7 @@ from unittest import TestCase
 
 from oslo_config import cfg
 
-from oslo_service.backend.threading import service
+from oslo_service.backend._threading import service
 
 
 class DummyService(service.ServiceBase):

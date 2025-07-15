@@ -12,7 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import errno
+import io
+import os
 import signal
+import sys
+
+from oslo_concurrency import lockutils
+
+from oslo_service._i18n import _
+from oslo_service.backend.base import ServiceBase
+
+
+def is_daemon():
+    try:
+        return os.getpgrp() != os.tcgetpgrp(sys.stdout.fileno())
+    except io.UnsupportedOperation:
+        return True
+    except OSError as err:
+        return err.errno == errno.ENOTTY or False
+
+
+def is_sighup_and_daemon(signo, signal_handler):
+    return (signal_handler.is_signal_supported('SIGHUP') and
+            signo == signal.SIGHUP and is_daemon())
 
 
 def get_signal_mappings(ignore=('SIG_DFL', 'SIG_IGN')):
@@ -36,3 +59,21 @@ class SignalExit(SystemExit):
     def __init__(self, signo, exccode=1):
         super().__init__(exccode)
         self.signo = signo
+
+
+def check_service_base(service):
+    if not isinstance(service, ServiceBase):
+        raise TypeError(
+            _("Service %(service)s must be an instance of %(base)s!")
+            % {'service': service, 'base': ServiceBase})
+
+
+class Singleton(type):
+    _instances = {}
+    _semaphores = lockutils.Semaphores()
+
+    def __call__(cls, *args, **kwargs):
+        with lockutils.lock('singleton_lock', semaphores=cls._semaphores):
+            if cls not in cls._instances:
+                cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]

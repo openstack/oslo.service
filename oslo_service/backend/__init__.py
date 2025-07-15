@@ -44,6 +44,15 @@ _cached_components: dict[str, Any] | None = None
 # optional override hook
 _backend_hook: Callable[[], BackendType] | None = None
 
+__all__ = [
+    "get_component",
+    "init_backend",
+    "BackendType",
+    "register_backend_default_hook",
+    "get_backend_type",
+    "get_backend"
+]
+
 
 def register_backend_default_hook(hook: Callable[[], BackendType]) -> None:
     """Register a hook that decides the default backend type.
@@ -93,7 +102,7 @@ def init_backend(type_: BackendType) -> None:
     LOG.info(f"Loading backend: {backend_name}")
 
     try:
-        module_name = f"oslo_service.backend.{backend_name}"
+        module_name = f"oslo_service.backend._{backend_name}"
         module = importlib.import_module(module_name)
         backend_class = getattr(module, f"{backend_name.capitalize()}Backend")
 
