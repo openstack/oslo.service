@@ -1,0 +1,19 @@
+---
+upgrade:
+  - |
+    The ``oslo.service.wsgi.Server`` class now includes
+    backend compatibility checks to prevent improper usage with the threading
+    backend. Applications using the threading backend that attempt to
+    instantiate the WSGI Server will now receive an immediate
+    ``UnsupportedBackendError`` exception with a clear error message.
+
+    This is an intentional breaking change to prevent potential runtime issues
+    and security concerns that could arise from using a component designed for
+    eventlet in a threading environment. The fail-fast behavior ensures that
+    applications using the threading backend are guided towards the correct
+    deployment patterns.
+
+    **Migration Path**: Users should migrate to deploying their WSGI
+    applications using standard WSGI servers such as ``uwsgi``, ``gunicorn``,
+    or similar alternatives instead of relying on the deprecated oslo.service
+    WSGI server.

@@ -29,6 +29,9 @@ import requests
 import webob
 
 from oslo_config import cfg
+from oslo_service import backend
+from oslo_service.backend.exceptions import BackendAlreadySelected
+from oslo_service.backend.exceptions import UnsupportedBackendError
 from oslo_service import sslutils
 from oslo_service.tests import base
 from oslo_service import wsgi
@@ -47,6 +50,10 @@ class WsgiTestCase(base.ServiceBaseTestCase):
     def setUp(self):
         super().setUp()
         self.conf(args=[], default_config_files=[])
+
+        # Ensure eventlet backend is active for WSGI tests
+        backend._reset_backend()
+        backend.init_backend(backend.BackendType.EVENTLET)
 
 
 class TestLoaderNothingExists(WsgiTestCase):
@@ -401,3 +408,140 @@ class TestWSGIServerWithSSL(WsgiTestCase):
 
         server.stop()
         server.wait()
+
+
+class TestWSGIServerBackendCompatibility(WsgiTestCase):
+    """Tests for WSGI Server backend compatibility."""
+
+    def setUp(self):
+        super().setUp()
+        self.backend_module = backend
+        # Reset backend state before each test to allow re-initialization
+        self.backend_module._reset_backend()
+
+    def tearDown(self):
+        super().tearDown()
+        # Reset backend state after each test
+        self.backend_module._reset_backend()
+
+    def test_server_creation_with_eventlet_backend(self):
+        """Test that Server can be created with eventlet backend."""
+        # Initialize eventlet backend explicitly
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.EVENTLET)
+
+        # This should work without raising an exception
+        server = wsgi.Server(self.conf, "test_eventlet", None)
+        self.assertEqual("test_eventlet", server.name)
+
+    def test_server_creation_fails_with_threading_backend(self):
+        """Test that Server creation fails with threading backend."""
+        # Initialize threading backend
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.THREADING)
+
+        # This should raise UnsupportedBackendError
+        def create_server():
+            return wsgi.Server(self.conf, "test_threading", None)
+
+        exc = self.assertRaises(UnsupportedBackendError, create_server)
+
+        # Check that the error message contains specific information
+        error_message = str(exc)
+        self.assertIn("oslo.service.wsgi.Server", error_message)
+        self.assertIn("threading backend", error_message)
+        self.assertIn("standard WSGI servers", error_message)
+
+    def test_check_backend_compatibility_function_eventlet(self):
+        """Test _check_backend_compatibility with eventlet backend."""
+        # Initialize eventlet backend
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.EVENTLET)
+
+        # This should not raise an exception
+        try:
+            wsgi._check_backend_compatibility()
+        except Exception as e:
+            self.fail(f"_check_backend_compatibility raised {e} unexpectedly")
+
+    def test_check_backend_compatibility_function_threading(self):
+        """Test _check_backend_compatibility with threading backend."""
+        # Initialize threading backend
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.THREADING)
+
+        # This should raise UnsupportedBackendError
+        self.assertRaises(
+            UnsupportedBackendError,
+            wsgi._check_backend_compatibility)
+
+    def test_check_backend_compatibility_with_default_backend(self):
+        """Test _check_backend_compatibility with defaut backend."""
+        # Don't explicitly initialize backend, use default (eventlet)
+
+        # This should not raise an exception since default is eventlet
+        try:
+            wsgi._check_backend_compatibility()
+        except Exception as e:
+            self.fail(f"_check_backend_compatibility raised {e} unexpectedly")
+
+    @mock.patch('oslo_service.wsgi.backend.get_backend_type')
+    def test_check_backend_compatibility_with_none_backend(
+        self, mock_get_backend_type):
+        """Test _check_backend_compatibility when backend type is None."""
+        # Simulate the case where backend hasn't been initialized yet
+        mock_get_backend_type.return_value = None
+
+        # This should not raise an exception
+        try:
+            wsgi._check_backend_compatibility()
+        except Exception as e:
+            self.fail(f"_check_backend_compatibility raised {e} unexpectedly")
+
+    def test_server_initialization_sequence_with_threading_backend(self):
+        """Test that the error occurs during Server.__init__, not after."""
+        # Initialize threading backend
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.THREADING)
+
+        # The error should occur immediately during __init__
+        def create_server():
+            # Server.__init__ should fail before any actual server setup
+            return wsgi.Server(
+                self.conf, "test_early_fail", None, host="127.0.0.1", port=0)
+
+        self.assertRaises(UnsupportedBackendError, create_server)
+
+    def test_multiple_server_creation_attempts_with_threading_backend(self):
+        """Test that all attempts creating Server fail consistently."""
+        # Initialize threading backend
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.THREADING)
+
+        # Multiple attempts should all fail in the same way
+        for i in range(3):
+            def create_server():
+                return wsgi.Server(self.conf, f"test_multi_{i}", None)
+
+            self.assertRaises(UnsupportedBackendError, create_server)
+
+    def test_backend_switching_behavior(self):
+        """Test behavior when trying to switch backends."""
+        # Start with eventlet backend
+        self.backend_module.init_backend(
+            self.backend_module.BackendType.EVENTLET)
+
+        # Server creation should work
+        server = wsgi.Server(self.conf, "test_eventlet_first", None)
+        self.assertEqual("test_eventlet_first", server.name)
+
+        # Attempting to switch to threading backend should fail
+        def switch_backend():
+            self.backend_module.init_backend(
+                self.backend_module.BackendType.THREADING)
+
+        self.assertRaises(BackendAlreadySelected, switch_backend)
+
+        # Server creation should still work since backend is still eventlet
+        server2 = wsgi.Server(self.conf, "test_eventlet_second", None)
+        self.assertEqual("test_eventlet_second", server2.name)

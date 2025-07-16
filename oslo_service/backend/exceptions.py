@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_service._i18n import _
+
 
 class BackendAlreadySelected(Exception):
     """Raised when init_backend() is called more than once."""
@@ -22,3 +24,15 @@ class BackendAlreadySelected(Exception):
 class BackendComponentNotAvailable(Exception):
     """Raised when a requested component is not available in the backend."""
     pass
+
+
+class UnsupportedBackendError(Exception):
+    """Raised when a component incompatible with threading backend is used."""
+    def __init__(self, message=None):
+        if message is None:
+            message = _(
+                "This component is not compatible with the threading backend. "
+                "See the documentation for details about how to use the "
+                "threading backend."
+            )
+        super().__init__(message)
