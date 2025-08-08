@@ -14,13 +14,11 @@
 # limitations under the License.
 
 
+from oslo_service.backend._common import service as service_common
+from oslo_service.backend._eventlet import loopingcall
+from oslo_service.backend._eventlet import service
+from oslo_service.backend._eventlet import threadgroup
 from oslo_service.backend.base import BaseBackend
-from oslo_service.backend.common import daemon_utils
-from oslo_service.backend.common import signal_utils
-from oslo_service.backend.common import singleton
-from oslo_service.backend.eventlet import loopingcall
-from oslo_service.backend.eventlet import service
-from oslo_service.backend.eventlet import threadgroup
 
 
 class EventletBackend(BaseBackend):
@@ -40,8 +38,8 @@ class EventletBackend(BaseBackend):
             "Services": service.Services,
             "ServiceWrapper": service.ServiceWrapper,
             "SignalHandler": service.SignalHandler,
-            "SignalExit": signal_utils.SignalExit,
-            "Singleton": singleton.Singleton,
+            "SignalExit": service_common.SignalExit,
+            "Singleton": service_common.Singleton,
 
             # Looping call-related classes
             "LoopingCallBase": loopingcall.LoopingCallBase,
@@ -60,6 +58,6 @@ class EventletBackend(BaseBackend):
 
             # Functions
             "launch": service.launch,
-            "_is_daemon": daemon_utils.is_daemon,
-            "_is_sighup_and_daemon": daemon_utils.is_sighup_and_daemon,
+            "_is_daemon": service_common.is_daemon,
+            "_is_sighup_and_daemon": service_common.is_sighup_and_daemon,
         }

@@ -21,7 +21,7 @@ from debtcollector import removals
 import eventlet
 from eventlet import greenpool
 
-from oslo_service.backend.eventlet import loopingcall
+from oslo_service.backend._eventlet import loopingcall
 from oslo_utils import timeutils
 
 LOG = logging.getLogger(__name__)

@@ -34,20 +34,17 @@ from eventlet import tpool
 
 from oslo_service._i18n import _
 from oslo_service import _options
-from oslo_service.backend.base import ServiceBase
-from oslo_service.backend.common.constants import \
+from oslo_service.backend._common.constants import \
     _LAUNCHER_RESTART_METHODS
-from oslo_service.backend.common.daemon_utils import \
+from oslo_service.backend._common.service \
+    import check_service_base as _check_service_base
+from oslo_service.backend._common.service import get_signal_mappings
+from oslo_service.backend._common.service import \
     is_sighup_and_daemon as _is_sighup_and_daemon
-from oslo_service.backend.common.signal_utils import \
-    get_signal_mappings
-from oslo_service.backend.common.signal_utils import \
-    SignalExit
-from oslo_service.backend.common.singleton import \
-    Singleton
-from oslo_service.backend.common.validation_utils import \
-    check_service_base as _check_service_base
-from oslo_service.backend.eventlet import threadgroup
+from oslo_service.backend._common.service import SignalExit
+from oslo_service.backend._common.service import Singleton
+from oslo_service.backend._eventlet import threadgroup
+from oslo_service.backend.base import ServiceBase
 from oslo_service import eventlet_backdoor
 from oslo_service import systemd
 

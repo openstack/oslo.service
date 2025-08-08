@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from oslo_service.backend._common import service as service_common
+from oslo_service.backend._threading import loopingcall
+from oslo_service.backend._threading import service
+from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import BaseBackend
-from oslo_service.backend.common import daemon_utils
-from oslo_service.backend.common import signal_utils
-from oslo_service.backend.common import singleton
-from oslo_service.backend.threading import loopingcall
-from oslo_service.backend.threading import service
-from oslo_service.backend.threading import threadgroup
 
 
 class ThreadingBackend(BaseBackend):
@@ -37,9 +35,9 @@ class ThreadingBackend(BaseBackend):
             "Service": service.Service,
             "Services": service.Services,
             "ServiceWrapper": service.ServiceWrapper,
-            "SignalExit": signal_utils.SignalExit,
+            "SignalExit": service_common.SignalExit,
             "SignalHandler": service.SignalHandler,
-            "Singleton": singleton.Singleton,
+            "Singleton": service_common.Singleton,
             # Looping call-related classes
             "LoopingCallBase": loopingcall.LoopingCallBase,
             "LoopingCallDone": loopingcall.LoopingCallDone,
@@ -54,7 +52,7 @@ class ThreadingBackend(BaseBackend):
             "ThreadGroup": threadgroup.ThreadGroup,
             "Thread": threadgroup.Thread,
             # Functions
-            "_is_daemon": daemon_utils.is_daemon,
-            "_is_sighup_and_daemon": daemon_utils.is_sighup_and_daemon,
+            "_is_daemon": service_common.is_daemon,
+            "_is_sighup_and_daemon": service_common.is_sighup_and_daemon,
             "launch": service.launch,
         }
