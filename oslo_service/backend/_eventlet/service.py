@@ -32,6 +32,11 @@ import eventlet
 from eventlet import event
 from eventlet import tpool
 
+try:
+    from eventlet.hubs import poll as poll_hub
+except ImportError:
+    poll_hub = None
+
 from oslo_service._i18n import _
 from oslo_service import _options
 from oslo_service.backend._common.constants import \
@@ -124,34 +129,29 @@ class SignalHandler(metaclass=Singleton):
         select_module = eventlet.patcher.original('select')
         self.__force_interrupt_on_signal = hasattr(select_module, 'poll')
 
-        if self.__force_interrupt_on_signal:
-            try:
-                from eventlet.hubs import poll as poll_hub
-            except ImportError:
-                pass
-            else:
-                # This is a function we can test for in the stack when handling
-                # a signal - it's safe to raise an IOError with EINTR anywhere
-                # in this function.
-                def do_sleep(time_sleep_func, seconds):
-                    return time_sleep_func(seconds)
+        if self.__force_interrupt_on_signal and poll_hub is not None:
+            # This is a function we can test for in the stack when handling
+            # a signal - it's safe to raise an IOError with EINTR anywhere
+            # in this function.
+            def do_sleep(time_sleep_func, seconds):
+                return time_sleep_func(seconds)
 
-                time_sleep = eventlet.patcher.original('time').sleep
+            time_sleep = eventlet.patcher.original('time').sleep
 
-                # Wrap time.sleep to ignore the interruption error we're
-                # injecting from the signal handler. This makes the behaviour
-                # the same as sleep() in Python 2, where EINTR causes the
-                # sleep to be interrupted (and not resumed), but no exception
-                # is raised.
-                @functools.wraps(time_sleep)
-                def sleep_wrapper(seconds):
-                    try:
-                        return do_sleep(time_sleep, seconds)
-                    except (OSError, InterruptedError) as err:
-                        if err.errno != errno.EINTR:
-                            raise
+            # Wrap time.sleep to ignore the interruption error we're
+            # injecting from the signal handler. This makes the behaviour
+            # the same as sleep() in Python 2, where EINTR causes the
+            # sleep to be interrupted (and not resumed), but no exception
+            # is raised.
+            @functools.wraps(time_sleep)
+            def sleep_wrapper(seconds):
+                try:
+                    return do_sleep(time_sleep, seconds)
+                except (OSError, InterruptedError) as err:
+                    if err.errno != errno.EINTR:
+                        raise
 
-                poll_hub.sleep = sleep_wrapper
+            poll_hub.sleep = sleep_wrapper
 
             hub = eventlet.hubs.get_hub()
             self.__hub_module_file = sys.modules[hub.__module__].__file__
@@ -170,6 +170,7 @@ class Launcher:
     def __init__(self, conf, restart_method='reload'):
         """Initialize the service launcher.
 
+        :param conf: Configuration object
         :param restart_method: If 'reload', calls reload_config_files on
             SIGHUP. If 'mutate', calls mutate_config_files on SIGHUP.
             Other values produce a ValueError.
