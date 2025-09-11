@@ -1,3 +1,47 @@
 [build-system]
 requires = ["pbr>=6.1.1"]
 build-backend = "pbr.build"
+
+[project]
+name = "oslo.service"
+description = "oslo.service library"
+readme = "README.rst"
+authors = [
+    {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
+]
+requires-python = ">=3.10"
+dynamic = ["version", "dependencies"]
+classifiers = [
+    "Environment :: OpenStack",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+
+[project.urls]
+Homepage = "https://docs.openstack.org/oslo.service"
+Repository = "https://opendev.org/openstack/oslo.service"
+
+[project.optional-dependencies]
+threading = [
+    "cotyledon>=2.0.0",
+    "futurist>=3.1.1",
+]
+
+[project.entry-points."oslo.config.opts"]
+"oslo.service.periodic_task" = "oslo_service.periodic_task:list_opts"
+"oslo.service.service" = "oslo_service.service:list_opts"
+"oslo.service.sslutils" = "oslo_service.sslutils:list_opts"
+"oslo.service.wsgi" = "oslo_service.wsgi:list_opts"
+
+[tool.setuptools]
+packages = ["oslo_service"]
