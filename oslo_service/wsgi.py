@@ -32,12 +32,29 @@ import webob.exc
 from oslo_log import log as logging
 from oslo_service._i18n import _
 from oslo_service import _options
+from oslo_service import backend
+from oslo_service.backend.exceptions import UnsupportedBackendError
 from oslo_service import service
 from oslo_service import sslutils
 
 from debtcollector import removals
 
 LOG = logging.getLogger(__name__)
+
+
+def _check_backend_compatibility():
+    """Check if the current backend is compatible with WSGI Server.
+
+    Raises UnsupportedBackendError if the threading backend is active.
+    """
+    current_backend = backend.get_backend_type()
+    if current_backend == backend.BackendType.THREADING:
+        message = _(
+            "The oslo.service.wsgi.Server class is deprecated and cannot "
+            "be used with the threading backend. Please switch to "
+            "deploying your application via standard WSGI servers instead."
+        )
+        raise UnsupportedBackendError(message)
 
 
 def list_opts():
@@ -95,7 +112,11 @@ class Server(service.ServiceBase):
         :returns: None
         :raises: InvalidInput
         :raises: EnvironmentError
+        :raises: UnsupportedBackendError
         """
+
+        # Check backend compatibility before initializing
+        _check_backend_compatibility()
 
         self.conf = conf
         self.conf.register_opts(_options.wsgi_opts)
