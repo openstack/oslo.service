@@ -29,8 +29,8 @@ class ThreadingBackend(BaseBackend):
         return {
             # Service-related classes
             "ServiceBase": service.ServiceBase,
-            "ServiceLauncher": service.ProcessLauncher,
-            "Launcher": service.ProcessLauncher,
+            "ServiceLauncher": service.ServiceLauncher,
+            "Launcher": service.Launcher,
             "ProcessLauncher": service.ProcessLauncher,
             "Service": service.Service,
             "Services": service.Services,
