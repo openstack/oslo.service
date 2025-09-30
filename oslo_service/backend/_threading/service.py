@@ -121,7 +121,8 @@ class ServiceLauncher:
         self.restart_method = restart_method
         self.backdoor_port = None
         self._manager = cotyledon.ServiceManager()
-        oslo_config_glue.setup(self._manager, conf)
+        oslo_config_glue.setup(self._manager, conf,
+                               reload_method=restart_method)
 
     def launch_service(self, service_instance, workers=1):
         _check_service_base(service_instance)
@@ -239,7 +240,8 @@ class ProcessLauncher:
 
         if self._manager is None:
             self._manager = cotyledon.ServiceManager()
-            oslo_config_glue.setup(self._manager, self.conf)
+            oslo_config_glue.setup(self._manager, self.conf,
+                                   reload_method=self.restart_method)
 
         self._manager.add(ServiceWrapper, workers, args=(service,))
 
