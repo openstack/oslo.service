@@ -84,7 +84,7 @@ def onready(notify_socket, timeout):
     with contextlib.closing(sock):
         try:
             msg = sock.recv(512)
-        except socket.timeout:
+        except TimeoutError:
             return 2
         if b'READY=1' == msg:
             return 0

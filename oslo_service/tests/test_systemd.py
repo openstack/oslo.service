@@ -27,7 +27,7 @@ class SystemdTestCase(test_base.BaseTestCase):
     def test__abstractify(self):
         sock_name = '@fake_socket'
         res = systemd._abstractify(sock_name)
-        self.assertEqual('\0{}'.format(sock_name[1:]), res)
+        self.assertEqual(f'\0{sock_name[1:]}', res)
 
     @mock.patch.object(os, 'getenv', return_value='@fake_socket')
     def _test__sd_notify(self, getenv_mock, unset_env=False):

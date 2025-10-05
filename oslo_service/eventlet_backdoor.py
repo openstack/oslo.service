@@ -63,7 +63,7 @@ def _dont_use_this():
 
 def _dump_frame(f, frame_chapter):
     co = f.f_code
-    print(" {} Frame: {}".format(frame_chapter, co.co_name))
+    print(f" {frame_chapter} Frame: {co.co_name}")
     print("     File: %s" % (co.co_filename))
     print("     Captured at line number: %s" % (f.f_lineno))
     co_locals = set(co.co_varnames)
@@ -94,7 +94,7 @@ def _dump_frame(f, frame_chapter):
 def _detailed_dump_frames(f, thread_index):
     i = 0
     while f is not None:
-        _dump_frame(f, "{}.{}".format(thread_index, i + 1))
+        _dump_frame(f, f"{thread_index}.{i + 1}")
         f = f.f_back
         i += 1
 

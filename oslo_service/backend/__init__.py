@@ -15,11 +15,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import enum
 import importlib
 import logging
 from typing import Any
-from typing import Callable
 from typing import TYPE_CHECKING
 
 from . import exceptions

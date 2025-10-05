@@ -42,7 +42,7 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
         self.config(backdoor_socket="/tmp/my_special_socket-{pid}")
         listen_mock.side_effect = mock.Mock()
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
-        expected_path = "/tmp/my_special_socket-{}".format(os.getpid())
+        expected_path = f"/tmp/my_special_socket-{os.getpid()}"
         self.assertEqual(expected_path, path)
 
     @mock.patch.object(eventlet, 'spawn')

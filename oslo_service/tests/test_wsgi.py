@@ -275,7 +275,7 @@ class TestWSGIServer(WsgiTestCase):
 def requesting(host, port, ca_certs=None, method="POST",
                content_type="application/x-www-form-urlencoded",
                address_familly=socket.AF_INET):
-    frame = bytes("{verb} / HTTP/1.1\r\n\r\n".format(verb=method), "utf-8")
+    frame = bytes(f"{method} / HTTP/1.1\r\n\r\n", "utf-8")
     with socket.socket(address_familly, socket.SOCK_STREAM) as sock:
         if ca_certs:
             with eventlet.wrap_ssl(sock, ca_certs=ca_certs) as wrappedSocket:
