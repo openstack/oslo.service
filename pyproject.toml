@@ -45,3 +45,6 @@ threading = [
 
 [tool.setuptools]
 packages = ["oslo_service"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
