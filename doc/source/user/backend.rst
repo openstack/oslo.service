@@ -34,9 +34,9 @@ removal.
 
 For more context, see:
 
-- `Epoxy spec for Eventlet removal <https://specs.openstack.org/openstack/oslo-specs/specs/epoxy/remove-eventlet-from-oslo-service.html>`_
+- `Epoxy spec for Eventlet removal`_
 - `Eventlet removal guide <https://removal.eventlet.org/>`_
-- `OpenStack Eventlet removal goal <https://governance.openstack.org/tc/goals/selected/remove-eventlet.html>`_
+- `OpenStack Eventlet removal goal`_
 
 How It Works
 ============
@@ -45,21 +45,38 @@ The backend system exposes the same **public components**
 (``ServiceLauncher``, ``ProcessLauncher``, ``ThreadGroup``,
 ``LoopingCall``, etc.) through a dynamic selection mechanism.
 
-At runtime, you select the backend you want to use by calling the
-``init_backend()`` function and providing the desired ``BackendType``:
+At runtime, you can select the backend you want to use in two ways:
 
-.. code-block:: python
+1. **Explicit initialization** by calling ``init_backend()`` with the desired
+   ``BackendType``:
 
-   from oslo_service.backend import init_backend, BackendType
+   .. code-block:: python
 
-   # Use the Threading backend
-   init_backend(BackendType.THREADING)
+      from oslo_service.backend import init_backend, BackendType
 
-If you do not explicitly initialize a backend, the system will
-use the **Eventlet** backend by default.
+      # Use the Threading backend
+      init_backend(BackendType.THREADING)
+
+2. **Dynamic selection** using a hook function that decides which backend
+   to use:
+
+   .. code-block:: python
+
+      from oslo_service.backend import register_backend_default_hook, \
+          BackendType
+
+      def my_backend_decider():
+          # Add custom logic here
+          return BackendType.THREADING
+
+      register_backend_default_hook(my_backend_decider)
+
+If no backend is explicitly initialized, the system will use the **Eventlet**
+backend by default, unless a hook has been registered to override this choice.
 
 Once the backend is initialized, it **cannot be changed**.
-Trying to re-initialize it will raise a ``BackendAlreadySelected`` exception.
+Trying to re-initialize it with a different backend will raise a
+``BackendAlreadySelected`` exception.
 
 If you see this exception, ensure that your backend is initialized only once
 early during your application startup (for example in your main() entry point).
@@ -72,6 +89,97 @@ helper to clear the backend cache:
    from oslo_service.backend import _reset_backend
 
    _reset_backend()
+
+Backend Selection Mechanism
+===========================
+
+The backend system uses a sophisticated caching and selection mechanism to
+ensure efficient and consistent backend selection throughout your application
+lifecycle.
+
+**Core Functions:**
+
+- **``init_backend(type_: BackendType)``**: Explicitly initializes and caches
+  a specific backend. This function loads the backend module, instantiates
+  the backend class, and caches both the backend instance and its components.
+  Once called, the backend cannot be changed to a different type.
+
+- **``get_backend()``**: Returns the currently cached backend instance. If no
+  backend has been explicitly initialized, it follows this selection process:
+
+  1. If a hook is registered, calls the hook to determine the backend type
+  2. If the hook raises an exception, falls back to the default backend
+     (Eventlet)
+  3. If no hook is registered, uses the default backend (Eventlet)
+  4. Initializes the selected backend and returns it
+
+- **``register_backend_default_hook(hook: Callable[[], BackendType])``**:
+  Registers a callback function that decides which backend to use when no
+  explicit initialization has occurred. The hook function should return a
+  ``BackendType`` and will be called by ``get_backend()`` when needed.
+
+- **``get_component(name: str)``**: Retrieves a specific component from the
+  cached backend. This is the primary way to access backend-specific
+  implementations of service components.
+
+**Backend Caching:**
+
+The system maintains four global caches:
+
+- ``_cached_backend_type``: The selected backend type
+- ``_cached_backend``: The instantiated backend object
+- ``_cached_components``: Dictionary of available components from the backend
+- ``_backend_hook``: The registered hook function for dynamic backend selection
+
+**Backend Loading Process:**
+
+When a backend is initialized, the following steps occur:
+
+1. **Module Import**: The backend module is dynamically imported using
+   ``importlib.import_module()``
+2. **Class Instantiation**: The backend class (e.g., ``EventletBackend``,
+   ``ThreadingBackend``) is instantiated
+3. **Component Caching**: All available components are retrieved and cached
+4. **Type Caching**: The backend type is stored for future reference
+
+This process ensures that backend components are loaded only once and
+efficiently cached for subsequent access.
+
+For implementation details, see:
+
+https://opendev.org/openstack/oslo.service/src/branch/master/oslo_service/backend/__init__.py
+
+**Hook Function Requirements:**
+
+Your hook function must:
+
+- Accept no parameters
+- Return a valid ``BackendType`` enum value
+- Handle any exceptions internally (the system will fall back to the default
+  if your hook raises an exception)
+
+Example hook function:
+
+.. code-block:: python
+
+   def environment_based_backend():
+       import os
+       if os.environ.get('USE_THREADING_BACKEND'):
+           return BackendType.THREADING
+       return BackendType.EVENTLET
+
+   register_backend_default_hook(environment_based_backend)
+
+The hook mechanism is primarily useful for library authors or applications
+that wish to select the backend dynamically based on environment,
+configuration, or context — without enforcing it explicitly.
+
+.. warning::
+   If ``get_backend()`` or ``init_backend()`` has already been called before
+   your hook is registered, the hook will be ignored and the default backend
+   (usually Eventlet) will be used. Make sure to register the hook as early
+   as possible, ideally before any other imports that might trigger
+   backend usage.
 
 How to Select a Backend
 ========================
@@ -111,6 +219,23 @@ There are two supported ways to select which backend to use:
 
    If no explicit backend is set, the system will call your hook
    to decide which backend to load.
+
+When to Use init_backend() vs register_backend_default_hook()
+-------------------------------------------------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Use Case
+     - Recommended Method
+   * - You control the application entry point
+     - ``init_backend()``
+   * - You write a shared library or plugin
+     - ``register_backend_default_hook()``
+   * - You want full predictability
+     - ``init_backend()``
+   * - You want context-based dynamic selection
+     - ``register_backend_default_hook()``
 
 .. note::
    There is **no automatic oslo.config option** for ``service_backend``.
@@ -177,6 +302,81 @@ and launch a service:
    if __name__ == "__main__":
        main()
 
+Here's an example using a hook for dynamic backend selection:
+
+.. code-block:: python
+
+   from oslo_service.backend import (
+       register_backend_default_hook,
+       get_component,
+       BackendType
+   )
+
+   def config_based_backend():
+       # Read from configuration or environment
+       if config.get('backend_type') == 'threading':
+           return BackendType.THREADING
+       return BackendType.EVENTLET
+
+   def main():
+       # Register the hook before any backend access
+       register_backend_default_hook(config_based_backend)
+
+       # The backend will be selected automatically when needed
+       ProcessLauncher = get_component("ProcessLauncher")
+       launcher = ProcessLauncher(conf)
+       launcher.launch_service(my_service)
+       launcher.wait()
+
+Common Backend Errors and Exceptions
+====================================
+
+When working with the backend system, you may encounter several specific
+exceptions and errors:
+
+**BackendAlreadySelected**
+   Raised when trying to initialize a backend after one has already been
+   selected. This typically happens when ``init_backend()`` is called
+   multiple times in your application.
+
+   **Solution**: Ensure that ``init_backend()`` is called only once early
+   in your application startup, typically in your main entry point.
+
+**KeyError**
+   Raised when trying to access a component that doesn't exist in the
+   current backend using ``get_component()``.
+
+   **Solution**: Check that the component name is correct and that the
+   component is available in your selected backend.
+
+**ValueError**
+   Raised when trying to initialize an unknown backend type.
+
+   **Solution**: Ensure you're using a valid ``BackendType`` enum value
+   (``BackendType.EVENTLET`` or ``BackendType.THREADING``).
+
+**ImportError**
+   Raised when the backend module cannot be imported or the backend class
+   is not found in the module.
+
+   **Solution**: This usually indicates an installation issue or missing
+   dependencies for the selected backend.
+
+**Hook Exceptions**
+   If your hook function raises an exception, the system will log the error
+   and fall back to the default backend (Eventlet).
+
+   **Solution**: Ensure your hook function handles all potential errors
+   and always returns a valid ``BackendType``.
+
+**Debugging Tips:**
+
+- Use ``_reset_backend()`` in unit tests to clear the backend cache
+- Check that your backend initialization happens before any component access
+- Verify that all required dependencies are installed for your chosen backend
+- Use logging to track backend loading and component access
+- Test your hook function independently to ensure it works correctly
+
 Understanding the Implications of Migrating from Eventlet to Threading
 ======================================================================
 
@@ -210,7 +410,7 @@ the implications of migrating away from Eventlet to the Threading backend:
      - Same public API
    * - Debugging
      - More complex due to cooperative multitasking and green threads.
-       See `eventlet_backdoor.py <https://opendev.org/openstack/oslo.service/src/branch/master/oslo_service/eventlet_backdoor.py>`_
+       See `eventlet_backdoor.py`_
      - May produce clearer native thread stack traces and benefits
        from recent CPython improvements (e.g. PEP 768).
    * - Python compatibility
@@ -232,8 +432,14 @@ References
 ==========
 
 - `Eventlet removal guide <https://removal.eventlet.org/>`_
-- `Epoxy spec for oslo.service <https://specs.openstack.org/openstack/oslo-specs/specs/epoxy/remove-eventlet-from-oslo-service.html>`_
-- `Eventlet removal goal <https://governance.openstack.org/tc/goals/selected/remove-eventlet.html>`_
+- `Epoxy spec for oslo.service`_
+- `Eventlet removal goal`_
 
 For any questions, please refer to the OpenStack mailing list
 or the oslo.service maintainers.
+
+.. _Epoxy spec for Eventlet removal: https://specs.openstack.org/openstack/oslo-specs/specs/epoxy/remove-eventlet-from-oslo-service.html
+.. _OpenStack Eventlet removal goal: https://governance.openstack.org/tc/goals/selected/remove-eventlet.html
+.. _Epoxy spec for oslo.service: https://specs.openstack.org/openstack/oslo-specs/specs/epoxy/remove-eventlet-from-oslo-service.html
+.. _Eventlet removal goal: https://governance.openstack.org/tc/goals/selected/remove-eventlet.html
+.. _eventlet_backdoor.py: https://opendev.org/openstack/oslo.service/src/branch/master/oslo_service/eventlet_backdoor.py
