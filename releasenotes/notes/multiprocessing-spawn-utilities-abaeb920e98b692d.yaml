@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    Added `oslo_service._multiprocessing` module providing
+    ``get_spawn_context()`` and ``get_spawn_pool()`` utilities.
+    These enforce the ``spawn`` start method to avoid
+    fork-inherited lock deadlocks, as explained in:
+    https://pythonspeed.com/articles/python-multiprocessing/
