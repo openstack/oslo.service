@@ -427,6 +427,16 @@ class LauncherTest(base.ServiceBaseTestCase):
         serv = FooService()
         self.assertRaises(TypeError, launcher.launch_service, serv)
 
+    def test_no_fork(self):
+        with mock.patch(
+                'oslo_service.service.ServiceLauncher.launch_service'
+        ) as mock_launch:
+            svc = service.Service()
+            service.launch(
+                self.conf, svc,
+                workers=1, restart_method="reload", no_fork=True)
+            mock_launch.assert_called_with(svc, workers=1)
+
 
 class ProcessLauncherTest(base.ServiceBaseTestCase):
 

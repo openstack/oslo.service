@@ -726,7 +726,7 @@ class Services:
             done.wait()
 
 
-def launch(conf, service, workers=1, restart_method='reload'):
+def launch(conf, service, workers=1, restart_method='reload', **kwargs):
     """Launch a service with a given number of workers.
 
     :param conf: an instance of ConfigOpts
