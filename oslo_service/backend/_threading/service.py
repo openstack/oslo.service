@@ -288,8 +288,23 @@ class ProcessLauncher:
 
 
 def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
+    """Launch a service with a given number of workers.
+
+    :param conf: an instance of ConfigOpts
+    :param service: a service to launch, must be an instance of
+           :class:`oslo_service.service.ServiceBase`
+    :param workers: a number of processes in which a service will be running,
+        type should be int.
+    :param restart_method: Passed to the constructed launcher. If 'reload', the
+        launcher will call reload_config_files on SIGHUP. If 'mutate', it will
+        call mutate_config_files on SIGHUP. Other values produce a ValueError.
+    :param no_fork: Whether to allow forking or not. If True,
+        :class:`~ProcessLauncher` will always be used.
+    :returns: An instance of a launcher that was used to launch the service
+    """
     if workers is not None and not isinstance(workers, int):
         raise TypeError("Type of workers should be int!")
+
     if workers is not None and workers <= 0:
         raise ValueError("Number of workers should be positive!")
 
@@ -300,4 +315,5 @@ def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
             conf, restart_method=restart_method, no_fork=no_fork)
 
     launcher.launch_service(service, workers=workers)
+
     return launcher

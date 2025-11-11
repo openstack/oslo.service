@@ -726,7 +726,7 @@ class Services:
             done.wait()
 
 
-def launch(conf, service, workers=1, restart_method='reload', **kwargs):
+def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
     """Launch a service with a given number of workers.
 
     :param conf: an instance of ConfigOpts
@@ -737,9 +737,9 @@ def launch(conf, service, workers=1, restart_method='reload', **kwargs):
     :param restart_method: Passed to the constructed launcher. If 'reload', the
         launcher will call reload_config_files on SIGHUP. If 'mutate', it will
         call mutate_config_files on SIGHUP. Other values produce a ValueError.
-    :returns: instance of a launcher that was used to launch the service
+    :param no_fork: Ignored for this backend.
+    :returns: An instance of a launcher that was used to launch the service
     """
-
     if workers is not None and not isinstance(workers, int):
         raise TypeError(_("Type of workers should be int!"))
 
@@ -750,6 +750,7 @@ def launch(conf, service, workers=1, restart_method='reload', **kwargs):
         launcher = ServiceLauncher(conf, restart_method=restart_method)
     else:
         launcher = ProcessLauncher(conf, restart_method=restart_method)
+
     launcher.launch_service(service, workers=workers)
 
     return launcher
