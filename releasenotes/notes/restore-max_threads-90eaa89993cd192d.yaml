@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    The ``ThreadGroup.max_threads`` attribute has been restored for backward
+    compatibility. It previously disappeared during the backend refactor
+    (commit ``8c74d0718dc11ed5``), which caused consumers such as Heat to
+    fail when upgrading to oslo.service 4.4.0.
+    The attribute now maps to ``thread_pool_size`` and emits a
+    ``DeprecationWarning``. Applications should migrate to
+    ``thread_pool_size``. The deprecated attribute may be removed in a
+    future release.

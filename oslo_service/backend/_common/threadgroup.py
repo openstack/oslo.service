@@ -272,3 +272,14 @@ class ThreadGroupBase(TimerMixin):
         """
         self._wait_timers()
         self._wait_threads()
+
+    @property
+    def max_threads(self):
+        warnings.warn(
+            "ThreadGroup.max_threads is deprecated and will be removed. "
+            "Use thread_pool_size instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        return self.thread_pool_size
