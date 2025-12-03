@@ -175,7 +175,7 @@ class ServiceLauncherTest(ServiceTestBase):
         start_workers = self._spawn()
 
         # kill one worker and check if new worker can come up
-        LOG.info('pid of first child is %s' % start_workers[0])
+        LOG.info('pid of first child is %r', start_workers[0])
         os.kill(start_workers[0], signal.SIGTERM)
 
         # Wait at most 5 seconds to respawn a worker
@@ -185,7 +185,7 @@ class ServiceLauncherTest(ServiceTestBase):
 
         # Make sure worker pids don't match
         end_workers = self._get_workers()
-        LOG.info('workers: %r' % end_workers)
+        LOG.info('workers: %r', end_workers)
         self.assertNotEqual(start_workers, end_workers)
 
     def _terminate_with_signal(self, sig):
@@ -199,7 +199,7 @@ class ServiceLauncherTest(ServiceTestBase):
         self._wait(cond, timeout)
 
         workers = self._get_workers()
-        LOG.info('workers: %r' % workers)
+        LOG.info('workers: %r', workers)
         self.assertFalse(workers, 'No OS processes left.')
 
     def test_terminate_sigkill(self):
@@ -232,7 +232,7 @@ class ServiceLauncherTest(ServiceTestBase):
 
         # Make sure worker pids match
         end_workers = self._get_workers()
-        LOG.info('workers: %r' % end_workers)
+        LOG.info('workers: %r', end_workers)
         self.assertEqual(start_workers, end_workers)
 
     def test_parent_signal_sighup(self):

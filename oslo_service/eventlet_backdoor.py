@@ -232,9 +232,8 @@ def _initialize_if_enabled(conf):
         except (KeyError, IndexError, ValueError) as e:
             backdoor_socket_path = conf.backdoor_socket
             LOG.warning("Could not apply format string to eventlet "
-                        "backdoor socket path ({}) - continuing with "
-                        "unformatted path"
-                        "".format(e))
+                        "backdoor socket path (%s) - continuing with "
+                        "unformatted path", e)
         sock = _try_open_unix_domain_socket(backdoor_socket_path)
         where_running = backdoor_socket_path
 
