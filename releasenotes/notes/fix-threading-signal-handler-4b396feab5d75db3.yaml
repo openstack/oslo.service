@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    oslo.service SignalHanlder in ``Threading`` backend execute the signal
+    handlers in a new thread, which does not work because the signal only works
+    in the main thread. This issue has been fixed now by executing the signal
+    handlers in the main thread.

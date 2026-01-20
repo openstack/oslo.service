@@ -56,11 +56,7 @@ class SignalHandler(metaclass=Singleton):
             return
         signo = self._signals_by_name[sig]
         self._signal_handlers[signo].append(handler)
-        signal.signal(signo, self._handle_signal)
-
-    def _handle_signal(self, signo, frame):
-        threading.Thread(target=self._handle_signal_cb,
-                         args=(signo, frame)).start()
+        signal.signal(signo, self._handle_signal_cb)
 
     def _handle_signal_cb(self, signo, frame):
         for handler in reversed(self._signal_handlers[signo]):
