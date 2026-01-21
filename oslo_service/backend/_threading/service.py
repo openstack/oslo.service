@@ -14,6 +14,8 @@
 
 import collections
 import logging
+import multiprocessing
+from multiprocessing.reduction import ForkingPickler
 import signal
 import sys
 import threading
@@ -24,6 +26,8 @@ import cotyledon
 from cotyledon import oslo_config_glue
 
 from oslo_service._i18n import _
+from oslo_service._multiprocessing import get_spawn_context
+from oslo_service import _options
 from oslo_service.backend._common.constants import _LAUNCHER_RESTART_METHODS
 from oslo_service.backend._common.service \
     import check_service_base as _check_service_base
@@ -33,6 +37,61 @@ from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import ServiceBase
 
 LOG = logging.getLogger(__name__)
+
+
+def _select_service_manager_context(service_instance):
+    try:
+        ForkingPickler.dumps(service_instance)
+    except Exception as exc:
+        if "fork" in multiprocessing.get_all_start_methods():
+            LOG.warning(
+                "Service %s is not picklable with spawn; "
+                "falling back to fork. "
+                "Please make the service spawn-safe to avoid this fallback.",
+                type(service_instance).__name__,
+                exc_info=exc,
+            )
+            return multiprocessing.get_context("fork")
+        LOG.error(
+            "Service %s is not picklable with spawn and fork is unavailable.",
+            type(service_instance).__name__,
+            exc_info=exc,
+        )
+        raise
+    return get_spawn_context()
+
+
+def _ensure_spawn_picklable(service_instance):
+    try:
+        ForkingPickler.dumps(service_instance)
+    except Exception:
+        LOG.error(
+            "Service %s is not picklable with spawn. "
+            "Make it spawn-safe before launching additional workers.",
+            type(service_instance).__name__,
+            exc_info=True,
+        )
+        raise
+
+
+def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
+                         restart_method):
+    """Create and link a cotyledon ServiceManager for the given service.
+
+    :param service_instance: The service instance (used for spawn/fork check).
+    :param graceful_shutdown_timeout: Timeout for graceful shutdown.
+    :param conf: oslo.config ConfigOpts instance.
+    :param restart_method: 'reload' or 'mutate' for SIGHUP handling.
+    :returns: A tuple (manager_context, manager).
+    """
+    manager_context = _select_service_manager_context(service_instance)
+    manager = cotyledon.ServiceManager(
+        mp_context=manager_context,
+        graceful_shutdown_timeout=graceful_shutdown_timeout)
+    oslo_config_glue.link(
+        manager, conf,
+        reload_method=restart_method)
+    return (manager_context, manager)
 
 
 class SignalHandler(metaclass=Singleton):
@@ -139,25 +198,46 @@ class Launcher:
 class ServiceLauncher:
     def __init__(self, conf, restart_method='reload'):
         self.conf = conf
+        self.conf.register_opts(_options.service_opts)
         self.restart_method = restart_method
         self.backdoor_port = None
-        self._manager = cotyledon.ServiceManager()
-        oslo_config_glue.setup(self._manager, conf,
-                               reload_method=restart_method)
+        self._manager = None
+        self._manager_context = None
+        self._lock = threading.Lock()
 
     def launch_service(self, service_instance, workers=1):
         _check_service_base(service_instance)
         service_instance.backdoor_port = self.backdoor_port
         if not isinstance(workers, int) or workers < 1:
             raise ValueError("Number of workers must be >= 1")
-        self._manager.add(ServiceWrapper, workers, args=(service_instance,))
+        with self._lock:
+            if self._manager is None:
+                self._manager_context, self._manager = _get_service_manager(
+                    service_instance,
+                    self.conf.graceful_shutdown_timeout,
+                    self.conf,
+                    self.restart_method,
+                )
+            elif self._manager_context.get_start_method() == "spawn":
+                _ensure_spawn_picklable(service_instance)
+        # ServiceManager.add() is thread-safe, no need to hold lock
+        self._manager.add(
+            ServiceWrapper, workers, args=(service_instance,))
 
     def stop(self):
-        self._manager.shutdown()
+        with self._lock:
+            if not self._manager:
+                return
+            manager = self._manager
+        manager.shutdown()
 
     def wait(self):
+        with self._lock:
+            if not self._manager:
+                return 0
+            manager = self._manager
         try:
-            return self._manager.run()
+            return manager.run()
         except SystemExit as exc:
             self.stop()
             return exc.code
@@ -241,16 +321,18 @@ class ProcessLauncher:
             self, conf, wait_interval=None, restart_method='reload',
             no_fork=False):
         self.conf = conf
+        self.conf.register_opts(_options.service_opts)
         self.restart_method = restart_method
         self.no_fork = no_fork
         self._lock = threading.Lock()
         self._manager = None
+        self._manager_context = None
 
         if wait_interval is not None:
             warnings.warn(
-                "'wait_interval' is deprecated and has no effect in the"
-                " 'threading' backend. It is accepted only for compatibility"
-                " reasons and will be removed.",
+                "'wait_interval' is deprecated and has no effect in the "
+                "'threading' backend. It is accepted only for compatibility "
+                "reasons and will be removed.",
                 category=DeprecationWarning,
             )
 
@@ -264,27 +346,39 @@ class ProcessLauncher:
             return
 
         # NOTE(gmaan): cotyledon.ServiceManager does not allow more than one
-        # instance per applicaiton. There is use case where multiple services
+        # instance per application. There is use case where multiple services
         # can be launched at same time. To avoid any race condition, we need
         # lock while creating the ServiceManager.
         # For more detail, ref to the bug#2138840
         with self._lock:
             if self._manager is None:
-                self._manager = cotyledon.ServiceManager()
-                oslo_config_glue.setup(self._manager, self.conf,
-                                       reload_method=self.restart_method)
-
+                self._manager_context, self._manager = _get_service_manager(
+                    service,
+                    self.conf.graceful_shutdown_timeout,
+                    self.conf,
+                    self.restart_method,
+                )
+            elif self._manager_context.get_start_method() == "spawn":
+                _ensure_spawn_picklable(service)
+        # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(ServiceWrapper, workers, args=(service,))
 
     def wait(self):
         if self.no_fork:
             return 0
-        return self._manager.run()
+        with self._lock:
+            if not self._manager:
+                return 0
+            manager = self._manager
+        return manager.run()
 
     def stop(self):
         LOG.info("Stopping service")
-        if self._manager:
-            self._manager.shutdown()
+        with self._lock:
+            if not self._manager:
+                return
+            manager = self._manager
+        manager.shutdown()
 
     def restart(self):
         raise NotImplementedError()

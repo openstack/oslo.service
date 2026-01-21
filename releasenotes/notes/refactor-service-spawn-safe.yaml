@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    The threading backend now supports the ``spawn`` multiprocessing
+    start method. If a service is spawn-safe (picklable), ``spawn``
+    will be used as the default start method. Otherwise, the backend
+    will automatically fall back to ``fork`` if available. This
+    prevents inherited threading locks during worker respawn and
+    improves compatibility with Python 3.12+.
+
+    For more information about spawn-safe services, see
+    `spawn <https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods>`_.
+

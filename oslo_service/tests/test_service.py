@@ -651,10 +651,14 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
         # NOTE(bnemec): process_time of 5 needs to be longer than the graceful
         # shutdown timeout in the "exceeded" test below, but also needs to be
         # shorter than the timeout in the regular graceful shutdown test.
+        kwargs = {'workers': self.workers, 'process_time': 5}
+        # graceful_shutdown_timeout is registered in
+        # ServiceBaseTestCase.setUp()
+        kwargs['graceful_shutdown_timeout'] = (
+            self.conf.graceful_shutdown_timeout)
         proc = multiprocessing.Process(target=eventlet_service.run,
                                        args=(queue,),
-                                       kwargs={'workers': self.workers,
-                                               'process_time': 5})
+                                       kwargs=kwargs)
         proc.start()
 
         port = queue.get()
@@ -712,8 +716,11 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
         time_before = time.time()
         os.kill(proc.pid, signal.SIGTERM)
         self.assertTrue(proc.is_alive())
+        # If graceful_shutdown_timeout works, the process should exit.
+        # If it doesn't work, the test will hang which is a useful signal.
         proc.join()
-        self.assertFalse(proc.is_alive())
+        self.assertFalse(proc.is_alive(),
+                         "Process should have exited after graceful timeout")
         time_after = time.time()
 
         self.assertTrue(time_after - time_before > graceful_shutdown_timeout)

@@ -23,6 +23,7 @@ import greenlet
 
 from oslo_config import cfg
 
+from oslo_service import _options
 from oslo_service import service
 
 POOL_SIZE = 1
@@ -122,8 +123,18 @@ class Server(service.ServiceBase):
             pass
 
 
-def run(port_queue, workers=3, process_time=0):
+def run(port_queue, workers=3, process_time=0, graceful_shutdown_timeout=None):
     eventlet.patcher.monkey_patch()
+
+    # Create a fresh config instance for this process
+    conf = cfg.ConfigOpts()
+    conf.register_opts(_options.service_opts)
+    conf(args=[], default_config_files=[])
+
+    # Configure graceful_shutdown_timeout if provided
+    if graceful_shutdown_timeout is not None:
+        conf.set_override('graceful_shutdown_timeout',
+                          graceful_shutdown_timeout)
 
     def hi_app(environ, start_response):
         # Some requests need to take time to process so the connection
@@ -134,7 +145,7 @@ def run(port_queue, workers=3, process_time=0):
 
     server = Server(hi_app)
     server.listen()
-    launcher = service.launch(cfg.CONF, server, workers)
+    launcher = service.launch(conf, server, workers)
 
     port = server.socket.getsockname()[1]
     port_queue.put(port)
