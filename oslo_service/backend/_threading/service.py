@@ -247,6 +247,7 @@ class ProcessLauncher:
         self.conf = conf
         self.restart_method = restart_method
         self.no_fork = no_fork
+        self._lock = threading.Lock()
         self._manager = None
 
         if wait_interval is not None:
@@ -266,10 +267,16 @@ class ProcessLauncher:
             service.wait()
             return
 
-        if self._manager is None:
-            self._manager = cotyledon.ServiceManager()
-            oslo_config_glue.setup(self._manager, self.conf,
-                                   reload_method=self.restart_method)
+        # NOTE(gmaan): cotyledon.ServiceManager does not allow more than one
+        # instance per applicaiton. There is use case where multiple services
+        # can be launched at same time. To avoid any race condition, we need
+        # lock while creating the ServiceManager.
+        # For more detail, ref to the bug#2138840
+        with self._lock:
+            if self._manager is None:
+                self._manager = cotyledon.ServiceManager()
+                oslo_config_glue.setup(self._manager, self.conf,
+                                       reload_method=self.restart_method)
 
         self._manager.add(ServiceWrapper, workers, args=(service,))
 
