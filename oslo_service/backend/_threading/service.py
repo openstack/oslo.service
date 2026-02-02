@@ -16,6 +16,7 @@ import collections
 import logging
 import multiprocessing
 from multiprocessing.reduction import ForkingPickler
+import os
 import signal
 import sys
 import threading
@@ -32,6 +33,7 @@ from oslo_service.backend._common.constants import _LAUNCHER_RESTART_METHODS
 from oslo_service.backend._common.service \
     import check_service_base as _check_service_base
 from oslo_service.backend._common.service import get_signal_mappings
+from oslo_service.backend._common.service import SignalExit
 from oslo_service.backend._common.service import Singleton
 from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import ServiceBase
@@ -105,6 +107,11 @@ class SignalHandler(metaclass=Singleton):
         for sig in list(self._signal_handlers.keys()):
             signal.signal(sig, signal.SIG_DFL)
         self._signal_handlers.clear()
+
+    def ignore_handler(self, sig):
+        signo = self._signals_by_name[sig]
+        signal.signal(signo, signal.SIG_IGN)
+        self._signal_handlers.pop(signo, None)
 
     def add_handlers(self, signals, handler):
         for sig in signals:
@@ -327,6 +334,16 @@ class ProcessLauncher:
         self._lock = threading.Lock()
         self._manager = None
         self._manager_context = None
+        self.service = None
+        self.signal_handler = None
+        # NOTE(gmaan): If service is launched with no_fork=True that means
+        # service is running in the main process, and we need to handle the
+        # signals. In other cases, service processes are handled by the
+        # cotyledon library which handles the signals for all worker
+        # processes, so let's not override their signal handling.
+        if self.no_fork:
+            self.signal_handler = SignalHandler()
+            self.add_signal_handlers()
 
         if wait_interval is not None:
             warnings.warn(
@@ -341,8 +358,9 @@ class ProcessLauncher:
 
         if self.no_fork:
             LOG.warning("no_fork=True: running service in main process")
-            service.start()
-            service.wait()
+            self.service = service
+            self.service.start()
+            self.service.wait()
             return
 
         # NOTE(gmaan): cotyledon.ServiceManager does not allow more than one
@@ -362,6 +380,47 @@ class ProcessLauncher:
                 _ensure_spawn_picklable(service)
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(ServiceWrapper, workers, args=(service,))
+
+    def _graceful_shutdown(self, *args):
+        LOG.info('Graceful shutdown start')
+        # At this time, first SIGTERM is caught and this handler started the
+        # graceful shutdown. We need to ignore the another SIGTERM signal if
+        # they comes during the graceful shutdown otherwise they will interupt
+        # and race the already running graceful shutdown.
+        self.signal_handler.ignore_handler('SIGTERM')
+        # Register alarm signal with conf.graceful_shutdown_timeout.
+        # If graceful shutdown is not finished within the
+        # timeout, then alarm signal will exit the process.
+        if (self.conf.graceful_shutdown_timeout and
+                self.signal_handler.is_signal_supported('SIGALRM')):
+            signal.alarm(self.conf.graceful_shutdown_timeout)
+        self.service.stop()
+        LOG.info('Graceful shutdown finish')
+        os._exit(0)
+
+    def _reload_service(self, *args):
+        # TODO(gmaan): This handler is suppose to reload the service but we
+        # need to implement the restart() method for no_fork case which can
+        # call reset/restart on the service instance.
+        self.signal_handler.clear()
+        raise SignalExit(signal.SIGHUP)
+
+    def _fast_exit(self, *args):
+        LOG.info('Caught SIGINT signal, instantaneous exiting')
+        os._exit(1)
+
+    def _on_alarm_exit(self, *args):
+        LOG.info('Graceful shutdown timeout exceeded, '
+                 'instantaneous exiting')
+        os._exit(1)
+
+    def add_signal_handlers(self):
+        """Add signal handlers."""
+        self.signal_handler.clear()
+        self.signal_handler.add_handler('SIGTERM', self._graceful_shutdown)
+        self.signal_handler.add_handler('SIGINT', self._fast_exit)
+        self.signal_handler.add_handler('SIGHUP', self._reload_service)
+        self.signal_handler.add_handler('SIGALRM', self._on_alarm_exit)
 
     def wait(self):
         if self.no_fork:
