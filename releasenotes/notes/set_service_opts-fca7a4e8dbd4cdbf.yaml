@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added new ``register_service_opts`` and ``set_service_opts_defaults()``
+    methods that allows OpenStack services to register and override a new
+    default values for the below ``service_opts``:
+
+    * ``graceful_shutdown_timeout``
+    * ``log_options``

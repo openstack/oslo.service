@@ -28,11 +28,11 @@ from cotyledon import oslo_config_glue
 
 from oslo_service._i18n import _
 from oslo_service._multiprocessing import get_spawn_context
-from oslo_service import _options
 from oslo_service.backend._common.constants import _LAUNCHER_RESTART_METHODS
 from oslo_service.backend._common import service as common_service
 from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import ServiceBase
+from oslo_service import opts
 
 LOG = logging.getLogger(__name__)
 
@@ -202,7 +202,7 @@ class Launcher:
 class ServiceLauncher:
     def __init__(self, conf, restart_method='reload'):
         self.conf = conf
-        self.conf.register_opts(_options.service_opts)
+        opts.register_service_opts(self.conf)
         self.restart_method = restart_method
         self.backdoor_port = None
         self._manager = None
@@ -325,7 +325,7 @@ class ProcessLauncher:
             self, conf, wait_interval=None, restart_method='reload',
             no_fork=False):
         self.conf = conf
-        self.conf.register_opts(_options.service_opts)
+        opts.register_service_opts(self.conf)
         self.restart_method = restart_method
         self.no_fork = no_fork
         self._lock = threading.Lock()
