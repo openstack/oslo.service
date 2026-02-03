@@ -30,11 +30,7 @@ from oslo_service._i18n import _
 from oslo_service._multiprocessing import get_spawn_context
 from oslo_service import _options
 from oslo_service.backend._common.constants import _LAUNCHER_RESTART_METHODS
-from oslo_service.backend._common.service \
-    import check_service_base as _check_service_base
-from oslo_service.backend._common.service import get_signal_mappings
-from oslo_service.backend._common.service import SignalExit
-from oslo_service.backend._common.service import Singleton
+from oslo_service.backend._common import service as common_service
 from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import ServiceBase
 
@@ -96,10 +92,11 @@ def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
     return (manager_context, manager)
 
 
-class SignalHandler(metaclass=Singleton):
+class SignalHandler(metaclass=common_service.Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._signals_by_name, self.signals_to_name = get_signal_mappings()
+        self._signals_by_name, self.signals_to_name = (
+            common_service.get_signal_mappings())
         self._signal_handlers = collections.defaultdict(list)
         self.clear()
 
@@ -172,7 +169,7 @@ class Launcher:
         """
         if workers is not None and workers != 1:
             raise ValueError(_("Launcher asked to start multiple workers"))
-        _check_service_base(service)
+        common_service.check_service_base(service)
         self.services.add(service)
 
     def stop(self):
@@ -213,7 +210,7 @@ class ServiceLauncher:
         self._lock = threading.Lock()
 
     def launch_service(self, service_instance, workers=1):
-        _check_service_base(service_instance)
+        common_service.check_service_base(service_instance)
         service_instance.backdoor_port = self.backdoor_port
         if not isinstance(workers, int) or workers < 1:
             raise ValueError("Number of workers must be >= 1")
@@ -354,7 +351,7 @@ class ProcessLauncher:
             )
 
     def launch_service(self, service, workers=1):
-        _check_service_base(service)
+        common_service.check_service_base(service)
 
         if self.no_fork:
             LOG.warning("no_fork=True: running service in main process")
@@ -403,7 +400,7 @@ class ProcessLauncher:
         # need to implement the restart() method for no_fork case which can
         # call reset/restart on the service instance.
         self.signal_handler.clear()
-        raise SignalExit(signal.SIGHUP)
+        raise common_service.SignalExit(signal.SIGHUP)
 
     def _fast_exit(self, *args):
         LOG.info('Caught SIGINT signal, instantaneous exiting')

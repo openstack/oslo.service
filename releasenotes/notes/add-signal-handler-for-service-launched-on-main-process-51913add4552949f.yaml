@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    The oslo.service implements the required signal hanlders when service is
+    launched in the main process. The below signals are captured and their
+    respective handles are called:
+
+    * ``SIGTERM``
+    * ``SIGINT``
+    * ``SIGHUP``
+    * ``SIGALRM``
