@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    In the threading backend, completed threads were never removed from the
+    group's tracking. Long-lived services that repeatedly add threads could
+    see unbounded growth. Completed threads are now removed when they finish,
+    matching the documented behavior and eventlet. No caller changes needed.
