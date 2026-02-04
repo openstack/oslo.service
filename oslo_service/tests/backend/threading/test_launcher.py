@@ -59,10 +59,9 @@ class UnpicklableService(service.ServiceBase):
 class BaseLauncherTestCase(TestCase):
     def setUp(self):
         super().setUp()
-        self.conf = cfg.ConfigOpts()
-        # Reset ServiceManager singleton between tests
-        # This allows creating multiple ServiceManager instances in tests
+        # Reset ServiceManager singleton so tests may create new instances.
         cotyledon.ServiceManager._process_runner_already_created = False
+        self.conf = cfg.ConfigOpts()
 
     def _test_multiple_launch_service_re_evaluates_context(self, launcher):
         with mock.patch.object(service, '_select_service_manager_context'
@@ -144,13 +143,7 @@ class ServiceLauncherTestCase(BaseLauncherTestCase):
         self._test_unpicklable_second_service_falls_back_to_fork(launcher)
 
 
-class LauncherTestCase(TestCase):
-    def setUp(self):
-        super().setUp()
-        self.conf = cfg.ConfigOpts()
-        # Reset ServiceManager singleton between tests
-        # This allows creating multiple ServiceManager instances in tests
-        cotyledon.ServiceManager._process_runner_already_created = False
+class LauncherTestCase(BaseLauncherTestCase):
 
     def test_graceful_shutdown_timeout_is_registered(self):
         launchers = [service.ProcessLauncher, service.ServiceLauncher]

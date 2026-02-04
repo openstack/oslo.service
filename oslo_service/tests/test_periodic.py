@@ -16,16 +16,87 @@
 
 """Unit Tests for periodic_task decorator and PeriodicTasks class."""
 
+import pickle
+import sys
+import threading
+import time
 from unittest import mock
 
+import testtools
 from testtools import matchers
 
+from oslo_service import _multiprocessing
+from oslo_service import backend
+from oslo_service.backend.exceptions import UnsupportedBackendError
 from oslo_service import periodic_task
 from oslo_service.tests import base
 
 
 class AnException(Exception):
     pass
+
+
+# Minimal picklable conf for tests that run the real spawn pool (no lambdas).
+class _PicklableConf:
+    run_external_periodic_tasks = False
+
+    def register_opts(self, opts):
+        pass
+
+
+# Module-level classes for run_periodic_tasks_in_parallel tests: instances
+# must be picklable (sent to spawn workers). Local classes in test methods
+# are not picklable.
+class _PicklableManagerOneTask(periodic_task.PeriodicTasks):
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task1(self, context):
+        pass
+
+
+class _PicklableManagerTenTasks(periodic_task.PeriodicTasks):
+    def __init__(self, conf):
+        super().__init__(conf)
+        self.results = []
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task0(self, context):
+        self.results.append(0)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task1(self, context):
+        self.results.append(1)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task2(self, context):
+        self.results.append(2)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task3(self, context):
+        self.results.append(3)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task4(self, context):
+        self.results.append(4)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task5(self, context):
+        self.results.append(5)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task6(self, context):
+        self.results.append(6)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task7(self, context):
+        self.results.append(7)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task8(self, context):
+        self.results.append(8)
+
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def task9(self, context):
+        self.results.append(9)
 
 
 class PeriodicTasksTestCase(base.ServiceBaseTestCase):
@@ -388,3 +459,134 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         mock_random.return_value = 0.5
         mock_now.return_value = 1300
         self.assertEqual(1200 + 5, periodic_task._nearest_boundary(1000, 200))
+
+    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
+                return_value=backend.BackendType.THREADING)
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_run_periodic_tasks_in_parallel_no_due_tasks_returns_idle(
+            self, mock_now, mock_get_backend):
+        """When no tasks are due, parallel runner returns idle."""
+        mock_now.return_value = 1000.0
+
+        class Manager(periodic_task.PeriodicTasks):
+            @periodic_task.periodic_task(spacing=10, run_immediately=False)
+            def task1(self, context):
+                pass
+
+        m = Manager(self.conf)
+        with mock.patch.object(
+                _multiprocessing, 'get_spawn_pool') as mock_get_pool:
+            idle = m.run_periodic_tasks_in_parallel(None)
+        mock_get_pool.assert_not_called()
+        self.assertAlmostEqual(idle, 10, 1)
+
+    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
+                return_value=backend.BackendType.THREADING)
+    @mock.patch('oslo_service.periodic_task.now')
+    @mock.patch('oslo_service.periodic_task.ForkingPickler')
+    def test_run_periodic_tasks_in_parallel_uses_get_spawn_pool(
+            self, mock_fp, mock_now, mock_get_backend):
+        """Verify run_periodic_tasks_in_parallel uses get_spawn_pool."""
+        mock_now.return_value = 1000.0
+        mock_fp.dumps.return_value = b''
+
+        m = _PicklableManagerOneTask(self.conf)
+        mock_pool_instance = mock.Mock()
+        mock_pool_instance.apply_async.return_value.get.return_value = 'task1'
+        with mock.patch.object(
+                _multiprocessing, 'get_spawn_pool') as mock_get_pool:
+            mock_get_pool.return_value = mock_pool_instance
+            m.run_periodic_tasks_in_parallel(None)
+        mock_get_pool.assert_called_once_with(processes=None)
+        self.assertEqual(mock_pool_instance.apply_async.call_count, 1)
+        mock_pool_instance.close.assert_called_once()
+        mock_pool_instance.join.assert_called_once()
+
+    @testtools.skipIf(
+        'eventlet' in sys.modules,
+        "Requires real OS threads; skip when eventlet is loaded "
+        "(monkey-patches threading)")
+    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
+                return_value=backend.BackendType.THREADING)
+    @mock.patch('oslo_service.periodic_task.now')
+    def test_run_periodic_tasks_in_parallel_no_deadlock_when_thread_holds_lock(
+            self, mock_now, mock_get_backend):
+        """Schedule 10 tasks while a thread holds a lock; children exit clean.
+
+        With fork, child processes would inherit the lock state and could
+        deadlock. With spawn (get_spawn_pool), children are fresh processes
+        and complete. Timeout completion proves no deadlock.
+        """
+        mock_now.return_value = 1000.0
+        lock = threading.Lock()
+        lock_holder_done = threading.Event()
+
+        def hold_lock():
+            lock.acquire()
+            try:
+                lock_holder_done.wait(timeout=30)
+            finally:
+                lock.release()
+
+        m = _PicklableManagerTenTasks(_PicklableConf())
+        self.assertEqual(10, len(m._periodic_tasks))
+
+        lock_holder = threading.Thread(target=hold_lock)
+        lock_holder.start()
+        # Give the thread time to acquire the lock
+        time.sleep(0.1)
+
+        done = threading.Event()
+        exc = []
+
+        def run_parallel():
+            try:
+                m.run_periodic_tasks_in_parallel(None, processes=4)
+            except Exception as e:
+                exc.append(e)
+            finally:
+                done.set()
+
+        runner = threading.Thread(target=run_parallel)
+        runner.start()
+        completed = done.wait(timeout=15)
+        lock_holder_done.set()
+        lock_holder.join(timeout=10)
+        runner.join(timeout=10)
+
+        self.assertTrue(
+            completed,
+            "run_periodic_tasks_in_parallel did not complete within 15s "
+            "(possible fork deadlock)")
+        self.assertEqual([], exc)
+
+    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
+                return_value=backend.BackendType.THREADING)
+    def test_run_periodic_tasks_in_parallel_raises_when_context_not_picklable(
+            self, mock_get_backend):
+        """Raises with clear error when context is not picklable with spawn."""
+        m = _PicklableManagerOneTask(self.conf)
+        # Lambdas are not picklable with ForkingPickler
+        non_picklable_context = lambda: None
+        last_run_before = m._periodic_last_run['task1']
+        self.assertRaises(
+            (pickle.PicklingError, TypeError, AttributeError),
+            m.run_periodic_tasks_in_parallel,
+            non_picklable_context)
+        self.assertEqual(last_run_before, m._periodic_last_run['task1'])
+
+    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
+                return_value=backend.BackendType.EVENTLET)
+    def test_run_periodic_tasks_in_parallel_raises_with_eventlet_backend(
+            self, mock_get_backend):
+        """Raises when eventlet backend is active."""
+        class Manager(periodic_task.PeriodicTasks):
+            @periodic_task.periodic_task(spacing=10)
+            def task1(self, context):
+                pass
+
+        m = Manager(self.conf)
+        self.assertRaises(
+            UnsupportedBackendError,
+            m.run_periodic_tasks_in_parallel,
+            None)
