@@ -19,6 +19,7 @@ import time
 from unittest import mock
 from unittest import TestCase
 
+import cotyledon
 from oslo_config import cfg
 
 from oslo_service.backend._threading import service
@@ -65,6 +66,9 @@ class SignalHandlerTestCase(TestCase):
         super().setUp()
         self.conf = cfg.ConfigOpts()
         self.s1 = DummyService()
+        # Reset ServiceManager singleton between tests
+        # This allows creating multiple ServiceManager instances in tests
+        cotyledon.ServiceManager._process_runner_already_created = False
 
     @mock.patch.object(sg.DummyService, 'stop')
     def test_signal_handler(self, mock_stop):

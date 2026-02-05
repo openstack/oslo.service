@@ -40,6 +40,9 @@ class ProcessLauncherTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.conf = cfg.ConfigOpts()
+        # Reset ServiceManager singleton between tests
+        # This allows creating multiple ServiceManager instances in tests
+        cotyledon.ServiceManager._process_runner_already_created = False
 
     def test_accepts_wait_interval_and_logs_warning(self):
         # Patch the actual logger used in the module
@@ -76,6 +79,9 @@ class LauncherTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.conf = cfg.ConfigOpts()
+        # Reset ServiceManager singleton between tests
+        # This allows creating multiple ServiceManager instances in tests
+        cotyledon.ServiceManager._process_runner_already_created = False
 
     def test_graceful_shutdown_timeout_is_registered(self):
         launchers = [service.ProcessLauncher, service.ServiceLauncher]
