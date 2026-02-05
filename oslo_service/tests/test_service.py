@@ -709,7 +709,7 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
 
     def test_graceful_stop_with_exceeded_graceful_shutdown_timeout(self):
         # Server must exit if graceful_shutdown_timeout exceeded
-        graceful_shutdown_timeout = 4
+        graceful_shutdown_timeout = 2
         self.config(graceful_shutdown_timeout=graceful_shutdown_timeout)
         proc, conn = self.run_server()
 
