@@ -20,6 +20,7 @@ import functools
 import random
 import sys
 import time
+import warnings
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -81,13 +82,25 @@ class LoopingCallBase(metaclass=abc.ABCMeta):
     _RUN_ONLY_ONE_MESSAGE = _("A looping call can only run one function"
                               " at a time")
 
-    def __init__(self, f=None, *args, **kw):
+    def __init__(self, f=None, *args, **kwargs):
         self.args = args
-        self.kw = kw
+        self.kwargs = kwargs
         self.f = f
         self._thread = None
         self.done = None
         self._init_abort_mechanism()
+
+    @property
+    def kw(self):
+        warnings.warn('The kw property is deprecated. Use kwargs property',
+                      category=DeprecationWarning, stacklevel=2)
+        return self.kwargs
+
+    @kw.setter
+    def kw(self, value):
+        warnings.warn('The kw property is deprecated. Use kwargs property',
+                      category=DeprecationWarning, stacklevel=2)
+        self.kwargs = value
 
     def _init_abort_mechanism(self):
         """Initialize the abort mechanism for the specific backend."""
@@ -99,21 +112,20 @@ class LoopingCallBase(metaclass=abc.ABCMeta):
         pass
 
     @property
-    @abc.abstractmethod
     def _running(self):
         """Check if the looping call is currently running."""
+        return not self._abort.is_set()
 
-    @abc.abstractmethod
     def stop(self):
         """Stop the looping call."""
+        if self._running:
+            self._abort.set()
 
-    @abc.abstractmethod
     def wait(self):
-        """Wait for the looping call to complete."""
+        return self.done.wait()
 
-    @abc.abstractmethod
     def _sleep(self, timeout):
-        """Sleep for the given timeout."""
+        self._abort.wait(timeout)
 
     @abc.abstractmethod
     def _create_done_event(self):
@@ -153,9 +165,9 @@ class LoopingCallBase(metaclass=abc.ABCMeta):
         self._thread = self._spawn_loop(loop_func)
         return self.done
 
-    @abc.abstractmethod
     def _clear_abort(self):
         """Clear the abort flag."""
+        self._abort.clear()
 
     def _run_loop(self, idle_for_func, initial_delay=None,
                   stop_on_exception=True):
@@ -172,7 +184,7 @@ class LoopingCallBase(metaclass=abc.ABCMeta):
             watch = timeutils.StopWatch()
             while self._running:
                 watch.restart()
-                result = func(*self.args, **self.kw)
+                result = func(*self.args, **self.kwargs)
                 watch.stop()
                 if not self._running:
                     break
@@ -197,13 +209,13 @@ class LoopingCallBase(metaclass=abc.ABCMeta):
         else:
             self._send_result(True)
 
-    @abc.abstractmethod
     def _send_result(self, result):
         """Send the result to the done event."""
+        self.done.send(result)
 
-    @abc.abstractmethod
     def _send_exception(self, exc_type, exc_value, tb):
         """Send an exception to the done event."""
+        self.done.send_exception(exc_type, exc_value, tb)
 
     def _elapsed(self, watch):
         """Get elapsed time from watch."""

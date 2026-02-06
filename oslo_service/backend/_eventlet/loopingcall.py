@@ -35,20 +35,6 @@ class LoopingCallBase(loopingcall.LoopingCallBase):
         """Return a new abort mechanism instance."""
         return eventletutils.EventletEvent()
 
-    @property
-    def _running(self):
-        return not self._abort.is_set()
-
-    def stop(self):
-        if self._running:
-            self._abort.set()
-
-    def wait(self):
-        return self.done.wait()
-
-    def _sleep(self, timeout):
-        self._abort.wait(timeout)
-
     def _create_done_event(self):
         return event.Event()
 
@@ -56,15 +42,6 @@ class LoopingCallBase(loopingcall.LoopingCallBase):
         thread = greenthread.spawn(loop_func)
         thread.link(self._on_done)
         return thread
-
-    def _clear_abort(self):
-        self._abort.clear()
-
-    def _send_result(self, result):
-        self.done.send(result)
-
-    def _send_exception(self, exc_type, exc_value, tb):
-        self.done.send_exception(exc_type, exc_value, tb)
 
 
 class FixedIntervalLoopingCall(
