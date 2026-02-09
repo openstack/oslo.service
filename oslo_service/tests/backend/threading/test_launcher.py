@@ -36,7 +36,27 @@ class DummyService(service.ServiceBase):
         pass
 
 
-class ProcessLauncherTestCase(TestCase):
+class UnpicklableService(service.ServiceBase):
+    """A service that cannot be pickled due to a lambda attribute."""
+
+    def __init__(self):
+        super().__init__()
+        self.callback = lambda: None
+
+    def start(self):
+        pass
+
+    def stop(self, graceful=False):
+        pass
+
+    def wait(self):
+        pass
+
+    def reset(self):
+        pass
+
+
+class BaseLauncherTestCase(TestCase):
     def setUp(self):
         super().setUp()
         self.conf = cfg.ConfigOpts()
@@ -44,6 +64,36 @@ class ProcessLauncherTestCase(TestCase):
         # This allows creating multiple ServiceManager instances in tests
         cotyledon.ServiceManager._process_runner_already_created = False
 
+    def _test_multiple_launch_service_re_evaluates_context(self, launcher):
+        with mock.patch.object(service, '_select_service_manager_context'
+                               ) as mock_select:
+            s1 = DummyService()
+            launcher.launch_service(s1)
+            mock_select.assert_called_with(s1)
+            # second launch_service should call _select_service_manager_context
+            # with s2
+            s2 = DummyService()
+            launcher.launch_service(s2)
+            mock_select.assert_called_with(s2)
+
+    def _test_unpicklable_second_service_falls_back_to_fork(self, launcher):
+        # First service instance is picklable, so 'spawn' context is selected
+        launcher.launch_service(DummyService())
+        self.assertEqual(
+            launcher._manager_context.get_start_method(), "spawn")
+        self.assertEqual(
+            launcher._manager.mp_context.get_start_method(), "spawn")
+
+        # Second service instance is not picklable so manager context should
+        # fall back to 'fork'.
+        launcher.launch_service(UnpicklableService())
+        self.assertEqual(
+            launcher._manager_context.get_start_method(), "fork")
+        self.assertEqual(
+            launcher._manager.mp_context.get_start_method(), "fork")
+
+
+class ProcessLauncherTestCase(BaseLauncherTestCase):
     def test_accepts_wait_interval_and_logs_warning(self):
         # Patch the actual logger used in the module
         with mock.patch('warnings.warn') as mock_warn:
@@ -73,6 +123,25 @@ class ProcessLauncherTestCase(TestCase):
         except Exception as e:
             self.fail(
                 f"Multiple launch_service() calls raised an exception: {e}")
+
+    def test_multiple_launch_service_re_evaluates_context(self):
+        launcher = service.ProcessLauncher(self.conf)
+        self._test_multiple_launch_service_re_evaluates_context(launcher)
+
+    def test_unpicklable_second_service_falls_back_to_fork(self):
+        launcher = service.ProcessLauncher(self.conf)
+        self._test_unpicklable_second_service_falls_back_to_fork(launcher)
+
+
+class ServiceLauncherTestCase(BaseLauncherTestCase):
+
+    def test_multiple_launch_service_re_evaluates_context(self):
+        launcher = service.ServiceLauncher(self.conf)
+        self._test_multiple_launch_service_re_evaluates_context(launcher)
+
+    def test_unpicklable_second_service_falls_back_to_fork(self):
+        launcher = service.ServiceLauncher(self.conf)
+        self._test_unpicklable_second_service_falls_back_to_fork(launcher)
 
 
 class LauncherTestCase(TestCase):
