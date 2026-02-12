@@ -59,19 +59,6 @@ def _select_service_manager_context(service_instance):
     return get_spawn_context()
 
 
-def _ensure_spawn_picklable(service_instance):
-    try:
-        ForkingPickler.dumps(service_instance)
-    except Exception:
-        LOG.error(
-            "Service %s is not picklable with spawn. "
-            "Make it spawn-safe before launching additional workers.",
-            type(service_instance).__name__,
-            exc_info=True,
-        )
-        raise
-
-
 def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
                          restart_method):
     """Create and link a cotyledon ServiceManager for the given service.
@@ -222,8 +209,20 @@ class ServiceLauncher:
                     self.conf,
                     self.restart_method,
                 )
-            elif self._manager_context.get_start_method() == "spawn":
-                _ensure_spawn_picklable(service_instance)
+            else:
+                # NOTE(gmaan): This case means services are launching the
+                # multiple workers of the same or different service instances.
+                # The first worker has initialized the cotyledon.ServiceManager
+                # with the manager context based on whether their service
+                # instance is spawn-safe or not. If the next worker is
+                # launching a different service instance, which may not be
+                # spawn-safe, we need to re-evaluate its spawn-readiness and
+                # accordingly select the manager context.
+                # This ensures that if any of the worker service_instance is
+                # not spawn-safe, we fallback to 'fork' start method.
+                self._manager_context = _select_service_manager_context(
+                    service_instance)
+                self._manager.mp_context = self._manager_context
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(
             ServiceWrapper, workers, args=(service_instance,))
@@ -373,8 +372,20 @@ class ProcessLauncher:
                     self.conf,
                     self.restart_method,
                 )
-            elif self._manager_context.get_start_method() == "spawn":
-                _ensure_spawn_picklable(service)
+            else:
+                # NOTE(gmaan): This case means services are launching the
+                # multiple workers of the same or different service instances.
+                # The first worker has initialized the cotyledon.ServiceManager
+                # with the manager context based on whether their service
+                # instance is spawn-safe or not. If the next worker is
+                # launching a different service instance, which may not be
+                # spawn-safe, we need to re-evaluate its spawn-readiness and
+                # accordingly select the manager context.
+                # This ensures that if any of the worker service_instance is
+                # not spawn-safe, we fallback to 'fork' start method.
+                self._manager_context = _select_service_manager_context(
+                    service)
+                self._manager.mp_context = self._manager_context
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(ServiceWrapper, workers, args=(service,))
 

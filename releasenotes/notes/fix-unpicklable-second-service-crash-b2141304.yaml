@@ -1,0 +1,12 @@
+---
+fixes:
+  - |
+    Fixed a bug to launch the multiple workers with different service
+    instance. If the first service instance was picklable the ``spawn``
+    multiprocessing context was selected. Any subsequent non-picklable
+    service instance also used the ``spawn`` multiprocessing context
+    and raised the error.
+    The launcher now re-evaluates the spawn-safe service and if it is
+    not spawn-safe then fallback to ``fork`` multiprocessing context.
+
+    See `bug 2141304 <https://bugs.launchpad.net/oslo.service/+bug/2141304>`_.
