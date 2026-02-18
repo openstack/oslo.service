@@ -37,9 +37,11 @@ from oslo_service import opts
 LOG = logging.getLogger(__name__)
 
 
-def _select_service_manager_context(service_instance):
+def _select_service_manager_context(service_instance, conf=None):
     try:
         ForkingPickler.dumps(service_instance)
+        if conf is not None:
+            ForkingPickler.dumps(conf)
     except Exception as exc:
         if "fork" in multiprocessing.get_all_start_methods():
             LOG.warning(
@@ -47,7 +49,6 @@ def _select_service_manager_context(service_instance):
                 "falling back to fork. "
                 "Please make the service spawn-safe to avoid this fallback.",
                 type(service_instance).__name__,
-                exc_info=exc,
             )
             return multiprocessing.get_context("fork")
         LOG.error(
@@ -69,7 +70,7 @@ def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
     :param restart_method: 'reload' or 'mutate' for SIGHUP handling.
     :returns: A tuple (manager_context, manager).
     """
-    manager_context = _select_service_manager_context(service_instance)
+    manager_context = _select_service_manager_context(service_instance, conf)
     manager = cotyledon.ServiceManager(
         mp_context=manager_context,
         graceful_shutdown_timeout=graceful_shutdown_timeout)
@@ -221,8 +222,12 @@ class ServiceLauncher:
                 # This ensures that if any of the worker service_instance is
                 # not spawn-safe, we fallback to 'fork' start method.
                 self._manager_context = _select_service_manager_context(
-                    service_instance)
+                    service_instance, self.conf)
                 self._manager.mp_context = self._manager_context
+            LOG.debug('Selected the multiprocessing context: %s and '
+                      'updated it in Cotyledon ServiceManager: %s',
+                      self._manager_context, self._manager.mp_context)
+
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(
             ServiceWrapper, workers, args=(service_instance,))
@@ -384,8 +389,11 @@ class ProcessLauncher:
                 # This ensures that if any of the worker service_instance is
                 # not spawn-safe, we fallback to 'fork' start method.
                 self._manager_context = _select_service_manager_context(
-                    service)
+                    service, self.conf)
                 self._manager.mp_context = self._manager_context
+            LOG.debug('Selected the multiprocessing context: %s and '
+                      'updated it in Cotyledon ServiceManager: %s',
+                      self._manager_context, self._manager.mp_context)
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(ServiceWrapper, workers, args=(service,))
 

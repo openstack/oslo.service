@@ -1,0 +1,15 @@
+---
+fixes:
+  - |
+    The oslo.service threading mode checks if the service instance is picklable
+    and based on that it selects the multiprocessing start method as 'spawn'
+    or 'fork'. But it did not account for the conf object which is passed by
+    the cotyledon (via hook registered by ``oslo_config_glue.link()``) to
+    multiprocessing. Multiprocessing checks if that conf object is not
+    picklable or not.
+
+    In `bug 2142122 <https://bugs.launchpad.net/oslo.service/+bug/2142122>`_,
+    oslo.service checked service instance picklable and selected the 'spawn'
+    method but further multiprocessing failed when it found the conf object
+    is not picklable. This bug is fixed by checking both service instance as
+    well as the conf object.

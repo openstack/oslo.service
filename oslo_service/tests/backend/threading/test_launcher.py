@@ -69,12 +69,12 @@ class BaseLauncherTestCase(TestCase):
                                ) as mock_select:
             s1 = DummyService()
             launcher.launch_service(s1)
-            mock_select.assert_called_with(s1)
+            mock_select.assert_called_with(s1, launcher.conf)
             # second launch_service should call _select_service_manager_context
             # with s2
             s2 = DummyService()
             launcher.launch_service(s2)
-            mock_select.assert_called_with(s2)
+            mock_select.assert_called_with(s2, launcher.conf)
 
     def _test_unpicklable_second_service_falls_back_to_fork(self, launcher):
         # First service instance is picklable, so 'spawn' context is selected
@@ -168,8 +168,7 @@ class LauncherTestCase(TestCase):
         launchers = [service.ProcessLauncher, service.ServiceLauncher]
         timeout = 20
         for launcher in launchers:
-            with mock.patch.object(cotyledon.ServiceManager,
-                                   '__init__', return_value=None) as mock_mgr:
+            with mock.patch.object(cotyledon, 'ServiceManager') as mock_mgr:
                 launcher_obj = launcher(self.conf)
                 self.conf.set_default("graceful_shutdown_timeout", timeout)
                 service1 = DummyService()
