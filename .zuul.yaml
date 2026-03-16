@@ -9,3 +9,17 @@
     check:
       jobs:
         - neutron-ovs-tempest-with-oslo-master
+        - oslo-service-tox-py313-threading
+    gate:
+      jobs:
+        - oslo-service-tox-py313-threading
+
+- job:
+    name: oslo-service-tox-py313-threading
+    parent: openstack-tox-py313
+    description: |
+      Run oslo.service threading backend functional regression tests with
+      eventlet monkey-patching disabled. This validates spawn-based
+      multiprocessing remains safe while native threads are active.
+    vars:
+      tox_envlist: py313-threading
