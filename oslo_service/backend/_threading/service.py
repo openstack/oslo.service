@@ -264,6 +264,17 @@ class Service(ServiceBase):
         self.tg = threadgroup.ThreadGroup(threads)
         self.backdoor_port = None
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state['_thread_pool_size'] = self.tg.thread_pool_size
+        state.pop('tg', None)
+        return state
+
+    def __setstate__(self, state):
+        thread_pool_size = state.pop('_thread_pool_size', 1000)
+        self.__dict__.update(state)
+        self.tg = threadgroup.ThreadGroup(thread_pool_size)
+
     def reset(self):
         pass
 

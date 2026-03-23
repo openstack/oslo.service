@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Adds pickle support for the threading backend service.
