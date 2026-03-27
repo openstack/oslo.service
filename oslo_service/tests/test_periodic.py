@@ -493,6 +493,7 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         m = _PicklableManagerOneTask(self.conf)
         mock_pool_instance = mock.Mock()
         mock_pool_instance.apply_async.return_value.get.return_value = 'task1'
+        mock_pool_instance.apply_async.return_value.ready.return_value = True
         with mock.patch.object(
                 _multiprocessing, 'get_spawn_pool') as mock_get_pool:
             mock_get_pool.return_value = mock_pool_instance
@@ -501,6 +502,34 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.assertEqual(mock_pool_instance.apply_async.call_count, 1)
         mock_pool_instance.close.assert_called_once()
         mock_pool_instance.join.assert_called_once()
+
+    def test_collect_async_task_results_drains_ready_out_of_submit_order(self):
+        """Collect async results as they become ready, not in submit order.
+
+        A task submitted later may finish first and is collected before
+        earlier ones that are still pending.
+        """
+        r0 = mock.Mock()
+        r0.ready.side_effect = [False, True]
+        r0.get.return_value = None
+        r1 = mock.Mock()
+        r1.ready.return_value = True
+        r1.get.return_value = None
+        order = []
+
+        def mark0(*a, **k):
+            order.append('r0')
+
+        def mark1(*a, **k):
+            order.append('r1')
+
+        r0.get.side_effect = mark0
+        r1.get.side_effect = mark1
+        with mock.patch('oslo_service.periodic_task.time.sleep') as mock_sleep:
+            periodic_task._collect_async_task_results(
+                [('t0', r0), ('t1', r1)], raise_on_error=False)
+        self.assertEqual(['r1', 'r0'], order)
+        mock_sleep.assert_called_once()
 
     @testtools.skipIf(
         'eventlet' in sys.modules,

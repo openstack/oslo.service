@@ -28,6 +28,35 @@ from oslo_utils import reflection
 LOG = logging.getLogger(__name__)
 
 DEFAULT_INTERVAL = 60.0
+# Seconds between polls while waiting for parallel task results (see
+# _collect_async_task_results). Kept small to limit latency after workers
+# finish while still avoiding busy-waiting (ready() + sleep, not a tight loop).
+_PARALLEL_RESULT_POLL_INTERVAL = 0.1
+
+
+def _collect_async_task_results(async_results, raise_on_error):
+    """Drain async pool results as workers complete, not only in submit order.
+
+    Uses :meth:`~multiprocessing.pool.AsyncResult.ready` so a long-running task
+    does not block retrieval of results for tasks that finish earlier.
+    """
+    remaining = list(async_results)
+    while remaining:
+        still_waiting = []
+        for full_task_name, result in remaining:
+            if result.ready():
+                try:
+                    result.get()
+                except BaseException:
+                    if raise_on_error:
+                        raise
+                    LOG.exception("Error during %(full_task_name)s",
+                                  {"full_task_name": full_task_name})
+            else:
+                still_waiting.append((full_task_name, result))
+        remaining = still_waiting
+        if remaining:
+            time.sleep(_PARALLEL_RESULT_POLL_INTERVAL)
 
 
 def list_opts():
@@ -255,6 +284,12 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
         :param processes: Number of worker processes (None = use pool default).
         :returns: Same as :meth:`run_periodic_tasks` (idle_for).
         :raises UnsupportedBackendError: When the eventlet backend is active.
+
+        Task results are collected as workers complete (via
+        :meth:`~multiprocessing.pool.AsyncResult.ready`), not strictly in
+        submission order, so a slow task does not delay observing completions
+        of faster tasks. While work remains, the parent sleeps briefly between
+        polls (see ``_PARALLEL_RESULT_POLL_INTERVAL``) instead of busy-waiting.
         """
         if backend.get_backend_type() != backend.BackendType.THREADING:
             raise UnsupportedBackendError(
@@ -311,14 +346,7 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
                     (full_task_name, pool.apply_async(
                         _run_periodic_task_worker, (args,))))
 
-            for full_task_name, result in async_results:
-                try:
-                    result.get()
-                except BaseException:
-                    if raise_on_error:
-                        raise
-                    LOG.exception("Error during %(full_task_name)s",
-                                  {"full_task_name": full_task_name})
+            _collect_async_task_results(async_results, raise_on_error)
         finally:
             pool.close()
             pool.join()
