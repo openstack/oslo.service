@@ -25,7 +25,11 @@ from unittest import mock
 import testtools
 from testtools import matchers
 
+from oslo_config import cfg
+from oslo_log import log as oslo_log
+
 from oslo_service import _multiprocessing
+from oslo_service import _spawn_utils
 from oslo_service import backend
 from oslo_service.backend.exceptions import UnsupportedBackendError
 from oslo_service import periodic_task
@@ -97,6 +101,21 @@ class _PicklableManagerTenTasks(periodic_task.PeriodicTasks):
     @periodic_task.periodic_task(spacing=1, run_immediately=True)
     def task9(self, context):
         self.results.append(9)
+
+
+class _ConfigStateManager(periodic_task.PeriodicTasks):
+    @periodic_task.periodic_task(spacing=1, run_immediately=True)
+    def check_config_state(self, context):
+        assert self.conf is cfg.CONF
+        assert self.conf.spawn_default == 'parent-default'
+        assert self.conf.spawn_group.spawn_override == 'parent-override'
+
+
+def _verify_serialized_config_state(conf_payload, manager_payload):
+    conf = pickle.loads(conf_payload)
+    _spawn_utils.configure_spawn_worker(conf, 'test-project', '1.0')
+    manager = pickle.loads(manager_payload)
+    manager.check_config_state(None)
 
 
 class PeriodicTasksTestCase(base.ServiceBaseTestCase):
@@ -484,11 +503,14 @@ class ManagerTestCase(base.ServiceBaseTestCase):
                 return_value=backend.BackendType.THREADING)
     @mock.patch('oslo_service.periodic_task.now')
     @mock.patch('oslo_service.periodic_task.ForkingPickler')
+    @mock.patch('oslo_service.periodic_task.'
+                '_spawn_utils.get_current_oslo_logging_setup')
     def test_run_periodic_tasks_in_parallel_uses_get_spawn_pool(
-            self, mock_fp, mock_now, mock_get_backend):
+            self, mock_get_logging, mock_fp, mock_now, mock_get_backend):
         """Verify run_periodic_tasks_in_parallel uses get_spawn_pool."""
         mock_now.return_value = 1000.0
         mock_fp.dumps.return_value = b''
+        mock_get_logging.return_value = ('nova', '1.2.3')
 
         m = _PicklableManagerOneTask(self.conf)
         mock_pool_instance = mock.Mock()
@@ -498,10 +520,40 @@ class ManagerTestCase(base.ServiceBaseTestCase):
                 _multiprocessing, 'get_spawn_pool') as mock_get_pool:
             mock_get_pool.return_value = mock_pool_instance
             m.run_periodic_tasks_in_parallel(None)
-        mock_get_pool.assert_called_once_with(processes=None)
+        mock_get_pool.assert_called_once_with(
+            processes=None,
+            initializer=_spawn_utils.configure_spawn_worker,
+            init_args=(self.conf, 'nova', '1.2.3'),
+        )
         self.assertEqual(mock_pool_instance.apply_async.call_count, 1)
         mock_pool_instance.close.assert_called_once()
         mock_pool_instance.join.assert_called_once()
+
+    def test_spawn_worker_receives_complete_config_state(self):
+        """Initializer and task payload restore one consistent cfg.CONF."""
+        self.conf.reset()
+        oslo_log.register_options(self.conf)
+        self.conf.register_opt(cfg.StrOpt('spawn_default'))
+        self.conf.register_opt(
+            cfg.StrOpt('spawn_override'), group='spawn_group')
+        self.conf(args=[], default_config_files=[])
+        self.conf.set_default('spawn_default', 'parent-default')
+        self.conf.set_override(
+            'spawn_override', 'parent-override', group='spawn_group')
+
+        manager = _ConfigStateManager(self.conf)
+        process = _multiprocessing.get_spawn_context().Process(
+            target=_verify_serialized_config_state,
+            args=(pickle.dumps(self.conf), pickle.dumps(manager)),
+        )
+        process.start()
+        process.join(10)
+
+        if process.is_alive():
+            process.kill()
+            process.join()
+            self.fail('spawn worker did not exit within 10 seconds')
+        self.assertEqual(0, process.exitcode)
 
     def test_collect_async_task_results_drains_ready_out_of_submit_order(self):
         """Collect async results as they become ready, not in submit order.

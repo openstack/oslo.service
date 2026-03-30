@@ -20,14 +20,15 @@ import logging
 import multiprocessing
 import os
 import signal
-import socket
 import subprocess
+import sys
 import time
 import traceback
 from unittest import mock
 
 import eventlet
 from eventlet import event
+from eventlet import patcher
 from oslotest import base as test_base
 
 from oslo_service import service
@@ -36,6 +37,11 @@ from oslo_service.tests import eventlet_service
 
 
 LOG = logging.getLogger(__name__)
+_os = patcher.original('os')
+_subprocess = patcher.original('subprocess')
+_select = patcher.original('select')
+_socket = patcher.original('socket')
+_time = patcher.original('time')
 
 
 class ExtendedService(service.Service):
@@ -640,6 +646,8 @@ class ServiceTest(test_base.BaseTestCase):
 
 
 class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
+    process_exit_timeout = 15
+
     def setUp(self):
         super().setUp()
         self.conf(args=[], default_config_files=[])
@@ -647,42 +655,114 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
         self.workers = 3
 
     def run_server(self):
-        queue = multiprocessing.Queue()
+        port_receiver, port_sender = _os.pipe()
+        request_receiver, request_sender = _os.pipe()
+        self.addCleanup(_os.close, port_receiver)
+        self.addCleanup(_os.close, request_receiver)
         # NOTE(bnemec): process_time of 5 needs to be longer than the graceful
         # shutdown timeout in the "exceeded" test below, but also needs to be
         # shorter than the timeout in the regular graceful shutdown test.
-        kwargs = {'workers': self.workers, 'process_time': 5}
-        # graceful_shutdown_timeout is registered in
-        # ServiceBaseTestCase.setUp()
-        kwargs['graceful_shutdown_timeout'] = (
-            self.conf.graceful_shutdown_timeout)
-        proc = multiprocessing.Process(target=eventlet_service.run,
-                                       args=(queue,),
-                                       kwargs=kwargs)
-        proc.start()
+        # Use the native subprocess implementation.  Eventlet's green Popen
+        # wait relies on the stestr worker hub, which is exactly the state this
+        # subprocess is intended to isolate from.
+        proc = _subprocess.Popen(
+            [
+                sys.executable,
+                eventlet_service.__file__,
+                str(port_sender),
+                str(request_sender),
+                str(self.workers),
+                '5',
+                str(self.conf.graceful_shutdown_timeout),
+            ],
+            pass_fds=(port_sender, request_sender),
+            start_new_session=True,
+            stdout=_subprocess.DEVNULL,
+            stderr=_subprocess.DEVNULL,
+        )
+        _os.close(port_sender)
+        _os.close(request_sender)
+        self.addCleanup(self._stop_process, proc)
 
-        port = queue.get()
-        conn = socket.create_connection(('127.0.0.1', port))
+        port = int(self._read_pipe(port_receiver,
+                                   'Server did not publish its port'))
+        conn = _socket.create_connection(('127.0.0.1', port))
+        self.addCleanup(conn.close)
         # Send request to make the connection active.
         conn.sendall(b'GET / HTTP/1.1\r\nHost: localhost\r\n\r\n')
 
-        # NOTE(blk-u): The sleep shouldn't be necessary. There must be a bug in
-        # the server implementation where it takes some time to set up the
-        # server or signal handlers.
-        time.sleep(1)
+        self._read_pipe(request_receiver,
+                        'Server did not start processing the request')
 
         return (proc, conn)
+
+    def _read_pipe(self, pipe, failure_message):
+        readable, _writable, _exceptional = _select.select(
+            [pipe], [], [], self.process_exit_timeout)
+        self.assertTrue(readable, failure_message)
+        return _os.read(pipe, 64)
+
+    @staticmethod
+    def _reap_process(proc):
+        """Reap *proc* without using eventlet-patched subprocess helpers."""
+        if proc.returncode is not None:
+            return True
+        try:
+            pid, status = _os.waitpid(proc.pid, _os.WNOHANG)
+        except ChildProcessError:
+            # Another wait already reaped the child.  This is only possible
+            # during idempotent cleanup, where the exact status is irrelevant.
+            proc.returncode = 0
+            return True
+        if pid == 0:
+            return False
+        proc.returncode = _os.waitstatus_to_exitcode(status)
+        return True
+
+    def _wait_for_process(self, proc):
+        deadline = _time.monotonic() + self.process_exit_timeout
+        while not self._reap_process(proc):
+            remaining = deadline - _time.monotonic()
+            if remaining <= 0:
+                return False
+            # Use native select as a bounded sleep without entering the
+            # eventlet hub or subprocess' patched select/os dependencies.
+            _select.select([], [], [], min(0.05, remaining))
+        return True
+
+    @staticmethod
+    def _kill_process_group(proc, sig):
+        try:
+            _os.killpg(proc.pid, sig)
+        except (ProcessLookupError, PermissionError):
+            pass
+
+    def _stop_process(self, proc):
+        if not self._reap_process(proc):
+            self._kill_process_group(proc, signal.SIGTERM)
+        try:
+            if not self._wait_for_process(proc):
+                self._kill_process_group(proc, signal.SIGKILL)
+                self._wait_for_process(proc)
+        finally:
+            # The ProcessLauncher server forks worker processes.  Its leader
+            # can exit before a broken worker, so always remove anything still
+            # left in the private process group without touching stestr.
+            self._kill_process_group(proc, signal.SIGKILL)
+
+    def _wait_process(self, proc, message):
+        self.assertTrue(self._wait_for_process(proc), message)
 
     def test_shuts_down_on_sigint_when_client_connected(self):
         proc, conn = self.run_server()
 
         # check that server is live
-        self.assertTrue(proc.is_alive())
+        self.assertFalse(self._reap_process(proc))
 
         # send SIGINT to the server and wait for it to exit while client still
         # connected.
-        os.kill(proc.pid, signal.SIGINT)
-        proc.join()
+        _os.kill(proc.pid, signal.SIGINT)
+        self._wait_process(proc, 'Server did not exit after SIGINT')
         conn.close()
 
     def test_graceful_shuts_down_on_sigterm_when_client_connected(self):
@@ -691,7 +771,7 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
 
         # send SIGTERM to the server and wait for it to exit while client still
         # connected.
-        os.kill(proc.pid, signal.SIGTERM)
+        _os.kill(proc.pid, signal.SIGTERM)
 
         # server with graceful shutdown must wait forever if
         # option graceful_shutdown_timeout is not specified.
@@ -702,10 +782,10 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
         # or the connection will be closed and the server will stop.
         time.sleep(1)
 
-        self.assertTrue(proc.is_alive())
+        self.assertFalse(self._reap_process(proc))
 
         conn.close()
-        proc.join()
+        self._wait_process(proc, 'Server did not exit after SIGTERM')
 
     def test_graceful_stop_with_exceeded_graceful_shutdown_timeout(self):
         # Server must exit if graceful_shutdown_timeout exceeded
@@ -714,13 +794,12 @@ class EventletServerProcessLauncherTest(base.ServiceBaseTestCase):
         proc, conn = self.run_server()
 
         time_before = time.time()
-        os.kill(proc.pid, signal.SIGTERM)
-        self.assertTrue(proc.is_alive())
+        _os.kill(proc.pid, signal.SIGTERM)
+        self.assertFalse(self._reap_process(proc))
         # If graceful_shutdown_timeout works, the process should exit.
         # If it doesn't work, the test will hang which is a useful signal.
-        proc.join()
-        self.assertFalse(proc.is_alive(),
-                         "Process should have exited after graceful timeout")
+        self._wait_process(
+            proc, "Process should have exited after graceful timeout")
         time_after = time.time()
 
         self.assertTrue(time_after - time_before > graceful_shutdown_timeout)
