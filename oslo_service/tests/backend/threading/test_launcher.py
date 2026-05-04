@@ -18,8 +18,10 @@ from unittest import TestCase
 
 import cotyledon
 from oslo_config import cfg
+import pickle
 
 from oslo_service.backend._threading import service
+from oslo_service.backend._threading import threadgroup
 
 
 class DummyService(service.ServiceBase):
@@ -34,6 +36,14 @@ class DummyService(service.ServiceBase):
 
     def reset(self):
         pass
+
+
+class CustomService(service.Service):
+    """A picklable Service subclass with extra attributes."""
+
+    def __init__(self):
+        super().__init__(threads=100)
+        self.my_attr = 'preserved'
 
 
 class UnpicklableService(service.ServiceBase):
@@ -181,3 +191,20 @@ class LauncherTestCase(TestCase):
                 self.assertEqual(
                     call_kwargs['graceful_shutdown_timeout'], timeout)
                 self.assertIn('mp_context', call_kwargs)
+
+
+class ServicePickleTestCase(TestCase):
+
+    def test_threading_service_roundtrip(self):
+        svc = service.Service(threads=500)
+        data = pickle.dumps(svc)
+        restored = pickle.loads(data)
+        self.assertEqual(restored.tg.thread_pool_size, 500)
+        self.assertIsInstance(restored.tg, threadgroup.ThreadGroup)
+
+    def test_subclass_preserves_extra_attrs(self):
+        svc = CustomService()
+        restored = pickle.loads(pickle.dumps(svc))
+        self.assertEqual(restored.my_attr, 'preserved')
+        self.assertEqual(restored.tg.thread_pool_size, 100)
+        self.assertIsInstance(restored.tg, threadgroup.ThreadGroup)
