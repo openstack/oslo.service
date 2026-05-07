@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    Added ``run_periodic_tasks_in_parallel()`` to allow services to run
+    due periodic tasks concurrently when explicitly requested.
+
+    This helper is supported only with the ``threading`` backend and
+    requires the PeriodicTasks instance and execution context to be
+    picklable.
