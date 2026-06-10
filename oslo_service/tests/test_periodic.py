@@ -16,8 +16,8 @@
 
 """Unit Tests for periodic_task decorator and PeriodicTasks class."""
 
+import os
 import pickle
-import sys
 import threading
 import time
 from unittest import mock
@@ -586,8 +586,8 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.assertEqual(['r1', 'r0'], order)
         mock_sleep.assert_called_once()
 
-    @testtools.skipIf(
-        'eventlet' in sys.modules,
+    @testtools.skipUnless(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
         "Requires real OS threads; skip when eventlet is loaded "
         "(monkey-patches threading)",
     )

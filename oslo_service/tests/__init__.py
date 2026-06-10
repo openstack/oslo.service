@@ -28,3 +28,18 @@ if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
         eventlet.monkey_patch(os=False, thread=False)
     else:
         eventlet.monkey_patch()
+else:
+    # When eventlet is skipped, default the backend to threading. Otherwise
+    # any test module that resolves a component at import time (e.g.
+    # threadgroup or loopingcall) would trigger get_backend() and fall back
+    # to the eventlet default, importing eventlet even though it is not
+    # installed in this environment.
+    #
+    # Import under an alias: the name "backend" would be clobbered on this
+    # package once the oslo_service.tests.backend subpackage is imported
+    # during discovery, which would break the hook's attribute lookup.
+    from oslo_service import backend as _oslo_backend
+
+    _oslo_backend.register_backend_default_hook(
+        lambda: _oslo_backend.BackendType.THREADING
+    )
