@@ -124,7 +124,6 @@ def init_backend(type_: BackendType) -> None:
 def get_backend() -> BaseBackend:
     """Load backend dynamically based on the default constant or hook."""
 
-    global _cached_backend
     if _cached_backend is None:
         type_ = DEFAULT_BACKEND_TYPE
 
@@ -151,8 +150,6 @@ def get_backend_type() -> BackendType | None:
 
 def get_component(name: str) -> Any:
     """Retrieve a specific component from the backend."""
-    global _cached_components
-
     if _cached_components is None:
         get_backend()
 
