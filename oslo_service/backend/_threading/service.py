@@ -37,40 +37,67 @@ from oslo_service import opts
 LOG = logging.getLogger(__name__)
 
 
-def _select_service_manager_context(service_instance, conf=None):
+def _check_spawn_picklable(service_instance, conf=None):
     try:
         ForkingPickler.dumps(service_instance)
         if conf is not None:
             ForkingPickler.dumps(conf)
-    except Exception as exc:
-        if "fork" in multiprocessing.get_all_start_methods():
-            LOG.warning(
-                "Service %s is not picklable with spawn; "
-                "falling back to fork. "
-                "Please make the service spawn-safe to avoid this fallback.",
-                type(service_instance).__name__,
-            )
-            return multiprocessing.get_context("fork")
+    except Exception:
         LOG.error(
-            "Service %s is not picklable with spawn and fork is unavailable.",
+            "Service %s or its ConfigOpts is not serializable with spawn.",
             type(service_instance).__name__,
-            exc_info=exc,
+            exc_info=True,
         )
         raise
-    return get_spawn_context()
+
+
+def _select_service_manager_context(
+        service_instance, conf=None, start_method=None):
+    """Select a multiprocessing context for a service manager.
+
+    ``fork`` remains the default where it is available because serializing a
+    service does not prove that all of its process-local application state is
+    initialized correctly in a fresh interpreter.  ``spawn`` therefore must
+    be requested explicitly on those platforms.
+    """
+    available_methods = multiprocessing.get_all_start_methods()
+    if start_method not in (None, "fork", "spawn"):
+        raise ValueError(
+            "Invalid start_method %r; expected 'fork' or 'spawn'"
+            % start_method)
+
+    selected_method = start_method
+    if selected_method is None:
+        selected_method = "fork" if "fork" in available_methods else "spawn"
+
+    if selected_method not in available_methods:
+        raise ValueError(
+            "Multiprocessing start method %r is not available on this "
+            "platform" % selected_method)
+
+    if selected_method == "spawn":
+        _check_spawn_picklable(service_instance, conf)
+        context = get_spawn_context()
+    else:
+        context = multiprocessing.get_context("fork")
+
+    LOG.info("Selected multiprocessing start method: %s", selected_method)
+    return context
 
 
 def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
-                         restart_method):
+                         restart_method, start_method=None):
     """Create and link a cotyledon ServiceManager for the given service.
 
     :param service_instance: The service instance (used for spawn/fork check).
     :param graceful_shutdown_timeout: Timeout for graceful shutdown.
     :param conf: oslo.config ConfigOpts instance.
     :param restart_method: 'reload' or 'mutate' for SIGHUP handling.
+    :param start_method: multiprocessing start method, ``fork`` or ``spawn``.
     :returns: A tuple (manager_context, manager).
     """
-    manager_context = _select_service_manager_context(service_instance, conf)
+    manager_context = _select_service_manager_context(
+        service_instance, conf, start_method)
     manager = cotyledon.ServiceManager(
         mp_context=manager_context,
         graceful_shutdown_timeout=graceful_shutdown_timeout)
@@ -188,10 +215,12 @@ class Launcher:
 
 
 class ServiceLauncher:
-    def __init__(self, conf, restart_method='reload'):
+    def __init__(
+            self, conf, restart_method='reload', start_method=None):
         self.conf = conf
         opts.register_service_opts(self.conf)
         self.restart_method = restart_method
+        self.start_method = start_method
         self.backdoor_port = None
         self._manager = None
         self._manager_context = None
@@ -209,21 +238,13 @@ class ServiceLauncher:
                     self.conf.graceful_shutdown_timeout,
                     self.conf,
                     self.restart_method,
+                    self.start_method,
                 )
             else:
-                # NOTE(gmaan): This case means services are launching the
-                # multiple workers of the same or different service instances.
-                # The first worker has initialized the cotyledon.ServiceManager
-                # with the manager context based on whether their service
-                # instance is spawn-safe or not. If the next worker is
-                # launching a different service instance, which may not be
-                # spawn-safe, we need to re-evaluate its spawn-readiness and
-                # accordingly select the manager context.
-                # This ensures that if any of the worker service_instance is
-                # not spawn-safe, we fallback to 'fork' start method.
-                self._manager_context = _select_service_manager_context(
-                    service_instance, self.conf)
-                self._manager.mp_context = self._manager_context
+                # Validate every service added to an explicitly selected (or
+                # platform-required) spawn manager.
+                if self._manager_context.get_start_method() == "spawn":
+                    _check_spawn_picklable(service_instance, self.conf)
             LOG.debug('Selected the multiprocessing context: %s and '
                       'updated it in Cotyledon ServiceManager: %s',
                       self._manager_context, self._manager.mp_context)
@@ -338,11 +359,12 @@ class Services:
 class ProcessLauncher:
     def __init__(
             self, conf, wait_interval=None, restart_method='reload',
-            no_fork=False):
+            no_fork=False, start_method=None):
         self.conf = conf
         opts.register_service_opts(self.conf)
         self.restart_method = restart_method
         self.no_fork = no_fork
+        self.start_method = start_method
         self._lock = threading.Lock()
         self._manager = None
         self._manager_context = None
@@ -387,21 +409,11 @@ class ProcessLauncher:
                     self.conf.graceful_shutdown_timeout,
                     self.conf,
                     self.restart_method,
+                    self.start_method,
                 )
             else:
-                # NOTE(gmaan): This case means services are launching the
-                # multiple workers of the same or different service instances.
-                # The first worker has initialized the cotyledon.ServiceManager
-                # with the manager context based on whether their service
-                # instance is spawn-safe or not. If the next worker is
-                # launching a different service instance, which may not be
-                # spawn-safe, we need to re-evaluate its spawn-readiness and
-                # accordingly select the manager context.
-                # This ensures that if any of the worker service_instance is
-                # not spawn-safe, we fallback to 'fork' start method.
-                self._manager_context = _select_service_manager_context(
-                    service, self.conf)
-                self._manager.mp_context = self._manager_context
+                if self._manager_context.get_start_method() == "spawn":
+                    _check_spawn_picklable(service, self.conf)
             LOG.debug('Selected the multiprocessing context: %s and '
                       'updated it in Cotyledon ServiceManager: %s',
                       self._manager_context, self._manager.mp_context)
@@ -470,7 +482,9 @@ class ProcessLauncher:
         raise NotImplementedError()
 
 
-def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
+def launch(
+        conf, service, workers=1, restart_method='reload', no_fork=False,
+        start_method=None):
     """Launch a service with a given number of workers.
 
     :param conf: an instance of ConfigOpts
@@ -483,6 +497,9 @@ def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
         call mutate_config_files on SIGHUP. Other values produce a ValueError.
     :param no_fork: Whether to allow forking or not. If True,
         :class:`~ProcessLauncher` will always be used.
+    :param start_method: Multiprocessing start method. ``None`` uses ``fork``
+        when available and otherwise ``spawn``. Explicitly pass ``spawn`` only
+        for services that initialize all worker state in a fresh interpreter.
     :returns: An instance of a launcher that was used to launch the service
     """
     if workers is not None and not isinstance(workers, int):
@@ -492,10 +509,12 @@ def launch(conf, service, workers=1, restart_method='reload', no_fork=False):
         raise ValueError("Number of workers should be positive!")
 
     if workers == 1 and not no_fork:
-        launcher = ServiceLauncher(conf, restart_method=restart_method)
+        launcher = ServiceLauncher(
+            conf, restart_method=restart_method, start_method=start_method)
     else:
         launcher = ProcessLauncher(
-            conf, restart_method=restart_method, no_fork=no_fork)
+            conf, restart_method=restart_method, no_fork=no_fork,
+            start_method=start_method)
 
     launcher.launch_service(service, workers=workers)
 

@@ -1,0 +1,18 @@
+---
+fixes:
+  - |
+    The threading backend once again uses ``fork`` by default on platforms
+    where it is available. A service and its configuration being picklable
+    does not guarantee that application state initialized in the parent
+    process is available in a fresh ``spawn`` worker.
+
+    Applications that are fully spawn-safe can opt in with
+    ``service.launch(..., start_method="spawn")``. On platforms without
+    ``fork``, ``spawn`` remains the default. Explicit spawn requests validate
+    that the service and ``ConfigOpts`` can be serialized.
+upgrade:
+  - |
+    Applications relying on the threading backend's brief automatic
+    selection of ``spawn`` must now request it explicitly. Existing
+    applications that relied on workers inheriting parent-process state keep
+    the historical ``fork`` behavior.

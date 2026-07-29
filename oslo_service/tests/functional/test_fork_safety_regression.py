@@ -143,11 +143,11 @@ def _wait_for_marker(path, timeout):
 def _run_minimal_service_launcher_with_active_thread(status_queue):
     """Launch a ServiceLauncher worker while another thread holds a lock.
 
-    The important assertion is that ServiceLauncher selects the spawn context.
-    If oslo.service regresses to fork, the child process would be
-    created from a process with an active background thread. That can inherit
-    locked state without the owning thread and is exactly the unsafe pattern
-    this functional regression test guards against.
+    The important assertion is that an explicit spawn request is honored. If
+    oslo.service regresses to fork, the child process would be created from a
+    process with an active background thread. That can inherit locked state
+    without the owning thread and is exactly the unsafe pattern this
+    functional regression test guards against.
 
     Cotyledon's ServiceManager.run() handles signals most reliably from the
     main thread, so a control thread waits for worker markers and stops the
@@ -179,7 +179,8 @@ def _run_minimal_service_launcher_with_active_thread(status_queue):
             stopped_path = os.path.join(status_dir, _SERVICE_STOPPED)
 
             conf = cfg.ConfigOpts()
-            launcher = threading_service.ServiceLauncher(conf=conf)
+            launcher = threading_service.ServiceLauncher(
+                conf=conf, start_method='spawn')
             launcher.launch_service(
                 MinimalLauncherService(status_dir), workers=1)
 

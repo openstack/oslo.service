@@ -12,7 +12,11 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import json
 import multiprocessing
+from pathlib import Path
+import subprocess
+import sys
 
 import cotyledon
 from oslo_config import cfg
@@ -61,13 +65,24 @@ class TestSpawnContextIntegration(base.ServiceBaseTestCase):
         pool.close()
         pool.join()
 
-    def test_processlauncher_uses_spawn_context(self):
+    def test_spawn_does_not_inherit_parent_initialized_global(self):
+        helper = Path(__file__).parent.joinpath(
+            "functional", "spawn_global_helper.py")
+        output = subprocess.check_output(
+            [sys.executable, str(helper)],
+            text=True,
+        )
+        observed = json.loads(output)
+        self.assertEqual("initialized", observed["fork"])
+        self.assertIsNone(observed["spawn"])
+
+    def test_processlauncher_uses_spawn_context_when_requested(self):
         """Test that ProcessLauncher initializes with spawn context."""
         # ProcessLauncher creates _manager lazily, so create a mock service
         # to trigger manager creation and verify it uses spawn context
         separate_conf_manager = cfg.ConfigOpts()
         launcher_with_manager = service.ProcessLauncher(
-            conf=separate_conf_manager)
+            conf=separate_conf_manager, start_method="spawn")
         # Trigger manager creation
         mock_service = MockService()
         launcher_with_manager.launch_service(mock_service, workers=1)
@@ -81,11 +96,12 @@ class TestSpawnContextIntegration(base.ServiceBaseTestCase):
         # Note: We don't call stop() or shutdown() here to avoid blocking.
         # The processes will be cleaned up when the test completes.
 
-    def test_servicelauncher_uses_spawn_context(self):
+    def test_servicelauncher_uses_spawn_context_when_requested(self):
         """Test that ServiceLauncher initializes with spawn context."""
         # Use a separate conf to avoid duplicate option registration
         separate_conf = cfg.ConfigOpts()
-        launcher = service.ServiceLauncher(conf=separate_conf)
+        launcher = service.ServiceLauncher(
+            conf=separate_conf, start_method="spawn")
         launcher.launch_service(MockService(), workers=1)
         # Verify that ServiceManager uses the spawn context (Cotyledon PR #84)
         self.assertEqual(
