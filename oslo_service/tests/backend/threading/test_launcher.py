@@ -171,7 +171,11 @@ class LauncherTestCase(BaseLauncherTestCase):
         self.conf.register_opt(
             cfg.StrOpt("callback", default=lambda: None))
         self.assertRaises(
-            (AttributeError, pickle.PicklingError),
+            (
+                AttributeError,
+                pickle.PicklingError,
+                cfg.ConfigOptsSerializationError
+            ),
             service._select_service_manager_context,
             DummyService(),
             self.conf,
