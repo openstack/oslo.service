@@ -9,13 +9,13 @@ readme = "README.rst"
 authors = [
     {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
 ]
+license = "Apache-2.0"
 requires-python = ">=3.11"
 dynamic = ["version", "dependencies"]
 classifiers = [
     "Environment :: OpenStack",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -43,8 +43,8 @@ threading = [
 "oslo.service.sslutils" = "oslo_service.sslutils:list_opts"
 "oslo.service.wsgi" = "oslo_service.wsgi:list_opts"
 
-[tool.setuptools]
-packages = ["oslo_service"]
+[tool.setuptools.packages.find]
+include = ["oslo_service*"]
 
 [tool.bandit]
 exclude_dirs = ["tests"]
