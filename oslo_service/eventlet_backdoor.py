@@ -36,10 +36,10 @@ from debtcollector import removals
 removals.removed_module(
     __name__,
     replacement=None,
-    removal_version="2026.2",
+    removal_version="2027.2",
     message=(
         "The 'eventlet_backdoor' module is deprecated and will be removed in "
-        "version 2026.2. This module is not being replaced. Please migrate "
+        "version 2027.2. This module is not being replaced. Please migrate "
         "away from using it and remove any dependencies on this module."
     )
 )

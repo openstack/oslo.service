@@ -17,10 +17,10 @@ from debtcollector import removals
 removals.removed_module(
     __name__,
     replacement=None,
-    removal_version="2026.2",
+    removal_version="2027.2",
     message=(
         "The 'oslo_service.fixture' module is deprecated and will be removed"
-        " in version 2026.2."
+        " in version 2027.2."
     )
 )
 

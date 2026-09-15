@@ -74,7 +74,7 @@ class InvalidInput(Exception):
 
 @removals.removed_class(
     'Server',
-    removal_version="2026.2",
+    removal_version="2027.2",
     message=(
         "The Server class utilises the eventlet service, and eventlet support "
         "is deprecated for removal. You should remove use of eventlet servers "

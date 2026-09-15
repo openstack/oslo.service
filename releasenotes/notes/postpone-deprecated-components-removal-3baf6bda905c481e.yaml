@@ -1,0 +1,7 @@
+deprecations:
+  - |
+    Removal of the deprecated ``oslo_service.wsgi.Server`` class and the
+    ``oslo_service.sslutils``, ``oslo_service.eventlet_backdoor``, and
+    ``oslo_service.fixture`` modules is postponed from 2026.2 release to
+    2027.2 release to provide an extended migration period for consumers.
+    These components remain deprecated.
