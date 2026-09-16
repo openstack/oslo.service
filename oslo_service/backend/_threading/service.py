@@ -33,6 +33,7 @@ from oslo_service.backend._common import service as common_service
 from oslo_service.backend._threading import threadgroup
 from oslo_service.backend.base import ServiceBase
 from oslo_service import opts
+from oslo_service import systemd
 
 LOG = logging.getLogger(__name__)
 
@@ -394,6 +395,7 @@ class ProcessLauncher:
             LOG.warning("no_fork=True: running service in main process")
             self.service = service
             self.service.start()
+            systemd.notify_once()
             self.service.wait()
             return
 
