@@ -21,6 +21,7 @@ from time import monotonic as now
 from oslo_service._i18n import _
 from oslo_service import _multiprocessing
 from oslo_service import _options
+from oslo_service import _spawn_utils
 from oslo_service import backend
 from oslo_service.backend.exceptions import UnsupportedBackendError
 from oslo_utils import reflection
@@ -337,7 +338,12 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
             raise
         for full_task_name, task_name, task, next_run in due_tasks:
             self._periodic_last_run[task_name] = next_run
-        pool = _multiprocessing.get_spawn_pool(processes=processes)
+        project, version = _spawn_utils.get_current_oslo_logging_setup()
+        pool = _multiprocessing.get_spawn_pool(
+            processes=processes,
+            initializer=_spawn_utils.configure_spawn_worker,
+            init_args=(self.conf, project, version),
+        )
         try:
             async_results = []
             for full_task_name, task_name, task, next_run in due_tasks:

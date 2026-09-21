@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import signal
 import time
 from unittest import mock
@@ -64,6 +63,13 @@ class SignalHandlerTestCase(TestCase):
 
     def setUp(self):
         super().setUp()
+        signal_handler = service.SignalHandler()
+        signal_handler.clear()
+        self.addCleanup(signal_handler.clear)
+        # _graceful_shutdown() arms a real process-wide SIGALRM. Tests mock
+        # os._exit(), so a successful shutdown does not terminate the test
+        # worker and the pending alarm could kill an unrelated later test.
+        self.addCleanup(signal.alarm, 0)
         self.conf = cfg.ConfigOpts()
         self.s1 = DummyService()
         # Reset ServiceManager singleton between tests
@@ -74,7 +80,7 @@ class SignalHandlerTestCase(TestCase):
     def test_signal_handler(self, mock_stop):
         launcher = DummyProcessLauncher()
         launcher.launch_service(self.s1)
-        os.kill(os.getpid(), signal.SIGTERM)
+        launcher.signal_handler._handle_signal_cb(signal.SIGTERM, None)
         mock_stop.assert_called_once_with()
 
     @mock.patch.object(service.ProcessLauncher, '_graceful_shutdown')

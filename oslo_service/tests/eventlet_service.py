@@ -14,6 +14,7 @@
 
 # Opens listens on a random port. The port # is printed to stdout.
 
+import os
 import socket
 import sys
 import time
@@ -123,7 +124,8 @@ class Server(service.ServiceBase):
             pass
 
 
-def run(port_queue, workers=3, process_time=0, graceful_shutdown_timeout=None):
+def run(port_fd, workers=3, process_time=0, graceful_shutdown_timeout=None,
+        request_started=None):
     eventlet.patcher.monkey_patch()
 
     # Create a fresh config instance for this process
@@ -139,6 +141,8 @@ def run(port_queue, workers=3, process_time=0, graceful_shutdown_timeout=None):
     def hi_app(environ, start_response):
         # Some requests need to take time to process so the connection
         # remains active.
+        if request_started is not None:
+            os.write(request_started, b'1')
         time.sleep(process_time)
         start_response('200 OK', [('Content-Type', 'application/json')])
         yield 'hi'
@@ -147,8 +151,15 @@ def run(port_queue, workers=3, process_time=0, graceful_shutdown_timeout=None):
     server.listen()
     launcher = service.launch(conf, server, workers)
 
+    # ServiceLauncher installs its signal handlers in wait(), but the parent
+    # must not receive the port until SIGTERM can be handled safely.  Calling
+    # handle_signal() here closes that race; wait() will refresh the same
+    # handlers before entering its loop.
+    if isinstance(launcher, service.ServiceLauncher):
+        launcher.handle_signal()
+
     port = server.socket.getsockname()[1]
-    port_queue.put(port)
+    os.write(port_fd, f'{port}\n'.encode())
 
     sys.stdout.flush()
 
@@ -156,4 +167,10 @@ def run(port_queue, workers=3, process_time=0, graceful_shutdown_timeout=None):
 
 
 if __name__ == '__main__':
-    run()
+    port_fd = int(sys.argv[1])
+    request_started = int(sys.argv[2])
+    workers = int(sys.argv[3])
+    process_time = int(sys.argv[4])
+    graceful_shutdown_timeout = int(sys.argv[5])
+    run(port_fd, workers, process_time, graceful_shutdown_timeout,
+        request_started)
