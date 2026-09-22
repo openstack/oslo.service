@@ -38,9 +38,9 @@ from oslo_service import wsgi
 from oslo_utils import netutils
 
 
-SSL_CERT_DIR = os.path.normpath(os.path.join(
-                                os.path.dirname(os.path.abspath(__file__)),
-                                'ssl_cert'))
+SSL_CERT_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ssl_cert')
+)
 CONF = cfg.CONF
 
 
@@ -61,26 +61,17 @@ class TestLoaderNothingExists(WsgiTestCase):
 
     def setUp(self):
         super().setUp()
-        mock_patcher = mock.patch.object(os.path, 'exists',
-                                         lambda _: False)
+        mock_patcher = mock.patch.object(os.path, 'exists', lambda _: False)
         mock_patcher.start()
         self.addCleanup(mock_patcher.stop)
 
     def test_relpath_config_not_found(self):
         self.config(api_paste_config='api-paste.ini')
-        self.assertRaises(
-            wsgi.ConfigNotFound,
-            wsgi.Loader,
-            self.conf
-        )
+        self.assertRaises(wsgi.ConfigNotFound, wsgi.Loader, self.conf)
 
     def test_asbpath_config_not_found(self):
         self.config(api_paste_config='/etc/openstack-srv/api-paste.ini')
-        self.assertRaises(
-            wsgi.ConfigNotFound,
-            wsgi.Loader,
-            self.conf
-        )
+        self.assertRaises(wsgi.ConfigNotFound, wsgi.Loader, self.conf)
 
 
 class TestLoaderNormalFilesystem(WsgiTestCase):
@@ -134,12 +125,14 @@ class TestWSGIServer(WsgiTestCase):
     def test_custom_max_header_line(self):
         self.config(max_header_line=4096)  # Default value is 16384
         wsgi.Server(self.conf, "test_custom_max_header_line", None)
-        self.assertEqual(eventlet.wsgi.MAX_HEADER_LINE,
-                         self.conf.max_header_line)
+        self.assertEqual(
+            eventlet.wsgi.MAX_HEADER_LINE, self.conf.max_header_line
+        )
 
     def test_start_random_port(self):
-        server = wsgi.Server(self.conf, "test_random_port", None,
-                             host="127.0.0.1", port=0)
+        server = wsgi.Server(
+            self.conf, "test_random_port", None, host="127.0.0.1", port=0
+        )
         server.start()
         self.assertNotEqual(0, server.port)
         server.stop()
@@ -147,49 +140,59 @@ class TestWSGIServer(WsgiTestCase):
 
     @testtools.skipIf(not netutils.is_ipv6_enabled(), "no ipv6 support")
     def test_start_random_port_with_ipv6(self):
-        server = wsgi.Server(self.conf, "test_random_port", None,
-                             host="::1", port=0)
+        server = wsgi.Server(
+            self.conf, "test_random_port", None, host="::1", port=0
+        )
         server.start()
         self.assertEqual("::1", server.host)
         self.assertNotEqual(0, server.port)
         server.stop()
         server.wait()
 
-    @testtools.skipIf(platform.mac_ver()[0] != '',
-                      'SO_REUSEADDR behaves differently '
-                      'on OSX, see bug 1436895')
+    @testtools.skipIf(
+        platform.mac_ver()[0] != '',
+        'SO_REUSEADDR behaves differently on OSX, see bug 1436895',
+    )
     def test_socket_options_for_simple_server(self):
         # test normal socket options has set properly
         self.config(tcp_keepidle=500)
-        server = wsgi.Server(self.conf, "test_socket_options", None,
-                             host="127.0.0.1", port=0)
+        server = wsgi.Server(
+            self.conf, "test_socket_options", None, host="127.0.0.1", port=0
+        )
         server.start()
         sock = server.socket
-        self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
-                                            socket.SO_REUSEADDR))
-        self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
-                                            socket.SO_KEEPALIVE))
+        self.assertEqual(
+            1, sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR)
+        )
+        self.assertEqual(
+            1, sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+        )
         if hasattr(socket, 'TCP_KEEPIDLE'):
-            self.assertEqual(self.conf.tcp_keepidle,
-                             sock.getsockopt(socket.IPPROTO_TCP,
-                                             socket.TCP_KEEPIDLE))
+            self.assertEqual(
+                self.conf.tcp_keepidle,
+                sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE),
+            )
         self.assertFalse(server._server.dead)
         server.stop()
         server.wait()
         self.assertTrue(server._server.dead)
 
-    @testtools.skipIf(not hasattr(socket, "AF_UNIX"),
-                      'UNIX sockets not supported')
+    @testtools.skipIf(
+        not hasattr(socket, "AF_UNIX"), 'UNIX sockets not supported'
+    )
     def test_server_with_unix_socket(self):
         socket_file = self.get_temp_file_path('sock')
         socket_mode = 0o644
-        server = wsgi.Server(self.conf, "test_socket_options", None,
-                             socket_family=socket.AF_UNIX,
-                             socket_mode=socket_mode,
-                             socket_file=socket_file)
+        server = wsgi.Server(
+            self.conf,
+            "test_socket_options",
+            None,
+            socket_family=socket.AF_UNIX,
+            socket_mode=socket_mode,
+            socket_file=socket_file,
+        )
         self.assertEqual(socket_file, server.socket.getsockname())
-        self.assertEqual(socket_mode,
-                         os.stat(socket_file).st_mode & 0o777)
+        self.assertEqual(socket_mode, os.stat(socket_file).st_mode & 0o777)
         server.start()
         self.assertFalse(server._server.dead)
         server.stop()
@@ -200,36 +203,44 @@ class TestWSGIServer(WsgiTestCase):
         # test pools waitall method gets called while stopping server
         server = wsgi.Server(self.conf, "test_server", None, host="127.0.0.1")
         server.start()
-        with mock.patch.object(server._pool,
-                               'waitall') as mock_waitall:
+        with mock.patch.object(server._pool, 'waitall') as mock_waitall:
             server.stop()
             server.wait()
             mock_waitall.assert_called_once_with()
 
     def test_uri_length_limit(self):
         eventlet.monkey_patch(os=False, thread=False)
-        server = wsgi.Server(self.conf, "test_uri_length_limit", None,
-                             host="127.0.0.1", max_url_len=16384, port=33337)
+        server = wsgi.Server(
+            self.conf,
+            "test_uri_length_limit",
+            None,
+            host="127.0.0.1",
+            max_url_len=16384,
+            port=33337,
+        )
         server.start()
         self.assertFalse(server._server.dead)
 
         uri = "http://127.0.0.1:%d/%s" % (server.port, 10000 * 'x')
         resp = requests.get(uri, proxies={"http": ""})
         eventlet.sleep(0)
-        self.assertNotEqual(requests.codes.REQUEST_URI_TOO_LARGE,
-                            resp.status_code)
+        self.assertNotEqual(
+            requests.codes.REQUEST_URI_TOO_LARGE, resp.status_code
+        )
 
         uri = "http://127.0.0.1:%d/%s" % (server.port, 20000 * 'x')
         resp = requests.get(uri, proxies={"http": ""})
         eventlet.sleep(0)
-        self.assertEqual(requests.codes.REQUEST_URI_TOO_LARGE,
-                         resp.status_code)
+        self.assertEqual(
+            requests.codes.REQUEST_URI_TOO_LARGE, resp.status_code
+        )
         server.stop()
         server.wait()
 
     def test_reset_pool_size_to_default(self):
-        server = wsgi.Server(self.conf, "test_resize", None,
-                             host="127.0.0.1", max_url_len=16384)
+        server = wsgi.Server(
+            self.conf, "test_resize", None, host="127.0.0.1", max_url_len=16384
+        )
         server.start()
 
         # Stopping the server, which in turn sets pool size to 0
@@ -246,14 +257,15 @@ class TestWSGIServer(WsgiTestCase):
 
         # mocking eventlet spawn method to check it is called with
         # configured 'client_socket_timeout' value.
-        with mock.patch.object(eventlet,
-                               'spawn') as mock_spawn:
-            server = wsgi.Server(self.conf, "test_app", None,
-                                 host="127.0.0.1", port=0)
+        with mock.patch.object(eventlet, 'spawn') as mock_spawn:
+            server = wsgi.Server(
+                self.conf, "test_app", None, host="127.0.0.1", port=0
+            )
             server.start()
             _, kwargs = mock_spawn.call_args
-            self.assertEqual(self.conf.client_socket_timeout,
-                             kwargs['socket_timeout'])
+            self.assertEqual(
+                self.conf.client_socket_timeout, kwargs['socket_timeout']
+            )
             server.stop()
 
     def test_wsgi_keep_alive(self):
@@ -261,20 +273,24 @@ class TestWSGIServer(WsgiTestCase):
 
         # mocking eventlet spawn method to check it is called with
         # configured 'wsgi_keep_alive' value.
-        with mock.patch.object(eventlet,
-                               'spawn') as mock_spawn:
-            server = wsgi.Server(self.conf, "test_app", None,
-                                 host="127.0.0.1", port=0)
+        with mock.patch.object(eventlet, 'spawn') as mock_spawn:
+            server = wsgi.Server(
+                self.conf, "test_app", None, host="127.0.0.1", port=0
+            )
             server.start()
             _, kwargs = mock_spawn.call_args
-            self.assertEqual(self.conf.wsgi_keep_alive,
-                             kwargs['keepalive'])
+            self.assertEqual(self.conf.wsgi_keep_alive, kwargs['keepalive'])
             server.stop()
 
 
-def requesting(host, port, ca_certs=None, method="POST",
-               content_type="application/x-www-form-urlencoded",
-               address_familly=socket.AF_INET):
+def requesting(
+    host,
+    port,
+    ca_certs=None,
+    method="POST",
+    content_type="application/x-www-form-urlencoded",
+    address_familly=socket.AF_INET,
+):
     frame = bytes(f"{method} / HTTP/1.1\r\n\r\n", "utf-8")
     with socket.socket(address_familly, socket.SOCK_STREAM) as sock:
         if ca_certs:
@@ -300,17 +316,25 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         eventlet.monkey_patch(os=False, thread=False)
         self.host = "127.0.0.1"
 
-        self.config(cert_file=cert_file_name,
-                    key_file=key_file_name,
-                    group=sslutils.config_section)
+        self.config(
+            cert_file=cert_file_name,
+            key_file=key_file_name,
+            group=sslutils.config_section,
+        )
 
     def test_ssl_server(self):
         def test_app(env, start_response):
             start_response('200 OK', {})
             return ['PONG']
 
-        fake_ssl_server = wsgi.Server(self.conf, "fake_ssl", test_app,
-                                      host=self.host, port=0, use_ssl=True)
+        fake_ssl_server = wsgi.Server(
+            self.conf,
+            "fake_ssl",
+            test_app,
+            host=self.host,
+            port=0,
+            use_ssl=True,
+        )
         fake_ssl_server.start()
         self.assertNotEqual(0, fake_ssl_server.port)
 
@@ -330,13 +354,20 @@ class TestWSGIServerWithSSL(WsgiTestCase):
             start_response('200 OK', {})
             return ['PONG']
 
-        fake_ssl_server = wsgi.Server(self.conf, "fake_ssl", test_app,
-                                      host="127.0.0.1", port=0, use_ssl=True)
+        fake_ssl_server = wsgi.Server(
+            self.conf,
+            "fake_ssl",
+            test_app,
+            host="127.0.0.1",
+            port=0,
+            use_ssl=True,
+        )
         fake_ssl_server.start()
         self.assertNotEqual(0, fake_ssl_server.port)
 
-        fake_server = wsgi.Server(self.conf, "fake", test_app,
-                                  host="127.0.0.1", port=0)
+        fake_server = wsgi.Server(
+            self.conf, "fake", test_app, host="127.0.0.1", port=0
+        )
         fake_server.start()
         self.assertNotEqual(0, fake_server.port)
 
@@ -361,24 +392,34 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         fake_server.stop()
         fake_server.wait()
 
-    @testtools.skipIf(platform.mac_ver()[0] != '',
-                      'SO_REUSEADDR behaves differently '
-                      'on OSX, see bug 1436895')
+    @testtools.skipIf(
+        platform.mac_ver()[0] != '',
+        'SO_REUSEADDR behaves differently on OSX, see bug 1436895',
+    )
     def test_socket_options_for_ssl_server(self):
         # test normal socket options has set properly
         self.config(tcp_keepidle=500)
-        server = wsgi.Server(self.conf, "test_socket_options", None,
-                             host="127.0.0.1", port=0, use_ssl=True)
+        server = wsgi.Server(
+            self.conf,
+            "test_socket_options",
+            None,
+            host="127.0.0.1",
+            port=0,
+            use_ssl=True,
+        )
         server.start()
         sock = server.socket
-        self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
-                                            socket.SO_REUSEADDR))
-        self.assertEqual(1, sock.getsockopt(socket.SOL_SOCKET,
-                                            socket.SO_KEEPALIVE))
+        self.assertEqual(
+            1, sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR)
+        )
+        self.assertEqual(
+            1, sock.getsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE)
+        )
         if hasattr(socket, 'TCP_KEEPIDLE'):
-            self.assertEqual(CONF.tcp_keepidle,
-                             sock.getsockopt(socket.IPPROTO_TCP,
-                                             socket.TCP_KEEPIDLE))
+            self.assertEqual(
+                CONF.tcp_keepidle,
+                sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE),
+            )
         server.stop()
         server.wait()
 
@@ -389,11 +430,14 @@ class TestWSGIServerWithSSL(WsgiTestCase):
         def hello_world(req):
             return greetings
 
-        server = wsgi.Server(self.conf, "fake_ssl",
-                             hello_world,
-                             host="::1",
-                             port=0,
-                             use_ssl=True)
+        server = wsgi.Server(
+            self.conf,
+            "fake_ssl",
+            hello_world,
+            host="::1",
+            port=0,
+            use_ssl=True,
+        )
 
         server.start()
 
@@ -402,7 +446,7 @@ class TestWSGIServerWithSSL(WsgiTestCase):
             host='::1',
             port=server.port,
             ca_certs=os.path.join(SSL_CERT_DIR, 'ca.crt'),
-            address_familly=socket.AF_INET6
+            address_familly=socket.AF_INET6,
         )
         self.assertEqual(greetings, response[-15:])
 
@@ -428,7 +472,8 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test that Server can be created with eventlet backend."""
         # Initialize eventlet backend explicitly
         self.backend_module.init_backend(
-            self.backend_module.BackendType.EVENTLET)
+            self.backend_module.BackendType.EVENTLET
+        )
 
         # This should work without raising an exception
         server = wsgi.Server(self.conf, "test_eventlet", None)
@@ -438,7 +483,8 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test that Server creation fails with threading backend."""
         # Initialize threading backend
         self.backend_module.init_backend(
-            self.backend_module.BackendType.THREADING)
+            self.backend_module.BackendType.THREADING
+        )
 
         # This should raise UnsupportedBackendError
         def create_server():
@@ -456,7 +502,8 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test _check_backend_compatibility with eventlet backend."""
         # Initialize eventlet backend
         self.backend_module.init_backend(
-            self.backend_module.BackendType.EVENTLET)
+            self.backend_module.BackendType.EVENTLET
+        )
 
         # This should not raise an exception
         try:
@@ -468,12 +515,13 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test _check_backend_compatibility with threading backend."""
         # Initialize threading backend
         self.backend_module.init_backend(
-            self.backend_module.BackendType.THREADING)
+            self.backend_module.BackendType.THREADING
+        )
 
         # This should raise UnsupportedBackendError
         self.assertRaises(
-            UnsupportedBackendError,
-            wsgi._check_backend_compatibility)
+            UnsupportedBackendError, wsgi._check_backend_compatibility
+        )
 
     def test_check_backend_compatibility_with_default_backend(self):
         """Test _check_backend_compatibility with defaut backend."""
@@ -487,7 +535,8 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
 
     @mock.patch('oslo_service.wsgi.backend.get_backend_type')
     def test_check_backend_compatibility_with_none_backend(
-        self, mock_get_backend_type):
+        self, mock_get_backend_type
+    ):
         """Test _check_backend_compatibility when backend type is None."""
         # Simulate the case where backend hasn't been initialized yet
         mock_get_backend_type.return_value = None
@@ -502,13 +551,15 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test that the error occurs during Server.__init__, not after."""
         # Initialize threading backend
         self.backend_module.init_backend(
-            self.backend_module.BackendType.THREADING)
+            self.backend_module.BackendType.THREADING
+        )
 
         # The error should occur immediately during __init__
         def create_server():
             # Server.__init__ should fail before any actual server setup
             return wsgi.Server(
-                self.conf, "test_early_fail", None, host="127.0.0.1", port=0)
+                self.conf, "test_early_fail", None, host="127.0.0.1", port=0
+            )
 
         self.assertRaises(UnsupportedBackendError, create_server)
 
@@ -516,10 +567,12 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test that all attempts creating Server fail consistently."""
         # Initialize threading backend
         self.backend_module.init_backend(
-            self.backend_module.BackendType.THREADING)
+            self.backend_module.BackendType.THREADING
+        )
 
         # Multiple attempts should all fail in the same way
         for i in range(3):
+
             def create_server():
                 return wsgi.Server(self.conf, f"test_multi_{i}", None)
 
@@ -529,7 +582,8 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         """Test behavior when trying to switch backends."""
         # Start with eventlet backend
         self.backend_module.init_backend(
-            self.backend_module.BackendType.EVENTLET)
+            self.backend_module.BackendType.EVENTLET
+        )
 
         # Server creation should work
         server = wsgi.Server(self.conf, "test_eventlet_first", None)
@@ -538,7 +592,8 @@ class TestWSGIServerBackendCompatibility(WsgiTestCase):
         # Attempting to switch to threading backend should fail
         def switch_backend():
             self.backend_module.init_backend(
-                self.backend_module.BackendType.THREADING)
+                self.backend_module.BackendType.THREADING
+            )
 
         self.assertRaises(BackendAlreadySelected, switch_backend)
 

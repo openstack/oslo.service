@@ -76,8 +76,15 @@ class TimerMixin:
     in thread groups.
     """
 
-    def add_timer_args(self, interval, callback, args=None, kwargs=None,
-                       initial_delay=None, stop_on_exception=True):
+    def add_timer_args(
+        self,
+        interval,
+        callback,
+        args=None,
+        kwargs=None,
+        initial_delay=None,
+        stop_on_exception=True,
+    ):
         """Add a timer with fixed interval.
 
         :param interval: The interval in seconds between calls
@@ -90,15 +97,18 @@ class TimerMixin:
         args = args or []
         kwargs = kwargs or {}
         pulse = self._create_fixed_timer(callback, args, kwargs)
-        pulse.start(interval=interval,
-                    initial_delay=initial_delay,
-                    stop_on_exception=stop_on_exception)
+        pulse.start(
+            interval=interval,
+            initial_delay=initial_delay,
+            stop_on_exception=stop_on_exception,
+        )
         with self._lock:
             self.timers.append(pulse)
         return pulse
 
-    def add_timer(self, interval, callback, initial_delay=None,
-                  *args, **kwargs):
+    def add_timer(
+        self, interval, callback, initial_delay=None, *args, **kwargs
+    ):
         """Legacy method for adding a timer.
 
         .. warning::
@@ -109,15 +119,21 @@ class TimerMixin:
             warnings.warn(
                 "Calling add_timer() with arguments is deprecated. Use "
                 "add_timer_args() instead.",
-                DeprecationWarning
+                DeprecationWarning,
             )
         return self.add_timer_args(
-            interval, callback, list(args), kwargs,
-            initial_delay=initial_delay)
+            interval, callback, list(args), kwargs, initial_delay=initial_delay
+        )
 
-    def add_dynamic_timer_args(self, callback, args=None, kwargs=None,
-                               initial_delay=None, periodic_interval_max=None,
-                               stop_on_exception=True):
+    def add_dynamic_timer_args(
+        self,
+        callback,
+        args=None,
+        kwargs=None,
+        initial_delay=None,
+        periodic_interval_max=None,
+        stop_on_exception=True,
+    ):
         """Add a timer that controls its own interval.
 
         :param callback: The function to call
@@ -130,15 +146,23 @@ class TimerMixin:
         args = args or []
         kwargs = kwargs or {}
         timer = self._create_dynamic_timer(callback, args, kwargs)
-        timer.start(initial_delay=initial_delay,
-                    periodic_interval_max=periodic_interval_max,
-                    stop_on_exception=stop_on_exception)
+        timer.start(
+            initial_delay=initial_delay,
+            periodic_interval_max=periodic_interval_max,
+            stop_on_exception=stop_on_exception,
+        )
         with self._lock:
             self.timers.append(timer)
         return timer
 
-    def add_dynamic_timer(self, callback, initial_delay=None,
-                          periodic_interval_max=None, *args, **kwargs):
+    def add_dynamic_timer(
+        self,
+        callback,
+        initial_delay=None,
+        periodic_interval_max=None,
+        *args,
+        **kwargs,
+    ):
         """Legacy method for adding a dynamic timer.
 
         .. warning::
@@ -149,12 +173,15 @@ class TimerMixin:
             warnings.warn(
                 "Calling add_dynamic_timer() with arguments is deprecated. "
                 "Use add_dynamic_timer_args() instead.",
-                DeprecationWarning
+                DeprecationWarning,
             )
         return self.add_dynamic_timer_args(
-            callback, list(args), kwargs,
+            callback,
+            list(args),
+            kwargs,
             initial_delay=initial_delay,
-            periodic_interval_max=periodic_interval_max)
+            periodic_interval_max=periodic_interval_max,
+        )
 
     @abc.abstractmethod
     def _create_fixed_timer(self, callback, args, kwargs):
@@ -240,8 +267,9 @@ class ThreadGroupBase(TimerMixin):
         """
 
     @abc.abstractmethod
-    def _perform_action_on_threads(self, action_func, on_error_func,
-                                   skip_current=True):
+    def _perform_action_on_threads(
+        self, action_func, on_error_func, skip_current=True
+    ):
         """Helper to perform an action on all threads.
 
         :param action_func: Function to call on each thread

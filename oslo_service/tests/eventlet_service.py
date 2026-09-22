@@ -33,8 +33,9 @@ POOL_SIZE = 1
 class Server(service.ServiceBase):
     """Server class to manage multiple WSGI sockets and applications."""
 
-    def __init__(self, application, host=None, port=None, keepalive=False,
-                 keepidle=None):
+    def __init__(
+        self, application, host=None, port=None, keepalive=False, keepidle=None
+    ):
         self.application = application
         self.host = host or '0.0.0.0'
         self.port = port or 0
@@ -61,13 +62,13 @@ class Server(service.ServiceBase):
         # (https://bitbucket.org/eventlet/eventlet/
         # src/e0f578180d7d82d2ed3d8a96d520103503c524ec/eventlet/support/
         # greendns.py?at=0.12#cl-163)
-        info = socket.getaddrinfo(self.host,
-                                  self.port,
-                                  socket.AF_UNSPEC,
-                                  socket.SOCK_STREAM)[0]
+        info = socket.getaddrinfo(
+            self.host, self.port, socket.AF_UNSPEC, socket.SOCK_STREAM
+        )[0]
 
-        self.socket = eventlet.listen(info[-1], family=info[0],
-                                      backlog=backlog)
+        self.socket = eventlet.listen(
+            info[-1], family=info[0], backlog=backlog
+        )
 
     def start(self, key=None, backlog=128):
         """Run a WSGI server with the given application."""
@@ -84,12 +85,13 @@ class Server(service.ServiceBase):
             dup_socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
 
             if self.keepidle is not None:
-                dup_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,
-                                      self.keepidle)
+                dup_socket.setsockopt(
+                    socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, self.keepidle
+                )
 
-        self.greenthread = self.pool.spawn(self._run,
-                                           self.application,
-                                           dup_socket)
+        self.greenthread = self.pool.spawn(
+            self._run, self.application, dup_socket
+        )
 
     def stop(self):
         if self.greenthread is not None:
@@ -124,8 +126,13 @@ class Server(service.ServiceBase):
             pass
 
 
-def run(port_fd, workers=3, process_time=0, graceful_shutdown_timeout=None,
-        request_started=None):
+def run(
+    port_fd,
+    workers=3,
+    process_time=0,
+    graceful_shutdown_timeout=None,
+    request_started=None,
+):
     eventlet.patcher.monkey_patch()
 
     # Create a fresh config instance for this process
@@ -135,8 +142,9 @@ def run(port_fd, workers=3, process_time=0, graceful_shutdown_timeout=None,
 
     # Configure graceful_shutdown_timeout if provided
     if graceful_shutdown_timeout is not None:
-        conf.set_override('graceful_shutdown_timeout',
-                          graceful_shutdown_timeout)
+        conf.set_override(
+            'graceful_shutdown_timeout', graceful_shutdown_timeout
+        )
 
     def hi_app(environ, start_response):
         # Some requests need to take time to process so the connection
@@ -172,5 +180,10 @@ if __name__ == '__main__':
     workers = int(sys.argv[3])
     process_time = int(sys.argv[4])
     graceful_shutdown_timeout = int(sys.argv[5])
-    run(port_fd, workers, process_time, graceful_shutdown_timeout,
-        request_started)
+    run(
+        port_fd,
+        workers,
+        process_time,
+        graceful_shutdown_timeout,
+        request_started,
+    )

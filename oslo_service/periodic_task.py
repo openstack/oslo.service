@@ -51,8 +51,10 @@ def _collect_async_task_results(async_results, raise_on_error):
                 except BaseException:
                     if raise_on_error:
                         raise
-                    LOG.exception("Error during %(full_task_name)s",
-                                  {"full_task_name": full_task_name})
+                    LOG.exception(
+                        "Error during %(full_task_name)s",
+                        {"full_task_name": full_task_name},
+                    )
             else:
                 still_waiting.append((full_task_name, result))
         remaining = still_waiting
@@ -88,6 +90,7 @@ def periodic_task(*args, **kwargs):
            task runs will be approximately N seconds after the task scheduler
            starts. If name is not provided, __name__ of function is used.
     """
+
     def decorator(f):
         # Test for old style invocation
         if 'ticks_between_runs' in kwargs:
@@ -137,14 +140,17 @@ class _PeriodicTasksMeta(type):
         name = task._periodic_name
 
         if task._periodic_spacing < 0:
-            LOG.info('Skipping periodic task %(task)s because '
-                     'its interval is negative',
-                     {'task': name})
+            LOG.info(
+                'Skipping periodic task %(task)s because '
+                'its interval is negative',
+                {'task': name},
+            )
             return False
         if not task._periodic_enabled:
-            LOG.info('Skipping periodic task %(task)s because '
-                     'it is disabled',
-                     {'task': name})
+            LOG.info(
+                'Skipping periodic task %(task)s because it is disabled',
+                {'task': name},
+            )
             return False
 
         # A periodic spacing of zero indicates that this task should
@@ -229,14 +235,17 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
         """
         if self.__class__._add_periodic_task(task):
             self._periodic_last_run[task._periodic_name] = (
-                task._periodic_last_run)
+                task._periodic_last_run
+            )
 
     def run_periodic_tasks(self, context, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
         idle_for = DEFAULT_INTERVAL
         for task_name, task in self._periodic_tasks:
-            if (task._periodic_external_ok and not
-               self.conf.run_external_periodic_tasks):
+            if (
+                task._periodic_external_ok
+                and not self.conf.run_external_periodic_tasks
+            ):
                 continue
             cls_name = reflection.get_class_name(self, fully_qualified=False)
             full_task_name = '.'.join([cls_name, task_name])
@@ -252,24 +261,30 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
                     idle_for = min(idle_for, delta)
                     continue
 
-            LOG.debug("Running periodic task %(full_task_name)s",
-                      {"full_task_name": full_task_name})
+            LOG.debug(
+                "Running periodic task %(full_task_name)s",
+                {"full_task_name": full_task_name},
+            )
             self._periodic_last_run[task_name] = _nearest_boundary(
-                last_run, spacing)
+                last_run, spacing
+            )
 
             try:
                 task(self, context)
             except BaseException:
                 if raise_on_error:
                     raise
-                LOG.exception("Error during %(full_task_name)s",
-                              {"full_task_name": full_task_name})
+                LOG.exception(
+                    "Error during %(full_task_name)s",
+                    {"full_task_name": full_task_name},
+                )
             time.sleep(0)
 
         return idle_for
 
-    def run_periodic_tasks_in_parallel(self, context, raise_on_error=False,
-                                       processes=None):
+    def run_periodic_tasks_in_parallel(
+        self, context, raise_on_error=False, processes=None
+    ):
         """Run due periodic tasks in parallel using a spawn-based process pool.
 
         Uses :func:`oslo_service._multiprocessing.get_spawn_pool` to avoid
@@ -294,14 +309,19 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
         """
         if backend.get_backend_type() != backend.BackendType.THREADING:
             raise UnsupportedBackendError(
-                _("run_periodic_tasks_in_parallel is not supported with the "
-                  "eventlet backend. Use the threading backend."))
+                _(
+                    "run_periodic_tasks_in_parallel is not supported with the "
+                    "eventlet backend. Use the threading backend."
+                )
+            )
         idle_for = DEFAULT_INTERVAL
         due_tasks = []
 
         for task_name, task in self._periodic_tasks:
-            if (task._periodic_external_ok and not
-               self.conf.run_external_periodic_tasks):
+            if (
+                task._periodic_external_ok
+                and not self.conf.run_external_periodic_tasks
+            ):
                 continue
             cls_name = reflection.get_class_name(self, fully_qualified=False)
             full_task_name = '.'.join([cls_name, task_name])
@@ -316,8 +336,10 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
                     idle_for = min(idle_for, delta)
                     continue
 
-            LOG.debug("Running periodic task %(full_task_name)s (parallel)",
-                      {"full_task_name": full_task_name})
+            LOG.debug(
+                "Running periodic task %(full_task_name)s (parallel)",
+                {"full_task_name": full_task_name},
+            )
             next_run = _nearest_boundary(last_run, spacing)
             due_tasks.append((full_task_name, task_name, task, next_run))
 
@@ -349,8 +371,11 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
             for full_task_name, task_name, task, next_run in due_tasks:
                 args = (task_name, task, self, context)
                 async_results.append(
-                    (full_task_name, pool.apply_async(
-                        _run_periodic_task_worker, (args,))))
+                    (
+                        full_task_name,
+                        pool.apply_async(_run_periodic_task_worker, (args,)),
+                    )
+                )
 
             _collect_async_task_results(async_results, raise_on_error)
         finally:

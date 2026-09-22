@@ -17,7 +17,6 @@
 
 """Generic Node base class for all workers that run on hosts."""
 
-
 import copy
 
 from oslo_service.backend import get_component
@@ -47,5 +46,11 @@ _is_sighup_and_daemon = get_component("_is_sighup_and_daemon")
 
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [(None, copy.deepcopy(_options.eventlet_backdoor_opts +
-                                 _options.service_opts))]
+    return [
+        (
+            None,
+            copy.deepcopy(
+                _options.eventlet_backdoor_opts + _options.service_opts
+            ),
+        )
+    ]

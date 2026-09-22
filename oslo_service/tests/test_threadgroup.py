@@ -28,6 +28,7 @@ from oslo_service import threadgroup
 
 class ThreadGroupTestCase(test_base.BaseTestCase):
     """Test cases for thread group."""
+
     def setUp(self):
         super().setUp()
         self.tg = threadgroup.ThreadGroup()
@@ -37,10 +38,12 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             pass
+
         initial_delay = 1
         periodic_interval_max = 2
-        self.tg.add_dynamic_timer(foo, initial_delay, periodic_interval_max,
-                                  'arg', kwarg='kwarg')
+        self.tg.add_dynamic_timer(
+            foo, initial_delay, periodic_interval_max, 'arg', kwarg='kwarg'
+        )
 
         self.assertEqual(1, len(self.tg.timers))
 
@@ -53,10 +56,14 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         def foo(*args, **kwargs):
             pass
 
-        self.tg.add_dynamic_timer_args(foo, ['arg'], {'kwarg': 'kwarg'},
-                                       initial_delay=1,
-                                       periodic_interval_max=2,
-                                       stop_on_exception=False)
+        self.tg.add_dynamic_timer_args(
+            foo,
+            ['arg'],
+            {'kwarg': 'kwarg'},
+            initial_delay=1,
+            periodic_interval_max=2,
+            stop_on_exception=False,
+        )
 
         self.assertEqual(1, len(self.tg.timers))
 
@@ -69,8 +76,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         def foo(*args, **kwargs):
             pass
 
-        self.tg.add_timer(1, foo, 1,
-                          'arg', kwarg='kwarg')
+        self.tg.add_timer(1, foo, 1, 'arg', kwarg='kwarg')
 
         self.assertEqual(1, len(self.tg.timers))
 
@@ -83,8 +89,14 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         def foo(*args, **kwargs):
             pass
 
-        self.tg.add_timer_args(1, foo, ['arg'], {'kwarg': 'kwarg'},
-                               initial_delay=1, stop_on_exception=False)
+        self.tg.add_timer_args(
+            1,
+            foo,
+            ['arg'],
+            {'kwarg': 'kwarg'},
+            initial_delay=1,
+            stop_on_exception=False,
+        )
 
         self.assertEqual(1, len(self.tg.timers))
 
@@ -116,6 +128,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             time.sleep(1)
+
         start_time = time.time()
         self.tg.add_thread(foo, 'arg', kwarg='kwarg')
         time.sleep(0)
@@ -130,6 +143,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             time.sleep(1)
+
         start_time = time.time()
         self.tg.add_thread(foo, 'arg', kwarg='kwarg')
         self.tg.stop(True)
@@ -143,6 +157,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             time.sleep(1)
+
         self.tg.add_thread(foo, 'arg', kwarg='kwarg')
         self.tg.cancel()
 
@@ -152,6 +167,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             time.sleep(0.3)
+
         self.tg.add_thread(foo, 'arg', kwarg='kwarg')
         time.sleep(0)
         self.tg.cancel()
@@ -162,6 +178,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             time.sleep(0.3)
+
         self.tg.add_thread(foo, 'arg', kwarg='kwarg')
         time.sleep(0)
         self.tg.cancel(timeout=0.2, wait_time=0.1)
@@ -172,6 +189,7 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             pass
+
         self.tg.add_timer('1234', foo)
         self.assertEqual(1, len(self.tg.timers))
         self.tg.stop_timers()
@@ -194,10 +212,12 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         def foo(*args, **kwargs):
             pass
+
         initial_delay = 1
         periodic_interval_max = 2
-        timer = self.tg.add_dynamic_timer(foo, initial_delay,
-                                          periodic_interval_max)
+        timer = self.tg.add_dynamic_timer(
+            foo, initial_delay, periodic_interval_max
+        )
 
         self.assertEqual(1, len(self.tg.timers))
         self.assertTrue(timer._running)

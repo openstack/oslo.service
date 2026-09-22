@@ -47,10 +47,7 @@ class TestMultiprocessing(base.ServiceBaseTestCase):
     def test_get_spawn_pool_with_parameters(self):
         """Test that get_spawn_pool accepts all standard pool parameters."""
         pool = _multiprocessing.get_spawn_pool(
-            processes=1,
-            initializer=None,
-            init_args=(),
-            max_tasks_per_child=1
+            processes=1, initializer=None, init_args=(), max_tasks_per_child=1
         )
 
         try:
@@ -84,7 +81,9 @@ class TestMultiprocessing(base.ServiceBaseTestCase):
         on the stdlib multiprocessing module, specifically that it doesn't
         implicitly import _multiprocessing.
         """
-        code = ("import oslo_service, sys; "
-                "print('_multiprocessing' in sys.modules)")
+        code = (
+            "import oslo_service, sys; "
+            "print('_multiprocessing' in sys.modules)"
+        )
         out = subprocess.check_output([sys.executable, "-c", code], text=True)
         self.assertIn("False", out)

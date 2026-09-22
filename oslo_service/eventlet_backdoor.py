@@ -41,7 +41,7 @@ removals.removed_module(
         "The 'eventlet_backdoor' module is deprecated and will be removed in "
         "version 2027.2. This module is not being replaced. Please migrate "
         "away from using it and remove any dependencies on this module."
-    )
+    ),
 )
 
 
@@ -50,9 +50,9 @@ LOG = logging.getLogger(__name__)
 
 class EventletBackdoorConfigValueError(Exception):
     def __init__(self, port_range, help_msg, ex):
-        msg = (_('Invalid backdoor_port configuration %(range)s: %(ex)s. '
-               '%(help)s') %
-               {'range': port_range, 'ex': ex, 'help': help_msg})
+        msg = _(
+            'Invalid backdoor_port configuration %(range)s: %(ex)s. %(help)s'
+        ) % {'range': port_range, 'ex': ex, 'help': help_msg}
         super().__init__(msg)
         self.port_range = port_range
 
@@ -64,8 +64,8 @@ def _dont_use_this():
 def _dump_frame(f, frame_chapter):
     co = f.f_code
     print(f" {frame_chapter} Frame: {co.co_name}")
-    print("     File: %s" % (co.co_filename))
-    print("     Captured at line number: %s" % (f.f_lineno))
+    print(f"     File: {co.co_filename}")
+    print(f"     Captured at line number: {f.f_lineno}")
     co_locals = set(co.co_varnames)
     if len(co_locals):
         not_set = co_locals.copy()
@@ -75,16 +75,15 @@ def _dump_frame(f, frame_chapter):
                 set_locals[var_name] = f.f_locals[var_name]
                 not_set.discard(var_name)
         if set_locals:
-            print("     %s set local variables:" % (len(set_locals)))
+            print(f"     {len(set_locals)} set local variables:")
             for var_name in sorted(set_locals.keys()):
-                print("       {} => {!r}".format(
-                    var_name, f.f_locals[var_name]))
+                print(f"       {var_name} => {f.f_locals[var_name]!r}")
         else:
             print("     0 set local variables.")
         if not_set:
-            print("     %s not set local variables:" % (len(not_set)))
+            print(f"     {len(not_set)} not set local variables:")
             for var_name in sorted(not_set):
-                print("       %s" % (var_name))
+                print(f"       {var_name}")
         else:
             print("     0 not set local variables.")
     else:
@@ -100,8 +99,11 @@ def _detailed_dump_frames(f, thread_index):
 
 
 def _find_objects(t):
-    return [o for o in gc.get_objects()
-            if hasattr(o, "__class__") and isinstance(o, t)]
+    return [
+        o
+        for o in gc.get_objects()
+        if hasattr(o, "__class__") and isinstance(o, t)
+    ]
 
 
 def _capture_profile(fname=''):
@@ -109,10 +111,10 @@ def _capture_profile(fname=''):
         yappi.set_clock_type('cpu')
         # We need to set context to greenlet to profile greenlets
         # https://bitbucket.org/sumerc/yappi/pull-requests/3
-        yappi.set_context_id_callback(
-            lambda: id(greenlet.getcurrent()))
+        yappi.set_context_id_callback(lambda: id(greenlet.getcurrent()))
         yappi.set_context_name_callback(
-            lambda: greenlet.getcurrent().__class__.__name__)
+            lambda: greenlet.getcurrent().__class__.__name__
+        )
         yappi.start()
     else:
         yappi.stop()
@@ -157,7 +159,8 @@ def _parse_port_range(port_range):
         return start, end
     except ValueError as ex:
         raise EventletBackdoorConfigValueError(
-            port_range, ex, _options.help_for_backdoor_port)
+            port_range, ex, _options.help_for_backdoor_port
+        )
 
 
 def _listen_func(host, port):
@@ -179,8 +182,7 @@ def _listen(host, start_port, end_port):
         try:
             return _listen_func(host, try_port)
         except OSError as exc:
-            if (exc.errno != errno.EADDRINUSE or
-               try_port >= end_port):
+            if exc.errno != errno.EADDRINUSE or try_port >= end_port:
                 raise
             try_port += 1
 
@@ -209,8 +211,8 @@ def _try_open_unix_domain_socket(socket_path):
 def _initialize_if_enabled(conf):
     conf.register_opts(_options.eventlet_backdoor_opts)
     backdoor_locals = {
-        'exit': _dont_use_this,      # So we don't exit the entire process
-        'quit': _dont_use_this,      # So we don't exit the entire process
+        'exit': _dont_use_this,  # So we don't exit the entire process
+        'quit': _dont_use_this,  # So we don't exit the entire process
         'fo': _find_objects,
         'pgt': _print_greenthreads,
         'pnt': _print_nativethreads,
@@ -231,9 +233,12 @@ def _initialize_if_enabled(conf):
             backdoor_socket_path = conf.backdoor_socket.format(pid=os.getpid())
         except (KeyError, IndexError, ValueError) as e:
             backdoor_socket_path = conf.backdoor_socket
-            LOG.warning("Could not apply format string to eventlet "
-                        "backdoor socket path (%s) - continuing with "
-                        "unformatted path", e)
+            LOG.warning(
+                "Could not apply format string to eventlet "
+                "backdoor socket path (%s) - continuing with "
+                "unformatted path",
+                e,
+            )
         sock = _try_open_unix_domain_socket(backdoor_socket_path)
         where_running = backdoor_socket_path
 
@@ -245,15 +250,16 @@ def _initialize_if_enabled(conf):
     def displayhook(val):
         if val is not None:
             pprint.pprint(val)
+
     sys.displayhook = displayhook
 
     LOG.info(
-        'Eventlet backdoor listening on %(where_running)s for'
-        ' process %(pid)d',
-        {'where_running': where_running, 'pid': os.getpid()}
+        'Eventlet backdoor listening on %(where_running)s for process %(pid)d',
+        {'where_running': where_running, 'pid': os.getpid()},
     )
-    thread = eventlet.spawn(eventlet.backdoor.backdoor_server, sock,
-                            locals=backdoor_locals)
+    thread = eventlet.spawn(
+        eventlet.backdoor.backdoor_server, sock, locals=backdoor_locals
+    )
     return (where_running, thread)
 
 
@@ -268,6 +274,7 @@ def initialize_if_enabled(conf):
 
 def _main():
     import eventlet
+
     eventlet.monkey_patch(all=True)
 
     from oslo_config import cfg

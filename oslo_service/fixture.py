@@ -21,7 +21,7 @@ removals.removed_module(
     message=(
         "The 'oslo_service.fixture' module is deprecated and will be removed"
         " in version 2027.2."
-    )
+    ),
 )
 
 
@@ -44,7 +44,10 @@ class SleepFixture(fixtures.Fixture):
     Example usage::
 
         from oslo.service import fixture
+
         ...
+
+
         class MyTest(...):
             def setUp(self):
                 ...
@@ -58,7 +61,9 @@ class SleepFixture(fixtures.Fixture):
                 self.assertEqual(5, self.sleepfx.mock_wait.call_count)
                 ...
     """
+
     def _setUp(self):
         # Provide access to the mock so that calls to it can be asserted
-        self.mock_wait = self.useFixture(fixtures.MockPatch(
-            'oslo_utils.eventletutils.EventletEvent.wait')).mock
+        self.mock_wait = self.useFixture(
+            fixtures.MockPatch('oslo_utils.eventletutils.EventletEvent.wait')
+        ).mock

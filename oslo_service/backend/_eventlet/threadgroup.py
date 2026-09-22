@@ -44,6 +44,7 @@ class Thread(threadgroup.ThreadBase):
     the :class:`ThreadGroup` when it has done so it can be removed from
     the threads list.
     """
+
     def __init__(self, thread, group, link=True):
         super().__init__(thread, group)
         if link:
@@ -114,8 +115,8 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
 
     def _stop_threads(self):
         self._perform_action_on_threads(
-            lambda x: x.stop(),
-            lambda x: LOG.exception('Error stopping thread.'))
+            lambda x: x.stop(), lambda x: LOG.error('Error stopping thread.')
+        )
 
     def _wait_threads(self):
         """Wait for all threads to complete.
@@ -123,6 +124,7 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
         Note: This implementation handles GreenletExit exceptions
         which are raised when a greenlet is killed.
         """
+
         def _safe_wait(thread):
             try:
                 thread.wait()
@@ -133,11 +135,12 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
                 LOG.exception('Error waiting on thread.')
 
         self._perform_action_on_threads(
-            _safe_wait,
-            lambda x: LOG.exception('Error waiting on thread.'))
+            _safe_wait, lambda x: LOG.error('Error waiting on thread.')
+        )
 
-    def _perform_action_on_threads(self, action_func, on_error_func,
-                                   skip_current=True):
+    def _perform_action_on_threads(
+        self, action_func, on_error_func, skip_current=True
+    ):
         """Helper to perform an action on all threads.
 
         :param action_func: Function to call on each thread
@@ -176,7 +179,8 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
         """
         self._perform_action_on_threads(
             lambda x: x.cancel(*throw_args),
-            lambda x: LOG.exception('Error canceling thread.'))
+            lambda x: LOG.error('Error canceling thread.'),
+        )
 
         timeout = kwargs.get('timeout', None)
         if timeout is None:

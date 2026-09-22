@@ -38,7 +38,8 @@ def main():
         process.join()
         if process.exitcode:
             raise RuntimeError(
-                f"{start_method} worker exited with {process.exitcode}")
+                f"{start_method} worker exited with {process.exitcode}"
+            )
     print(json.dumps(observed))
 
 

@@ -117,7 +117,8 @@ def main() -> int:
     init_backend(BackendType.THREADING)
 
     marker = os.path.join(
-        tempfile.gettempdir(), "oslo_service_poc_parallel_periodic.txt")
+        tempfile.gettempdir(), "oslo_service_poc_parallel_periodic.txt"
+    )
     if os.path.exists(marker):
         os.remove(marker)
 
@@ -136,22 +137,23 @@ def main() -> int:
     elapsed = time.monotonic() - t0
     LOG.info(
         "run_periodic_tasks_in_parallel finished in %.2fs, idle_for=%s",
-        elapsed, idle)
+        elapsed,
+        idle,
+    )
 
     with open(marker, encoding="utf-8") as f:
         lines = f.read().strip().splitlines()
 
     print(
         "\n--- Marker file (overlapping 'start' lines indicate "
-        "parallelism) ---")
+        "parallelism) ---"
+    )
     for line in lines:
         print(line)
     print("--- end ---\n")
 
     pids = {
-        line.split("pid=")[1].split()[0]
-        for line in lines
-        if "pid=" in line
+        line.split("pid=")[1].split()[0] for line in lines if "pid=" in line
     }
     parent = str(os.getpid())
     workers = pids - {parent}
@@ -159,7 +161,8 @@ def main() -> int:
     secs = manager.sleep_seconds
     print(
         f"If at least 2 distinct workers and elapsed ~ {secs:.1f}s, "
-        "the POC demonstrates spawn parallelism.\n")
+        "the POC demonstrates spawn parallelism.\n"
+    )
 
     # Simple heuristic for manual / scripted exit code
     if elapsed < (2 * manager.sleep_seconds) and len(workers) >= 2:

@@ -45,26 +45,30 @@ class LoopingCallBase(loopingcall.LoopingCallBase):
 
 
 class FixedIntervalLoopingCall(
-        loopingcall.FixedIntervalLoopingCallBase,
-        LoopingCallBase):
+    loopingcall.FixedIntervalLoopingCallBase, LoopingCallBase
+):
     """A fixed interval looping call for eventlet backend."""
+
     pass
 
 
 class FixedIntervalWithTimeoutLoopingCall(
-        loopingcall.FixedIntervalWithTimeoutLoopingCallBase,
-        LoopingCallBase):
+    loopingcall.FixedIntervalWithTimeoutLoopingCallBase, LoopingCallBase
+):
     """A fixed interval looping call with timeout for eventlet backend."""
+
     pass
 
 
 class DynamicLoopingCall(loopingcall.DynamicLoopingCallBase, LoopingCallBase):
     """A dynamic looping call for eventlet backend."""
+
     pass
 
 
 class BackOffLoopingCall(loopingcall.BackOffLoopingCallBase, LoopingCallBase):
     """A backoff looping call for eventlet backend."""
+
     pass
 
 

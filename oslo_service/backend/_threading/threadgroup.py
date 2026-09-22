@@ -72,6 +72,7 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
         :returns: A Thread object wrapping the new thread
         :raises RuntimeError: If max_threads limit is reached
         """
+
         def run_and_cleanup(*cb_args, **cb_kwargs):
             try:
                 callback(*cb_args, **cb_kwargs)
@@ -83,7 +84,8 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
                 raise RuntimeError("Maximum number of threads reached")
 
             t = threading.Thread(
-                target=run_and_cleanup, args=args, kwargs=kwargs)
+                target=run_and_cleanup, args=args, kwargs=kwargs
+            )
             t.args = args
             t.kw = kwargs
 
@@ -129,8 +131,9 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
                 except Exception:
                     LOG.exception('Error waiting on thread.')
 
-    def _perform_action_on_threads(self, action_func, on_error_func,
-                                   skip_current=True):
+    def _perform_action_on_threads(
+        self, action_func, on_error_func, skip_current=True
+    ):
         """Helper to perform an action on all threads.
 
         :param action_func: Function to call on each thread

@@ -91,7 +91,8 @@ class ComponentRegistry:
         """
         if key not in self._components or self._components[key] is None:
             raise BackendComponentNotAvailable(
-                f"Component '{key}' is not available in this backend.")
+                f"Component '{key}' is not available in this backend."
+            )
         return self._components[key]
 
     def __contains__(self, key):

@@ -72,26 +72,30 @@ class LoopingCallBase(loopingcall.LoopingCallBase):
 
 
 class FixedIntervalLoopingCall(
-        loopingcall.FixedIntervalLoopingCallBase,
-        LoopingCallBase):
+    loopingcall.FixedIntervalLoopingCallBase, LoopingCallBase
+):
     """A fixed interval looping call for threading backend."""
+
     pass
 
 
 class FixedIntervalWithTimeoutLoopingCall(
-        loopingcall.FixedIntervalWithTimeoutLoopingCallBase,
-        LoopingCallBase):
+    loopingcall.FixedIntervalWithTimeoutLoopingCallBase, LoopingCallBase
+):
     """A fixed interval looping call with timeout for threading backend."""
+
     pass
 
 
 class DynamicLoopingCall(loopingcall.DynamicLoopingCallBase, LoopingCallBase):
     """A dynamic looping call for threading backend."""
+
     pass
 
 
 class BackOffLoopingCall(loopingcall.BackOffLoopingCallBase, LoopingCallBase):
     """A backoff looping call for threading backend."""
+
     pass
 
 

@@ -23,7 +23,6 @@ from oslo_service import loopingcall
 
 
 class LoopingCallTestCase(test_base.BaseTestCase):
-
     def setUp(self):
         super().setUp()
         self.num_runs = 0
@@ -38,7 +37,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
     def test_monotonic_timer(self):
         def _raise_it():
             clock = eventlet.hubs.get_hub().clock
-            ok = (clock == time.monotonic)
+            ok = clock == time.monotonic
             raise loopingcall.LoopingCallDone(ok)
 
         timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
@@ -48,8 +47,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         # Make sure that by default the oslo_service.service_hub() kicks in,
         # test in the main thread
         hub = eventlet.hubs.get_hub()
-        self.assertEqual(time.monotonic,
-                         hub.clock)
+        self.assertEqual(time.monotonic, hub.clock)
 
     def test_return_false(self):
         def _raise_it():
@@ -131,10 +129,11 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         second = 1
         smidgen = 0.01
 
-        elapsed_mock.side_effect = [second - smidgen,
-                                    second + second,
-                                    second + smidgen,
-                                    ]
+        elapsed_mock.side_effect = [
+            second - smidgen,
+            second + second,
+            second + smidgen,
+        ]
         timer = loopingcall.FixedIntervalLoopingCall(self._wait_for_zero)
         timer.start(interval=1.01).wait()
 
@@ -143,8 +142,11 @@ class LoopingCallTestCase(test_base.BaseTestCase):
             expected = expected_calls[i]
             args, kwargs = call
             actual = args[0]
-            message = ('Call #%d, expected: %s, actual: %s' %
-                       (i, expected, actual))
+            message = 'Call #%d, expected: %s, actual: %s' % (
+                i,
+                expected,
+                actual,
+            )
             self.assertAlmostEqual(expected, actual, message=message)
 
     def test_looping_call_timed_out(self):
@@ -153,8 +155,10 @@ class LoopingCallTestCase(test_base.BaseTestCase):
             pass
 
         timer = loopingcall.FixedIntervalWithTimeoutLoopingCall(_fake_task)
-        self.assertRaises(loopingcall.LoopingCallTimeOut,
-                          timer.start(interval=0.1, timeout=0.3).wait)
+        self.assertRaises(
+            loopingcall.LoopingCallTimeOut,
+            timer.start(interval=0.1, timeout=0.3).wait,
+        )
 
 
 class DynamicLoopingCallTestCase(test_base.BaseTestCase):
@@ -172,7 +176,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
     def test_monotonic_timer(self):
         def _raise_it():
             clock = eventlet.hubs.get_hub().clock
-            ok = (clock == time.monotonic)
+            ok = clock == time.monotonic
             raise loopingcall.LoopingCallDone(ok)
 
         timer = loopingcall.DynamicLoopingCall(_raise_it)
@@ -289,23 +293,26 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         def false():
             return False
 
-        random_mock.return_value = .8
+        random_mock.return_value = 0.8
 
-        self.assertRaises(loopingcall.LoopingCallTimeOut,
-                          loopingcall.BackOffLoopingCall(false).start()
-                          .wait)
+        self.assertRaises(
+            loopingcall.LoopingCallTimeOut,
+            loopingcall.BackOffLoopingCall(false).start().wait,
+        )
 
-        expected_times = [mock.call(1.6),
-                          mock.call(2.4000000000000004),
-                          mock.call(3.6),
-                          mock.call(5.4),
-                          mock.call(8.1),
-                          mock.call(12.15),
-                          mock.call(18.225),
-                          mock.call(27.337500000000002),
-                          mock.call(41.00625),
-                          mock.call(61.509375000000006),
-                          mock.call(92.26406250000001)]
+        expected_times = [
+            mock.call(1.6),
+            mock.call(2.4000000000000004),
+            mock.call(3.6),
+            mock.call(5.4),
+            mock.call(8.1),
+            mock.call(12.15),
+            mock.call(18.225),
+            mock.call(27.337500000000002),
+            mock.call(41.00625),
+            mock.call(61.509375000000006),
+            mock.call(92.26406250000001),
+        ]
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
     @mock.patch('random.SystemRandom.gauss')
@@ -315,23 +322,26 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
             return False
 
         # random.gauss() can return negative values
-        random_mock.return_value = -.8
+        random_mock.return_value = -0.8
 
-        self.assertRaises(loopingcall.LoopingCallTimeOut,
-                          loopingcall.BackOffLoopingCall(false).start()
-                          .wait)
+        self.assertRaises(
+            loopingcall.LoopingCallTimeOut,
+            loopingcall.BackOffLoopingCall(false).start().wait,
+        )
 
-        expected_times = [mock.call(1.6),
-                          mock.call(2.4000000000000004),
-                          mock.call(3.6),
-                          mock.call(5.4),
-                          mock.call(8.1),
-                          mock.call(12.15),
-                          mock.call(18.225),
-                          mock.call(27.337500000000002),
-                          mock.call(41.00625),
-                          mock.call(61.509375000000006),
-                          mock.call(92.26406250000001)]
+        expected_times = [
+            mock.call(1.6),
+            mock.call(2.4000000000000004),
+            mock.call(3.6),
+            mock.call(5.4),
+            mock.call(8.1),
+            mock.call(12.15),
+            mock.call(18.225),
+            mock.call(27.337500000000002),
+            mock.call(41.00625),
+            mock.call(61.509375000000006),
+            mock.call(92.26406250000001),
+        ]
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
     @mock.patch('random.SystemRandom.gauss')
@@ -340,8 +350,12 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         random_mock.return_value = 1
         func = mock.Mock()
         # func.side_effect
-        func.side_effect = [True, True, True, loopingcall.LoopingCallDone(
-            retvalue='return value')]
+        func.side_effect = [
+            True,
+            True,
+            True,
+            loopingcall.LoopingCallDone(retvalue='return value'),
+        ]
 
         retvalue = loopingcall.BackOffLoopingCall(func).start().wait()
 
@@ -368,25 +382,27 @@ class TestBackOffLoopingCall(test_base.BaseTestCase):
         def false():
             return False
 
-        random_mock.return_value = .8
+        random_mock.return_value = 0.8
 
-        self.assertRaises(loopingcall.LoopingCallTimeOut,
-                          loopingcall.BackOffLoopingCall(false).start(
-                              max_interval=60)
-                          .wait)
+        self.assertRaises(
+            loopingcall.LoopingCallTimeOut,
+            loopingcall.BackOffLoopingCall(false).start(max_interval=60).wait,
+        )
 
-        expected_times = [mock.call(1.6),
-                          mock.call(2.4000000000000004),
-                          mock.call(3.6),
-                          mock.call(5.4),
-                          mock.call(8.1),
-                          mock.call(12.15),
-                          mock.call(18.225),
-                          mock.call(27.337500000000002),
-                          mock.call(41.00625),
-                          mock.call(60),
-                          mock.call(60),
-                          mock.call(60)]
+        expected_times = [
+            mock.call(1.6),
+            mock.call(2.4000000000000004),
+            mock.call(3.6),
+            mock.call(5.4),
+            mock.call(8.1),
+            mock.call(12.15),
+            mock.call(18.225),
+            mock.call(27.337500000000002),
+            mock.call(41.00625),
+            mock.call(60),
+            mock.call(60),
+            mock.call(60),
+        ]
         self.assertEqual(expected_times, sleep_mock.call_args_list)
 
 
@@ -419,9 +435,7 @@ class RetryDecoratorTest(test_base.BaseTestCase):
 
     def test_retry_with_expected_exceptions(self):
         result = "RESULT"
-        responses = [AnException(None),
-                     AnException(None),
-                     result]
+        responses = [AnException(None), AnException(None), result]
 
         def func(*args, **kwargs):
             response = responses.pop(0)
@@ -431,16 +445,15 @@ class RetryDecoratorTest(test_base.BaseTestCase):
 
         sleep_time_incr = 0.01
         retry_count = 2
-        retry = loopingcall.RetryDecorator(10, sleep_time_incr, 10,
-                                           (AnException,))
+        retry = loopingcall.RetryDecorator(
+            10, sleep_time_incr, 10, (AnException,)
+        )
         self.assertEqual(result, retry(func)())
         self.assertTrue(retry._retry_count == retry_count)
         self.assertEqual(retry_count * sleep_time_incr, retry._sleep_time)
 
     def test_retry_with_max_retries(self):
-        responses = [AnException(None),
-                     AnException(None),
-                     AnException(None)]
+        responses = [AnException(None), AnException(None), AnException(None)]
 
         def func(*args, **kwargs):
             response = responses.pop(0)
@@ -448,8 +461,7 @@ class RetryDecoratorTest(test_base.BaseTestCase):
                 raise response
             return response
 
-        retry = loopingcall.RetryDecorator(2, 0, 0,
-                                           (AnException,))
+        retry = loopingcall.RetryDecorator(2, 0, 0, (AnException,))
         self.assertRaises(AnException, retry(func))
         self.assertTrue(retry._retry_count == 2)
 

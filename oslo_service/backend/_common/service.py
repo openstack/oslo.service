@@ -34,16 +34,19 @@ def is_daemon():
 
 
 def is_sighup_and_daemon(signo, signal_handler):
-    return (signal_handler.is_signal_supported('SIGHUP') and
-            signo == signal.SIGHUP and is_daemon())
+    return (
+        signal_handler.is_signal_supported('SIGHUP')
+        and signo == signal.SIGHUP
+        and is_daemon()
+    )
 
 
 def get_signal_mappings():
     signals_by_name = {
         name: getattr(signal, name)
         for name in dir(signal)
-        if name.startswith('SIG') and
-        isinstance(getattr(signal, name), signal.Signals)
+        if name.startswith('SIG')
+        and isinstance(getattr(signal, name), signal.Signals)
     }
     signals_to_name = {v: k for k, v in signals_by_name.items()}
 
@@ -66,7 +69,8 @@ def check_service_base(service):
     if not isinstance(service, ServiceBase):
         raise TypeError(
             _("Service %(service)s must be an instance of %(base)s!")
-            % {'service': service, 'base': ServiceBase})
+            % {'service': service, 'base': ServiceBase}
+        )
 
 
 class Singleton(type):

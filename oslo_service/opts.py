@@ -17,7 +17,9 @@ from oslo_config import cfg
 from oslo_service import _options
 
 
-def register_service_opts(conf: cfg.ConfigOpts,) -> None:
+def register_service_opts(
+    conf: cfg.ConfigOpts,
+) -> None:
     """Register the service opts configuration options.
 
     :param conf: Configuration object, managed by the caller.

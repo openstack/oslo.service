@@ -73,7 +73,8 @@ class TestBackend(unittest.TestCase):
         backend1 = get_backend()
         backend2 = get_backend()
         self.assertIs(
-            backend1, backend2, "Backend should be cached and reused.")
+            backend1, backend2, "Backend should be cached and reused."
+        )
 
     def test_cache_invalidation(self):
         """Test that cache is invalidated correctly."""
@@ -99,7 +100,8 @@ class TestBackend(unittest.TestCase):
         self.assertIsNone(backend_module.get_backend_type())
         init_backend(BackendType.THREADING)
         self.assertEqual(
-            backend_module.get_backend_type(), BackendType.THREADING)
+            backend_module.get_backend_type(), BackendType.THREADING
+        )
 
 
 class TestBackendHook(unittest.TestCase):
@@ -109,23 +111,28 @@ class TestBackendHook(unittest.TestCase):
 
     def test_hook_sets_default_backend_when_not_explicitly_initialized(self):
         backend_module.register_backend_default_hook(
-            lambda: BackendType.THREADING)
+            lambda: BackendType.THREADING
+        )
         result = backend_module.get_backend()
         self.assertEqual(
-            backend_module._cached_backend_type, BackendType.THREADING)
+            backend_module._cached_backend_type, BackendType.THREADING
+        )
         self.assertIsNotNone(result)
         self.assertIsNotNone(result.get_service_components())
 
     def test_hook_is_ignored_if_backend_already_initialized(self):
         backend_module.init_backend(BackendType.EVENTLET)
         backend_module.register_backend_default_hook(
-            lambda: BackendType.THREADING)
+            lambda: BackendType.THREADING
+        )
         self.assertEqual(
-            backend_module._cached_backend_type, BackendType.EVENTLET)
+            backend_module._cached_backend_type, BackendType.EVENTLET
+        )
 
     def test_second_init_backend_raises_exception_even_with_hook(self):
         backend_module.init_backend(BackendType.THREADING)
         backend_module.register_backend_default_hook(
-            lambda: BackendType.EVENTLET)
+            lambda: BackendType.EVENTLET
+        )
         with self.assertRaises(exceptions.BackendAlreadySelected):
             backend_module.init_backend(BackendType.EVENTLET)

@@ -40,22 +40,18 @@ class EventletBackend(BaseBackend):
             "SignalHandler": service.SignalHandler,
             "SignalExit": service_common.SignalExit,
             "Singleton": service_common.Singleton,
-
             # Looping call-related classes
             "LoopingCallBase": loopingcall.LoopingCallBase,
             "LoopingCallDone": loopingcall.LoopingCallDone,
             "LoopingCallTimeOut": loopingcall.LoopingCallTimeOut,
             "FixedIntervalLoopingCall": loopingcall.FixedIntervalLoopingCall,
-            "FixedIntervalWithTimeoutLoopingCall":
-                loopingcall.FixedIntervalWithTimeoutLoopingCall,
+            "FixedIntervalWithTimeoutLoopingCall": loopingcall.FixedIntervalWithTimeoutLoopingCall,
             "DynamicLoopingCall": loopingcall.DynamicLoopingCall,
             "BackOffLoopingCall": loopingcall.BackOffLoopingCall,
             "RetryDecorator": loopingcall.RetryDecorator,
-
             # Threadgroup call-related classes
             "ThreadGroup": threadgroup.ThreadGroup,
             "Thread": threadgroup.Thread,
-
             # Functions
             "launch": service.launch,
             "_is_daemon": service_common.is_daemon,

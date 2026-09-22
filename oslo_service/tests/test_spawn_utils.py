@@ -23,7 +23,6 @@ from oslo_service.tests import base
 
 
 class SpawnUtilsTestCase(base.ServiceBaseTestCase):
-
     def setUp(self):
         super().setUp()
         self.root_logger = logging.getLogger()

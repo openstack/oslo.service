@@ -15,6 +15,7 @@
 #    under the License.
 
 """Unit Tests for eventlet backdoor."""
+
 import errno
 import os
 import socket
@@ -27,7 +28,6 @@ from oslo_service.tests import base
 
 
 class BackdoorSocketPathTest(base.ServiceBaseTestCase):
-
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_path(self, listen_mock, spawn_mock):
@@ -47,8 +47,9 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
 
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
-    def test_backdoor_path_with_broken_format_string(self, listen_mock,
-                                                     spawn_mock):
+    def test_backdoor_path_with_broken_format_string(
+        self, listen_mock, spawn_mock
+    ):
         broken_socket_paths = [
             "/tmp/my_special_socket-{}",
             "/tmp/my_special_socket-{broken",
@@ -63,11 +64,12 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
     @mock.patch.object(os, 'unlink')
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
-    def test_backdoor_path_already_exists(self, listen_mock,
-                                          spawn_mock, unlink_mock):
+    def test_backdoor_path_already_exists(
+        self, listen_mock, spawn_mock, unlink_mock
+    ):
         self.config(backdoor_socket="/tmp/my_special_socket")
         sock = mock.Mock()
-        listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
+        listen_mock.side_effect = [OSError(errno.EADDRINUSE, ''), sock]
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual("/tmp/my_special_socket", path)
         unlink_mock.assert_called_with("/tmp/my_special_socket")
@@ -75,11 +77,12 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
     @mock.patch.object(os, 'unlink')
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
-    def test_backdoor_path_already_exists_and_gone(self, listen_mock,
-                                                   spawn_mock, unlink_mock):
+    def test_backdoor_path_already_exists_and_gone(
+        self, listen_mock, spawn_mock, unlink_mock
+    ):
         self.config(backdoor_socket="/tmp/my_special_socket")
         sock = mock.Mock()
-        listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
+        listen_mock.side_effect = [OSError(errno.EADDRINUSE, ''), sock]
         unlink_mock.side_effect = OSError(errno.ENOENT, '')
         path = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual("/tmp/my_special_socket", path)
@@ -88,27 +91,27 @@ class BackdoorSocketPathTest(base.ServiceBaseTestCase):
     @mock.patch.object(os, 'unlink')
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
-    def test_backdoor_path_already_exists_and_not_gone(self, listen_mock,
-                                                       spawn_mock,
-                                                       unlink_mock):
+    def test_backdoor_path_already_exists_and_not_gone(
+        self, listen_mock, spawn_mock, unlink_mock
+    ):
         self.config(backdoor_socket="/tmp/my_special_socket")
-        listen_mock.side_effect = socket.error(errno.EADDRINUSE, '')
+        listen_mock.side_effect = OSError(errno.EADDRINUSE, '')
         unlink_mock.side_effect = OSError(errno.EPERM, '')
-        self.assertRaises(OSError, eventlet_backdoor.initialize_if_enabled,
-                          self.conf)
+        self.assertRaises(
+            OSError, eventlet_backdoor.initialize_if_enabled, self.conf
+        )
 
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_path_no_perms(self, listen_mock, spawn_mock):
         self.config(backdoor_socket="/tmp/my_special_socket")
-        listen_mock.side_effect = socket.error(errno.EPERM, '')
-        self.assertRaises(socket.error,
-                          eventlet_backdoor.initialize_if_enabled,
-                          self.conf)
+        listen_mock.side_effect = OSError(errno.EPERM, '')
+        self.assertRaises(
+            socket.error, eventlet_backdoor.initialize_if_enabled, self.conf
+        )
 
 
 class BackdoorPortTest(base.ServiceBaseTestCase):
-
     @mock.patch.object(eventlet, 'spawn')
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_port(self, listen_mock, spawn_mock):
@@ -123,9 +126,10 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
     @mock.patch.object(eventlet, 'listen')
     def test_backdoor_port_inuse(self, listen_mock, spawn_mock):
         self.config(backdoor_port=2345)
-        listen_mock.side_effect = socket.error(errno.EADDRINUSE, '')
-        self.assertRaises(socket.error,
-                          eventlet_backdoor.initialize_if_enabled, self.conf)
+        listen_mock.side_effect = OSError(errno.EADDRINUSE, '')
+        self.assertRaises(
+            socket.error, eventlet_backdoor.initialize_if_enabled, self.conf
+        )
 
     @mock.patch.object(eventlet, 'spawn')
     def test_backdoor_port_range_inuse(self, spawn_mock):
@@ -151,7 +155,7 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
         self.config(backdoor_port='8800:8900')
         sock = mock.Mock()
         sock.getsockname.return_value = ('127.0.0.1', 8801)
-        listen_mock.side_effect = [socket.error(errno.EADDRINUSE, ''), sock]
+        listen_mock.side_effect = [OSError(errno.EADDRINUSE, ''), sock]
         port = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.assertEqual(8801, port)
 
@@ -161,17 +165,24 @@ class BackdoorPortTest(base.ServiceBaseTestCase):
         self.config(backdoor_port='8800:8899')
         side_effects = []
         for i in range(8800, 8900):
-            side_effects.append(socket.error(errno.EADDRINUSE, ''))
+            side_effects.append(OSError(errno.EADDRINUSE, ''))
         listen_mock.side_effect = side_effects
-        self.assertRaises(socket.error,
-                          eventlet_backdoor.initialize_if_enabled, self.conf)
+        self.assertRaises(
+            socket.error, eventlet_backdoor.initialize_if_enabled, self.conf
+        )
 
     def test_backdoor_port_reverse_range(self):
         self.config(backdoor_port='8888:7777')
-        self.assertRaises(eventlet_backdoor.EventletBackdoorConfigValueError,
-                          eventlet_backdoor.initialize_if_enabled, self.conf)
+        self.assertRaises(
+            eventlet_backdoor.EventletBackdoorConfigValueError,
+            eventlet_backdoor.initialize_if_enabled,
+            self.conf,
+        )
 
     def test_backdoor_port_bad(self):
         self.config(backdoor_port='abc')
-        self.assertRaises(eventlet_backdoor.EventletBackdoorConfigValueError,
-                          eventlet_backdoor.initialize_if_enabled, self.conf)
+        self.assertRaises(
+            eventlet_backdoor.EventletBackdoorConfigValueError,
+            eventlet_backdoor.initialize_if_enabled,
+            self.conf,
+        )

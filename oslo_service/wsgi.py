@@ -68,8 +68,10 @@ def register_opts(conf):
 
 
 class InvalidInput(Exception):
-    message = _("Invalid input received: "
-                "Unexpected argument for periodic task creation: %(arg)s.")
+    message = _(
+        "Invalid input received: "
+        "Unexpected argument for periodic task creation: %(arg)s."
+    )
 
 
 @removals.removed_class(
@@ -79,7 +81,7 @@ class InvalidInput(Exception):
         "The Server class utilises the eventlet service, and eventlet support "
         "is deprecated for removal. You should remove use of eventlet servers "
         "from your application and switch to deploying via WSGI."
-    )
+    ),
 )
 class Server(service.ServiceBase):
     """Server class to manage a WSGI server, serving a WSGI application."""
@@ -88,11 +90,23 @@ class Server(service.ServiceBase):
     # possible binding to all interfaces. The most appropriate value seems
     # to be 127.0.0.1, but it has to be verified that the change wouldn't
     # break any consuming project.
-    def __init__(self, conf, name, app, host='0.0.0.0', port=0,  # nosec
-                 pool_size=None, protocol=eventlet.wsgi.HttpProtocol,
-                 backlog=128, use_ssl=False, max_url_len=None,
-                 logger_name='eventlet.wsgi.server',
-                 socket_family=None, socket_file=None, socket_mode=None):
+    def __init__(
+        self,
+        conf,
+        name,
+        app,
+        host='0.0.0.0',
+        port=0,  # nosec
+        pool_size=None,
+        protocol=eventlet.wsgi.HttpProtocol,
+        backlog=128,
+        use_ssl=False,
+        max_url_len=None,
+        logger_name='eventlet.wsgi.server',
+        socket_family=None,
+        socket_file=None,
+        socket_mode=None,
+    ):
         """Initialize, but do not start, a WSGI server.
 
         :param conf: Instance of ConfigOpts.
@@ -139,12 +153,15 @@ class Server(service.ServiceBase):
         if backlog < 1:
             raise InvalidInput(reason=_('The backlog must be more than 0'))
 
-        if not socket_family or socket_family in [socket.AF_INET,
-                                                  socket.AF_INET6]:
+        if not socket_family or socket_family in [
+            socket.AF_INET,
+            socket.AF_INET6,
+        ]:
             self.socket = self._get_socket(host, port, backlog)
         elif hasattr(socket, "AF_UNIX") and socket_family == socket.AF_UNIX:
-            self.socket = self._get_unix_socket(socket_file, socket_mode,
-                                                backlog)
+            self.socket = self._get_unix_socket(
+                socket_file, socket_mode, backlog
+            )
         else:
             raise ValueError(_("Unsupported socket family: %s"), socket_family)
 
@@ -159,10 +176,12 @@ class Server(service.ServiceBase):
         # support IPv6 in getaddrinfo(). We need to get around this in the
         # future or monitor upstream for a fix
         try:
-            info = socket.getaddrinfo(bind_addr[0],
-                                      bind_addr[1],
-                                      socket.AF_UNSPEC,
-                                      socket.SOCK_STREAM)[0]
+            info = socket.getaddrinfo(
+                bind_addr[0],
+                bind_addr[1],
+                socket.AF_UNSPEC,
+                socket.SOCK_STREAM,
+            )[0]
             family = info[0]
             bind_addr = info[-1]
         except Exception:
@@ -171,21 +190,28 @@ class Server(service.ServiceBase):
         try:
             sock = eventlet.listen(bind_addr, family, backlog=backlog)
         except OSError:
-            LOG.error("Could not bind to %(host)s:%(port)s",
-                      {'host': host, 'port': port})
+            LOG.error(
+                "Could not bind to %(host)s:%(port)s",
+                {'host': host, 'port': port},
+            )
             raise
         sock = self._set_socket_opts(sock)
-        LOG.info("%(name)s listening on %(host)s:%(port)s",
-                 {'name': self.name, 'host': host, 'port': port})
+        LOG.info(
+            "%(name)s listening on %(host)s:%(port)s",
+            {'name': self.name, 'host': host, 'port': port},
+        )
         return sock
 
     def _get_unix_socket(self, socket_file, socket_mode, backlog):
-        sock = eventlet.listen(socket_file, family=socket.AF_UNIX,
-                               backlog=backlog)
+        sock = eventlet.listen(
+            socket_file, family=socket.AF_UNIX, backlog=backlog
+        )
         if socket_mode is not None:
             os.chmod(socket_file, socket_mode)
-        LOG.info("%(name)s listening on %(socket_file)s:",
-                 {'name': self.name, 'socket_file': socket_file})
+        LOG.info(
+            "%(name)s listening on %(socket_file)s:",
+            {'name': self.name, 'socket_file': socket_file},
+        )
         return sock
 
     def start(self):
@@ -213,8 +239,8 @@ class Server(service.ServiceBase):
             'log_format': self.conf.wsgi_log_format,
             'debug': self.conf.wsgi_server_debug,
             'keepalive': self.conf.wsgi_keep_alive,
-            'socket_timeout': self.client_socket_timeout
-            }
+            'socket_timeout': self.client_socket_timeout,
+        }
 
         if self._max_url_len:
             wsgi_kwargs['url_length_limit'] = self._max_url_len
@@ -228,9 +254,9 @@ class Server(service.ServiceBase):
 
         # This option isn't available in the OS X version of eventlet
         if hasattr(socket, 'TCP_KEEPIDLE'):
-            _socket.setsockopt(socket.IPPROTO_TCP,
-                               socket.TCP_KEEPIDLE,
-                               self.conf.tcp_keepidle)
+            _socket.setsockopt(
+                socket.IPPROTO_TCP, socket.TCP_KEEPIDLE, self.conf.tcp_keepidle
+            )
 
         return _socket
 
@@ -304,8 +330,9 @@ class Router:
 
         """
         self.map = mapper
-        self._router = routes.middleware.RoutesMiddleware(self._dispatch,
-                                                          self.map)
+        self._router = routes.middleware.RoutesMiddleware(
+            self._dispatch, self.map
+        )
 
     @webob.dec.wsgify(RequestClass=Request)
     def __call__(self, req):
@@ -341,8 +368,10 @@ class ConfigNotFound(Exception):
 
 class PasteAppNotFound(Exception):
     def __init__(self, name, path):
-        msg = (_("Could not load paste app '%(name)s' from %(path)s") %
-               {'name': name, 'path': path})
+        msg = _("Could not load paste app '%(name)s' from %(path)s") % {
+            'name': name,
+            'path': path,
+        }
         super().__init__(msg)
 
 
@@ -377,9 +406,11 @@ class Loader:
 
         """
         try:
-            LOG.debug("Loading app %(name)s from %(path)s",
-                      {'name': name, 'path': self.config_path})
-            return deploy.loadapp("config:%s" % self.config_path, name=name)
+            LOG.debug(
+                "Loading app %(name)s from %(path)s",
+                {'name': name, 'path': self.config_path},
+            )
+            return deploy.loadapp(f"config:{self.config_path}", name=name)
         except LookupError:
             LOG.exception("Couldn't lookup app: %s", name)
             raise PasteAppNotFound(name=name, path=self.config_path)

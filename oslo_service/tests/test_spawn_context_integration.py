@@ -30,6 +30,7 @@ from oslo_service.tests import base
 
 class MockService(ServiceBase):
     """Mock service for spawn context tests."""
+
     def start(self):
         pass
 
@@ -67,7 +68,8 @@ class TestSpawnContextIntegration(base.ServiceBaseTestCase):
 
     def test_spawn_does_not_inherit_parent_initialized_global(self):
         helper = Path(__file__).parent.joinpath(
-            "functional", "spawn_global_helper.py")
+            "functional", "spawn_global_helper.py"
+        )
         output = subprocess.check_output(
             [sys.executable, str(helper)],
             text=True,
@@ -82,17 +84,19 @@ class TestSpawnContextIntegration(base.ServiceBaseTestCase):
         # to trigger manager creation and verify it uses spawn context
         separate_conf_manager = cfg.ConfigOpts()
         launcher_with_manager = service.ProcessLauncher(
-            conf=separate_conf_manager, start_method="spawn")
+            conf=separate_conf_manager, start_method="spawn"
+        )
         # Trigger manager creation
         mock_service = MockService()
         launcher_with_manager.launch_service(mock_service, workers=1)
         # Verify that ServiceManager uses the spawn context (Cotyledon PR #84)
         self.assertEqual(
-            launcher_with_manager._manager_context.get_start_method(),
-            "spawn")
+            launcher_with_manager._manager_context.get_start_method(), "spawn"
+        )
         self.assertEqual(
             launcher_with_manager._manager.mp_context.get_start_method(),
-            "spawn")
+            "spawn",
+        )
         # Note: We don't call stop() or shutdown() here to avoid blocking.
         # The processes will be cleaned up when the test completes.
 
@@ -101,12 +105,13 @@ class TestSpawnContextIntegration(base.ServiceBaseTestCase):
         # Use a separate conf to avoid duplicate option registration
         separate_conf = cfg.ConfigOpts()
         launcher = service.ServiceLauncher(
-            conf=separate_conf, start_method="spawn")
+            conf=separate_conf, start_method="spawn"
+        )
         launcher.launch_service(MockService(), workers=1)
         # Verify that ServiceManager uses the spawn context (Cotyledon PR #84)
+        self.assertEqual(launcher._manager_context.get_start_method(), "spawn")
         self.assertEqual(
-            launcher._manager_context.get_start_method(), "spawn")
-        self.assertEqual(
-            launcher._manager.mp_context.get_start_method(), "spawn")
+            launcher._manager.mp_context.get_start_method(), "spawn"
+        )
         # Note: We don't call stop() or shutdown() here to avoid blocking.
         # The processes will be cleaned up when the test completes.

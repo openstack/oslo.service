@@ -145,12 +145,14 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
 
             @periodic_task.periodic_task(
                 spacing=10 + periodic_task.DEFAULT_INTERVAL,
-                run_immediately=True)
+                run_immediately=True,
+            )
             def doit_with_ticks(self, context):
                 self.called['ticks'] += 1
 
             @periodic_task.periodic_task(
-                spacing=10 + periodic_task.DEFAULT_INTERVAL)
+                spacing=10 + periodic_task.DEFAULT_INTERVAL
+            )
             def doit_with_tocks(self, context):
                 self.called['tocks'] += 1
 
@@ -161,7 +163,8 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
             external_called['ext1'] += 1
 
         @periodic_task.periodic_task(
-            spacing=10 + periodic_task.DEFAULT_INTERVAL)
+            spacing=10 + periodic_task.DEFAULT_INTERVAL
+        )
         def ext2(self, context):
             external_called['ext2'] += 1
 
@@ -246,7 +249,9 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         class AService(periodic_task.PeriodicTasks):
             def __init__(self, conf):
                 super().__init__(conf)
-                self.called = {'urg': 0, }
+                self.called = {
+                    'urg': 0,
+                }
 
             @periodic_task.periodic_task
             def crashit(self, context):
@@ -257,9 +262,9 @@ class PeriodicTasksTestCase(base.ServiceBaseTestCase):
         now = serv._periodic_last_run['crashit']
 
         mock_now.return_value = now + periodic_task.DEFAULT_INTERVAL
-        self.assertRaises(AnException,
-                          serv.run_periodic_tasks,
-                          None, raise_on_error=True)
+        self.assertRaises(
+            AnException, serv.run_periodic_tasks, None, raise_on_error=True
+        )
 
     def test_name(self):
         class AService(periodic_task.PeriodicTasks):
@@ -290,7 +295,6 @@ class ManagerMetaTestCase(base.ServiceBaseTestCase):
 
     def test_meta(self):
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task
             def foo(self):
                 return 'foo'
@@ -305,11 +309,13 @@ class ManagerMetaTestCase(base.ServiceBaseTestCase):
 
         m = Manager(self.conf)
         self.assertThat(m._periodic_tasks, matchers.HasLength(2))
-        self.assertEqual(periodic_task.DEFAULT_INTERVAL,
-                         m._periodic_spacing['foo'])
+        self.assertEqual(
+            periodic_task.DEFAULT_INTERVAL, m._periodic_spacing['foo']
+        )
         self.assertEqual(4, m._periodic_spacing['bar'])
         self.assertThat(
-            m._periodic_spacing, matchers.Not(matchers.Contains('baz')))
+            m._periodic_spacing, matchers.Not(matchers.Contains('baz'))
+        )
 
         @periodic_task.periodic_task
         def external():
@@ -317,18 +323,19 @@ class ManagerMetaTestCase(base.ServiceBaseTestCase):
 
         m.add_periodic_task(external)
         self.assertThat(m._periodic_tasks, matchers.HasLength(3))
-        self.assertEqual(periodic_task.DEFAULT_INTERVAL,
-                         m._periodic_spacing['external'])
+        self.assertEqual(
+            periodic_task.DEFAULT_INTERVAL, m._periodic_spacing['external']
+        )
 
 
 class ManagerTestCase(base.ServiceBaseTestCase):
     """Tests the periodic tasks portion of the manager class."""
+
     def setUp(self):
         super().setUp()
 
     def test_periodic_tasks_with_idle(self):
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task(spacing=200)
             def bar(self):
                 return 'bar'
@@ -343,7 +350,6 @@ class ManagerTestCase(base.ServiceBaseTestCase):
 
     def test_periodic_tasks_constant(self):
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task(spacing=0)
             def bar(self):
                 return 'bar'
@@ -358,7 +364,6 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         mock_now.return_value = fake_time
 
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task(spacing=10)
             def bar(self, context):
                 return 'bar'
@@ -375,25 +380,21 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.assertTrue(task._periodic_enabled)
         self.assertFalse(task._periodic_external_ok)
         self.assertFalse(task._periodic_immediate)
-        self.assertAlmostEqual(32503680000.0,
-                               task._periodic_last_run)
+        self.assertAlmostEqual(32503680000.0, task._periodic_last_run)
 
         # Test the manager's representation of those values
         self.assertEqual(10, m._periodic_spacing[task_name])
-        self.assertAlmostEqual(32503680000.0,
-                               m._periodic_last_run[task_name])
+        self.assertAlmostEqual(32503680000.0, m._periodic_last_run[task_name])
 
         mock_now.return_value = fake_time + 5
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(5, idle, 1)
-        self.assertAlmostEqual(32503680000.0,
-                               m._periodic_last_run[task_name])
+        self.assertAlmostEqual(32503680000.0, m._periodic_last_run[task_name])
 
         mock_now.return_value = fake_time + 10
         idle = m.run_periodic_tasks(None)
         self.assertAlmostEqual(10, idle, 1)
-        self.assertAlmostEqual(32503680010.0,
-                               m._periodic_last_run[task_name])
+        self.assertAlmostEqual(32503680010.0, m._periodic_last_run[task_name])
 
     @mock.patch('oslo_service.periodic_task.now')
     def test_periodic_tasks_immediate_runs_now(self, mock_now):
@@ -401,7 +402,6 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         mock_now.return_value = fake_time
 
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task(spacing=10, run_immediately=True)
             def bar(self, context):
                 return 'bar'
@@ -425,8 +425,7 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.assertIsNone(m._periodic_last_run[task_name])
 
         idle = m.run_periodic_tasks(None)
-        self.assertAlmostEqual(32503680000.0,
-                               m._periodic_last_run[task_name])
+        self.assertAlmostEqual(32503680000.0, m._periodic_last_run[task_name])
         self.assertAlmostEqual(10, idle, 1)
 
         mock_now.return_value = fake_time + 5
@@ -435,7 +434,6 @@ class ManagerTestCase(base.ServiceBaseTestCase):
 
     def test_periodic_tasks_disabled(self):
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task(spacing=-1)
             def bar(self):
                 return 'bar'
@@ -448,7 +446,6 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.config(run_external_periodic_tasks=True)
 
         class Manager(periodic_task.PeriodicTasks):
-
             @periodic_task.periodic_task(spacing=200, external_process_ok=True)
             def bar(self):
                 return 'bar'
@@ -467,8 +464,9 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         mock_now.return_value = 1841
         self.assertEqual(1837, periodic_task._nearest_boundary(781, 88))
         mock_now.return_value = 1835
-        self.assertEqual(mock_now.return_value,
-                         periodic_task._nearest_boundary(None, 88))
+        self.assertEqual(
+            mock_now.return_value, periodic_task._nearest_boundary(None, 88)
+        )
 
         # Add 5% jitter
         mock_random.return_value = 1.0
@@ -479,11 +477,14 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         mock_now.return_value = 1300
         self.assertEqual(1200 + 5, periodic_task._nearest_boundary(1000, 200))
 
-    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
-                return_value=backend.BackendType.THREADING)
+    @mock.patch(
+        'oslo_service.periodic_task.backend.get_backend_type',
+        return_value=backend.BackendType.THREADING,
+    )
     @mock.patch('oslo_service.periodic_task.now')
     def test_run_periodic_tasks_in_parallel_no_due_tasks_returns_idle(
-            self, mock_now, mock_get_backend):
+        self, mock_now, mock_get_backend
+    ):
         """When no tasks are due, parallel runner returns idle."""
         mock_now.return_value = 1000.0
 
@@ -494,19 +495,25 @@ class ManagerTestCase(base.ServiceBaseTestCase):
 
         m = Manager(self.conf)
         with mock.patch.object(
-                _multiprocessing, 'get_spawn_pool') as mock_get_pool:
+            _multiprocessing, 'get_spawn_pool'
+        ) as mock_get_pool:
             idle = m.run_periodic_tasks_in_parallel(None)
         mock_get_pool.assert_not_called()
         self.assertAlmostEqual(idle, 10, 1)
 
-    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
-                return_value=backend.BackendType.THREADING)
+    @mock.patch(
+        'oslo_service.periodic_task.backend.get_backend_type',
+        return_value=backend.BackendType.THREADING,
+    )
     @mock.patch('oslo_service.periodic_task.now')
     @mock.patch('oslo_service.periodic_task.ForkingPickler')
-    @mock.patch('oslo_service.periodic_task.'
-                '_spawn_utils.get_current_oslo_logging_setup')
+    @mock.patch(
+        'oslo_service.periodic_task.'
+        '_spawn_utils.get_current_oslo_logging_setup'
+    )
     def test_run_periodic_tasks_in_parallel_uses_get_spawn_pool(
-            self, mock_get_logging, mock_fp, mock_now, mock_get_backend):
+        self, mock_get_logging, mock_fp, mock_now, mock_get_backend
+    ):
         """Verify run_periodic_tasks_in_parallel uses get_spawn_pool."""
         mock_now.return_value = 1000.0
         mock_fp.dumps.return_value = b''
@@ -517,7 +524,8 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         mock_pool_instance.apply_async.return_value.get.return_value = 'task1'
         mock_pool_instance.apply_async.return_value.ready.return_value = True
         with mock.patch.object(
-                _multiprocessing, 'get_spawn_pool') as mock_get_pool:
+            _multiprocessing, 'get_spawn_pool'
+        ) as mock_get_pool:
             mock_get_pool.return_value = mock_pool_instance
             m.run_periodic_tasks_in_parallel(None)
         mock_get_pool.assert_called_once_with(
@@ -535,11 +543,13 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         oslo_log.register_options(self.conf)
         self.conf.register_opt(cfg.StrOpt('spawn_default'))
         self.conf.register_opt(
-            cfg.StrOpt('spawn_override'), group='spawn_group')
+            cfg.StrOpt('spawn_override'), group='spawn_group'
+        )
         self.conf(args=[], default_config_files=[])
         self.conf.set_default('spawn_default', 'parent-default')
         self.conf.set_override(
-            'spawn_override', 'parent-override', group='spawn_group')
+            'spawn_override', 'parent-override', group='spawn_group'
+        )
 
         manager = _ConfigStateManager(self.conf)
         process = _multiprocessing.get_spawn_context().Process(
@@ -579,19 +589,24 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         r1.get.side_effect = mark1
         with mock.patch('oslo_service.periodic_task.time.sleep') as mock_sleep:
             periodic_task._collect_async_task_results(
-                [('t0', r0), ('t1', r1)], raise_on_error=False)
+                [('t0', r0), ('t1', r1)], raise_on_error=False
+            )
         self.assertEqual(['r1', 'r0'], order)
         mock_sleep.assert_called_once()
 
     @testtools.skipIf(
         'eventlet' in sys.modules,
         "Requires real OS threads; skip when eventlet is loaded "
-        "(monkey-patches threading)")
-    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
-                return_value=backend.BackendType.THREADING)
+        "(monkey-patches threading)",
+    )
+    @mock.patch(
+        'oslo_service.periodic_task.backend.get_backend_type',
+        return_value=backend.BackendType.THREADING,
+    )
     @mock.patch('oslo_service.periodic_task.now')
     def test_run_periodic_tasks_in_parallel_no_deadlock_when_thread_holds_lock(
-            self, mock_now, mock_get_backend):
+        self, mock_now, mock_get_backend
+    ):
         """Schedule 10 tasks while a thread holds a lock; children exit clean.
 
         With fork, child processes would inherit the lock state and could
@@ -638,29 +653,41 @@ class ManagerTestCase(base.ServiceBaseTestCase):
         self.assertTrue(
             completed,
             "run_periodic_tasks_in_parallel did not complete within 15s "
-            "(possible fork deadlock)")
+            "(possible fork deadlock)",
+        )
         self.assertEqual([], exc)
 
-    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
-                return_value=backend.BackendType.THREADING)
+    @mock.patch(
+        'oslo_service.periodic_task.backend.get_backend_type',
+        return_value=backend.BackendType.THREADING,
+    )
     def test_run_periodic_tasks_in_parallel_raises_when_context_not_picklable(
-            self, mock_get_backend):
+        self, mock_get_backend
+    ):
         """Raises with clear error when context is not picklable with spawn."""
         m = _PicklableManagerOneTask(self.conf)
+
         # Lambdas are not picklable with ForkingPickler
-        non_picklable_context = lambda: None
+        def non_picklable_context():
+            return None
+
         last_run_before = m._periodic_last_run['task1']
         self.assertRaises(
             (pickle.PicklingError, TypeError, AttributeError),
             m.run_periodic_tasks_in_parallel,
-            non_picklable_context)
+            non_picklable_context,
+        )
         self.assertEqual(last_run_before, m._periodic_last_run['task1'])
 
-    @mock.patch('oslo_service.periodic_task.backend.get_backend_type',
-                return_value=backend.BackendType.EVENTLET)
+    @mock.patch(
+        'oslo_service.periodic_task.backend.get_backend_type',
+        return_value=backend.BackendType.EVENTLET,
+    )
     def test_run_periodic_tasks_in_parallel_raises_with_eventlet_backend(
-            self, mock_get_backend):
+        self, mock_get_backend
+    ):
         """Raises when eventlet backend is active."""
+
         class Manager(periodic_task.PeriodicTasks):
             @periodic_task.periodic_task(spacing=10)
             def task1(self, context):
@@ -668,6 +695,5 @@ class ManagerTestCase(base.ServiceBaseTestCase):
 
         m = Manager(self.conf)
         self.assertRaises(
-            UnsupportedBackendError,
-            m.run_periodic_tasks_in_parallel,
-            None)
+            UnsupportedBackendError, m.run_periodic_tasks_in_parallel, None
+        )

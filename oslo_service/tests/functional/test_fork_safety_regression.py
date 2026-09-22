@@ -53,10 +53,9 @@ def _eventlet_is_monkey_patched():
             import eventlet.patcher
     except ImportError:
         return False
-    return (
-        eventlet.patcher.is_monkey_patched('os') or
-        eventlet.patcher.is_monkey_patched('thread')
-    )
+    return eventlet.patcher.is_monkey_patched(
+        'os'
+    ) or eventlet.patcher.is_monkey_patched('thread')
 
 
 # Skip only when eventlet has actually monkey-patched the interpreter. Merely
@@ -180,25 +179,30 @@ def _run_minimal_service_launcher_with_active_thread(status_queue):
 
             conf = cfg.ConfigOpts()
             launcher = threading_service.ServiceLauncher(
-                conf=conf, start_method='spawn')
+                conf=conf, start_method='spawn'
+            )
             launcher.launch_service(
-                MinimalLauncherService(status_dir), workers=1)
+                MinimalLauncherService(status_dir), workers=1
+            )
 
             if launcher._manager_context.get_start_method() != 'spawn':
                 raise RuntimeError(
                     "ServiceLauncher fell back from spawn context; this "
-                    "would reintroduce fork-with-active-threads semantics")
+                    "would reintroduce fork-with-active-threads semantics"
+                )
 
             def stop_after_worker_finishes():
                 try:
                     if not _wait_for_marker(started_path, timeout=5):
                         raise RuntimeError(
-                            "ServiceLauncher worker did not start")
+                            "ServiceLauncher worker did not start"
+                        )
                     status_queue.put((_SERVICE_STARTED, os.getpid()))
 
                     if not _wait_for_marker(stopped_path, timeout=5):
                         raise RuntimeError(
-                            "ServiceLauncher worker did not stop")
+                            "ServiceLauncher worker did not stop"
+                        )
                     status_queue.put((_SERVICE_STOPPED, os.getpid()))
 
                     launcher.stop()
@@ -220,7 +224,8 @@ def _run_minimal_service_launcher_with_active_thread(status_queue):
                 raise controller_errors[0]
             if exit_code not in (0, None):
                 raise RuntimeError(
-                    f"ServiceLauncher exited with status {exit_code}")
+                    f"ServiceLauncher exited with status {exit_code}"
+                )
 
             status_queue.put((_LAUNCHER_DONE, os.getpid()))
     except Exception as exc:
@@ -232,8 +237,10 @@ def _run_minimal_service_launcher_with_active_thread(status_queue):
         background.join(timeout=3)
 
 
-@unittest.skipIf(EVENTLET_MONKEY_PATCHED,
-                 "Spawn-safety tests cannot run with eventlet monkey-patching")
+@unittest.skipIf(
+    EVENTLET_MONKEY_PATCHED,
+    "Spawn-safety tests cannot run with eventlet monkey-patching",
+)
 class TestForkSafetyRegression(unittest.TestCase):
     """Functional spawn/fork-safety regression coverage.
 
@@ -314,7 +321,8 @@ class TestForkSafetyRegression(unittest.TestCase):
         # Verify
         self.assertTrue(
             success,
-            "Pool operations did not complete within 10s - possible deadlock!")
+            "Pool operations did not complete within 10s - possible deadlock!",
+        )
         self.assertEqual([], error, f"Errors occurred: {error}")
         self.assertEqual([0, 2, 4, 6, 8], results)
 
@@ -331,7 +339,8 @@ class TestForkSafetyRegression(unittest.TestCase):
         status_queue = ctx.Queue()
         proc = ctx.Process(
             target=_run_minimal_service_launcher_with_active_thread,
-            args=(status_queue,))
+            args=(status_queue,),
+        )
         messages = []
 
         try:
@@ -351,7 +360,8 @@ class TestForkSafetyRegression(unittest.TestCase):
             if proc.is_alive():
                 self.fail(
                     "ServiceLauncher spawn test service did not "
-                    f"exit cleanly: {messages}")
+                    f"exit cleanly: {messages}"
+                )
         finally:
             if proc.is_alive():
                 proc.terminate()
@@ -370,11 +380,15 @@ class TestForkSafetyRegression(unittest.TestCase):
             status_queue.close()
 
         self.assertEqual(
-            0, proc.exitcode,
-            f"ServiceLauncher test service failed: {messages}")
+            0,
+            proc.exitcode,
+            f"ServiceLauncher test service failed: {messages}",
+        )
         self.assertNotIn(
-            _ERROR, [message[0] for message in messages],
-            f"ServiceLauncher regression error: {messages}")
+            _ERROR,
+            [message[0] for message in messages],
+            f"ServiceLauncher regression error: {messages}",
+        )
         self.assertIn(_SERVICE_STARTED, [message[0] for message in messages])
         self.assertIn(_SERVICE_STOPPED, [message[0] for message in messages])
         self.assertIn(_LAUNCHER_DONE, [message[0] for message in messages])

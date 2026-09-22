@@ -24,6 +24,7 @@ from oslo_service.backend.exceptions import BackendComponentNotAvailable
 class TestBaseBackend(unittest.TestCase):
     def test_backend_with_valid_implementation(self):
         """Test that a valid backend subclass works correctly."""
+
         class ValidBackend(BaseBackend):
             def get_service_components(self):
                 return {"ServiceLauncher": "mock_service_launcher"}
@@ -32,7 +33,8 @@ class TestBaseBackend(unittest.TestCase):
         components = backend.get_service_components()
         self.assertIn("ServiceLauncher", components)
         self.assertEqual(
-            components["ServiceLauncher"], "mock_service_launcher")
+            components["ServiceLauncher"], "mock_service_launcher"
+        )
 
 
 class TestComponentRegistry(unittest.TestCase):
@@ -47,17 +49,19 @@ class TestComponentRegistry(unittest.TestCase):
     def test_get_existing_component(self):
         """Test getting an existing component."""
         self.assertEqual(
-            self.registry["ServiceLauncher"], "mock_service_launcher")
+            self.registry["ServiceLauncher"], "mock_service_launcher"
+        )
         self.assertEqual(
-            self.registry["ProcessLauncher"], "mock_process_launcher")
+            self.registry["ProcessLauncher"], "mock_process_launcher"
+        )
 
     def test_get_missing_component(self):
         """Test accessing a missing component raises NotImplementedError."""
         with self.assertRaises(BackendComponentNotAvailable) as context:
             _ = self.registry["LoopingCall"]
         self.assertIn(
-            "Component 'LoopingCall' is not available",
-            str(context.exception))
+            "Component 'LoopingCall' is not available", str(context.exception)
+        )
 
     def test_contains_existing_component(self):
         """Test checking if an existing component is in the proxy."""

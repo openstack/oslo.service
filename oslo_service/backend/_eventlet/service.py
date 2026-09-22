@@ -39,13 +39,14 @@ except ImportError:
 
 from oslo_service._i18n import _
 from oslo_service import _options
-from oslo_service.backend._common.constants import \
-    _LAUNCHER_RESTART_METHODS
-from oslo_service.backend._common.service \
-    import check_service_base as _check_service_base
+from oslo_service.backend._common.constants import _LAUNCHER_RESTART_METHODS
+from oslo_service.backend._common.service import (
+    check_service_base as _check_service_base,
+)
 from oslo_service.backend._common.service import get_signal_mappings
-from oslo_service.backend._common.service import \
-    is_sighup_and_daemon as _is_sighup_and_daemon
+from oslo_service.backend._common.service import (
+    is_sighup_and_daemon as _is_sighup_and_daemon,
+)
 from oslo_service.backend._common.service import SignalExit
 from oslo_service.backend._common.service import Singleton
 from oslo_service.backend._eventlet import threadgroup
@@ -58,7 +59,6 @@ LOG = logging.getLogger(__name__)
 
 
 class SignalHandler(metaclass=Singleton):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -114,10 +114,13 @@ class SignalHandler(metaclass=Singleton):
             except IndexError:
                 pass
             else:
-                if ((interrupted_frame.function == 'do_poll' and
-                     interrupted_frame.filename == self.__hub_module_file) or
-                    (interrupted_frame.function == 'do_sleep' and
-                     interrupted_frame.filename == __file__)):
+                if (
+                    interrupted_frame.function == 'do_poll'
+                    and interrupted_frame.filename == self.__hub_module_file
+                ) or (
+                    interrupted_frame.function == 'do_sleep'
+                    and interrupted_frame.filename == __file__
+                ):
                     raise OSError(errno.EINTR, 'Interrupted')
 
     def __setup_signal_interruption(self):
@@ -179,8 +182,7 @@ class Launcher:
         self.conf = conf
         conf.register_opts(_options.service_opts)
         self.services = Services(restart_method=restart_method)
-        self.backdoor_port = (
-            eventlet_backdoor.initialize_if_enabled(self.conf))
+        self.backdoor_port = eventlet_backdoor.initialize_if_enabled(self.conf)
         self.restart_method = restart_method
 
     def launch_service(self, service, workers=1):
@@ -235,14 +237,15 @@ class ServiceLauncher(Launcher):
         :param conf: an instance of ConfigOpts
         :param restart_method: passed to super
         """
-        super().__init__(
-            conf, restart_method=restart_method)
+        super().__init__(conf, restart_method=restart_method)
         self.signal_handler = SignalHandler()
 
     def _graceful_shutdown(self, *args):
         self.signal_handler.clear()
-        if (self.conf.graceful_shutdown_timeout and
-                self.signal_handler.is_signal_supported('SIGALRM')):
+        if (
+            self.conf.graceful_shutdown_timeout
+            and self.signal_handler.is_signal_supported('SIGALRM')
+        ):
             signal.alarm(self.conf.graceful_shutdown_timeout)
         self.stop()
 
@@ -255,8 +258,7 @@ class ServiceLauncher(Launcher):
         os._exit(1)
 
     def _on_timeout_exit(self, *args):
-        LOG.info('Graceful shutdown timeout exceeded, '
-                 'instantaneous exiting')
+        LOG.info('Graceful shutdown timeout exceeded, instantaneous exiting')
         os._exit(1)
 
     def handle_signal(self):
@@ -380,8 +382,7 @@ class ProcessLauncher:
         os._exit(1)
 
     def _on_alarm_exit(self, signo, frame):
-        LOG.info('Graceful shutdown timeout exceeded, '
-                 'instantaneous exiting')
+        LOG.info('Graceful shutdown timeout exceeded, instantaneous exiting')
         os._exit(1)
 
     def _pipe_watcher(self):
@@ -480,7 +481,8 @@ class ProcessLauncher:
             while True:
                 self._child_process_handle_signal()
                 status, signo = self._child_wait_for_exit_or_signal(
-                    self.launcher)
+                    self.launcher
+                )
                 if not _is_sighup_and_daemon(signo, SignalHandler()):
                     self.launcher.wait()
                     break
@@ -530,12 +532,16 @@ class ProcessLauncher:
 
         if os.WIFSIGNALED(status):
             sig = os.WTERMSIG(status)
-            LOG.info('Child %(pid)d killed by signal %(sig)d',
-                     dict(pid=pid, sig=sig))
+            LOG.info(
+                'Child %(pid)d killed by signal %(sig)d',
+                dict(pid=pid, sig=sig),
+            )
         else:
             code = os.WEXITSTATUS(status)
-            LOG.info('Child %(pid)s exited with status %(code)d',
-                     dict(pid=pid, code=code))
+            LOG.info(
+                'Child %(pid)s exited with status %(code)d',
+                dict(pid=pid, code=code),
+            )
 
         if pid not in self.children:
             LOG.warning('pid %d not in child list', pid)
@@ -585,7 +591,8 @@ class ProcessLauncher:
                     self.conf.mutate_config_files()
                     child_signal = signal.SIGHUP
                 for service in {
-                        wrap.service for wrap in self.children.values()}:
+                    wrap.service for wrap in self.children.values()
+                }:
                     service.reset()
 
                 for pid in self.children:
@@ -598,8 +605,10 @@ class ProcessLauncher:
 
         # if we are here it means that we are trying to do graceful shutdown.
         # add alarm watching that graceful_shutdown_timeout is not exceeded
-        if (self.conf.graceful_shutdown_timeout and
-                self.signal_handler.is_signal_supported('SIGALRM')):
+        if (
+            self.conf.graceful_shutdown_timeout
+            and self.signal_handler.is_signal_supported('SIGALRM')
+        ):
             signal.alarm(self.conf.graceful_shutdown_timeout)
 
         self.stop()
@@ -609,8 +618,7 @@ class ProcessLauncher:
         self.running = False
 
         LOG.debug("Stop services.")
-        for service in {
-                wrap.service for wrap in self.children.values()}:
+        for service in {wrap.service for wrap in self.children.values()}:
             service.stop()
 
         LOG.debug("Killing children.")
@@ -654,7 +662,6 @@ class Service(ServiceBase):
 
 
 class Services:
-
     def __init__(self, restart_method='reload'):
         if restart_method not in _LAUNCHER_RESTART_METHODS:
             raise ValueError(_("Invalid restart_method: %s") % restart_method)
@@ -705,9 +712,9 @@ class Services:
         for restart_service in self.services:
             restart_service.reset()
             if self.restart_method == 'reload':
-                self.tg.add_thread(self.run_service,
-                                   restart_service,
-                                   self.done)
+                self.tg.add_thread(
+                    self.run_service, restart_service, self.done
+                )
 
     @staticmethod
     def run_service(service, done):

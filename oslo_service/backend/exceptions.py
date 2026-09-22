@@ -18,16 +18,19 @@ from oslo_service._i18n import _
 
 class BackendAlreadySelected(Exception):
     """Raised when init_backend() is called more than once."""
+
     pass
 
 
 class BackendComponentNotAvailable(Exception):
     """Raised when a requested component is not available in the backend."""
+
     pass
 
 
 class UnsupportedBackendError(Exception):
     """Raised when a component incompatible with threading backend is used."""
+
     def __init__(self, message=None):
         if message is None:
             message = _(

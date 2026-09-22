@@ -69,7 +69,6 @@ This module performs no side-effects at import time and does not alter
 global multiprocessing state.
 """
 
-
 import multiprocessing
 from multiprocessing.context import SpawnContext
 from multiprocessing.pool import Pool
@@ -121,5 +120,5 @@ def get_spawn_pool(
         processes=processes,
         initializer=initializer,
         initargs=init_args,
-        maxtasksperchild=max_tasks_per_child
+        maxtasksperchild=max_tasks_per_child,
     )

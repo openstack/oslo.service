@@ -25,7 +25,8 @@ LoopingCallDone = get_component("LoopingCallDone")
 LoopingCallTimeOut = get_component("LoopingCallTimeOut")
 FixedIntervalLoopingCall = get_component("FixedIntervalLoopingCall")
 FixedIntervalWithTimeoutLoopingCall = get_component(
-    "FixedIntervalWithTimeoutLoopingCall")
+    "FixedIntervalWithTimeoutLoopingCall"
+)
 DynamicLoopingCall = get_component("DynamicLoopingCall")
 BackOffLoopingCall = get_component("BackOffLoopingCall")
 RetryDecorator = get_component("RetryDecorator")

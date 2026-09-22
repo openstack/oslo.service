@@ -29,7 +29,7 @@ LOG = logging.getLogger(__name__)
 def _abstractify(socket_name):
     if socket_name.startswith('@'):
         # abstract namespace socket
-        socket_name = '\0%s' % socket_name[1:]
+        socket_name = f'\0{socket_name[1:]}'
     return socket_name
 
 

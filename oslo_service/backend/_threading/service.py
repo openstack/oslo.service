@@ -53,7 +53,8 @@ def _check_spawn_picklable(service_instance, conf=None):
 
 
 def _select_service_manager_context(
-        service_instance, conf=None, start_method=None):
+    service_instance, conf=None, start_method=None
+):
     """Select a multiprocessing context for a service manager.
 
     ``fork`` remains the default where it is available because serializing a
@@ -64,8 +65,8 @@ def _select_service_manager_context(
     available_methods = multiprocessing.get_all_start_methods()
     if start_method not in (None, "fork", "spawn"):
         raise ValueError(
-            "Invalid start_method %r; expected 'fork' or 'spawn'"
-            % start_method)
+            f"Invalid start_method {start_method!r}; expected 'fork' or 'spawn'"
+        )
 
     selected_method = start_method
     if selected_method is None:
@@ -73,8 +74,9 @@ def _select_service_manager_context(
 
     if selected_method not in available_methods:
         raise ValueError(
-            "Multiprocessing start method %r is not available on this "
-            "platform" % selected_method)
+            f"Multiprocessing start method {selected_method!r} is not available on this "
+            "platform"
+        )
 
     if selected_method == "spawn":
         _check_spawn_picklable(service_instance, conf)
@@ -86,8 +88,13 @@ def _select_service_manager_context(
     return context
 
 
-def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
-                         restart_method, start_method=None):
+def _get_service_manager(
+    service_instance,
+    graceful_shutdown_timeout,
+    conf,
+    restart_method,
+    start_method=None,
+):
     """Create and link a cotyledon ServiceManager for the given service.
 
     :param service_instance: The service instance (used for spawn/fork check).
@@ -98,13 +105,13 @@ def _get_service_manager(service_instance, graceful_shutdown_timeout, conf,
     :returns: A tuple (manager_context, manager).
     """
     manager_context = _select_service_manager_context(
-        service_instance, conf, start_method)
+        service_instance, conf, start_method
+    )
     manager = cotyledon.ServiceManager(
         mp_context=manager_context,
-        graceful_shutdown_timeout=graceful_shutdown_timeout)
-    oslo_config_glue.link(
-        manager, conf,
-        reload_method=restart_method)
+        graceful_shutdown_timeout=graceful_shutdown_timeout,
+    )
+    oslo_config_glue.link(manager, conf, reload_method=restart_method)
     return (manager_context, manager)
 
 
@@ -112,7 +119,8 @@ class SignalHandler(metaclass=common_service.Singleton):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._signals_by_name, self.signals_to_name = (
-            common_service.get_signal_mappings())
+            common_service.get_signal_mappings()
+        )
         self._signal_handlers = collections.defaultdict(list)
         self.clear()
 
@@ -216,8 +224,7 @@ class Launcher:
 
 
 class ServiceLauncher:
-    def __init__(
-            self, conf, restart_method='reload', start_method=None):
+    def __init__(self, conf, restart_method='reload', start_method=None):
         self.conf = conf
         opts.register_service_opts(self.conf)
         self.restart_method = restart_method
@@ -246,13 +253,15 @@ class ServiceLauncher:
                 # platform-required) spawn manager.
                 if self._manager_context.get_start_method() == "spawn":
                     _check_spawn_picklable(service_instance, self.conf)
-            LOG.debug('Selected the multiprocessing context: %s and '
-                      'updated it in Cotyledon ServiceManager: %s',
-                      self._manager_context, self._manager.mp_context)
+            LOG.debug(
+                'Selected the multiprocessing context: %s and '
+                'updated it in Cotyledon ServiceManager: %s',
+                self._manager_context,
+                self._manager.mp_context,
+            )
 
         # ServiceManager.add() is thread-safe, no need to hold lock
-        self._manager.add(
-            ServiceWrapper, workers, args=(service_instance,))
+        self._manager.add(ServiceWrapper, workers, args=(service_instance,))
 
     def stop(self):
         with self._lock:
@@ -344,7 +353,8 @@ class Services:
             restart_service.reset()
             if self.restart_method == 'reload':
                 self.tg.add_thread(
-                    self.run_service, restart_service, self.done)
+                    self.run_service, restart_service, self.done
+                )
 
     @staticmethod
     def run_service(service, done):
@@ -359,8 +369,13 @@ class Services:
 
 class ProcessLauncher:
     def __init__(
-            self, conf, wait_interval=None, restart_method='reload',
-            no_fork=False, start_method=None):
+        self,
+        conf,
+        wait_interval=None,
+        restart_method='reload',
+        no_fork=False,
+        start_method=None,
+    ):
         self.conf = conf
         opts.register_service_opts(self.conf)
         self.restart_method = restart_method
@@ -416,9 +431,12 @@ class ProcessLauncher:
             else:
                 if self._manager_context.get_start_method() == "spawn":
                     _check_spawn_picklable(service, self.conf)
-            LOG.debug('Selected the multiprocessing context: %s and '
-                      'updated it in Cotyledon ServiceManager: %s',
-                      self._manager_context, self._manager.mp_context)
+            LOG.debug(
+                'Selected the multiprocessing context: %s and '
+                'updated it in Cotyledon ServiceManager: %s',
+                self._manager_context,
+                self._manager.mp_context,
+            )
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(ServiceWrapper, workers, args=(service,))
 
@@ -432,8 +450,10 @@ class ProcessLauncher:
         # Register alarm signal with conf.graceful_shutdown_timeout.
         # If graceful shutdown is not finished within the
         # timeout, then alarm signal will exit the process.
-        if (self.conf.graceful_shutdown_timeout and
-                self.signal_handler.is_signal_supported('SIGALRM')):
+        if (
+            self.conf.graceful_shutdown_timeout
+            and self.signal_handler.is_signal_supported('SIGALRM')
+        ):
             signal.alarm(self.conf.graceful_shutdown_timeout)
         self.service.stop()
         LOG.info('Graceful shutdown finish')
@@ -451,8 +471,7 @@ class ProcessLauncher:
         os._exit(1)
 
     def _on_alarm_exit(self, *args):
-        LOG.info('Graceful shutdown timeout exceeded, '
-                 'instantaneous exiting')
+        LOG.info('Graceful shutdown timeout exceeded, instantaneous exiting')
         os._exit(1)
 
     def add_signal_handlers(self):
@@ -485,8 +504,13 @@ class ProcessLauncher:
 
 
 def launch(
-        conf, service, workers=1, restart_method='reload', no_fork=False,
-        start_method=None):
+    conf,
+    service,
+    workers=1,
+    restart_method='reload',
+    no_fork=False,
+    start_method=None,
+):
     """Launch a service with a given number of workers.
 
     :param conf: an instance of ConfigOpts
@@ -512,11 +536,15 @@ def launch(
 
     if workers == 1 and not no_fork:
         launcher = ServiceLauncher(
-            conf, restart_method=restart_method, start_method=start_method)
+            conf, restart_method=restart_method, start_method=start_method
+        )
     else:
         launcher = ProcessLauncher(
-            conf, restart_method=restart_method, no_fork=no_fork,
-            start_method=start_method)
+            conf,
+            restart_method=restart_method,
+            no_fork=no_fork,
+            start_method=start_method,
+        )
 
     launcher.launch_service(service, workers=workers)
 

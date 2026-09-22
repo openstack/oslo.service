@@ -28,16 +28,13 @@ removals.removed_module(
     message=(
         "The 'oslo_service.sslutils' module is deprecated and will be removed"
         " in version 2027.2."
-    )
+    ),
 )
 
 
 config_section = 'ssl'
 
-_SSL_PROTOCOLS = {
-    "tlsv1": ssl.PROTOCOL_TLSv1,
-    "sslv23": ssl.PROTOCOL_SSLv23
-}
+_SSL_PROTOCOLS = {"tlsv1": ssl.PROTOCOL_TLSv1, "sslv23": ssl.PROTOCOL_SSLv23}
 
 _OPTIONAL_PROTOCOLS = {
     'sslv2': 'PROTOCOL_SSLv2',
@@ -47,8 +44,7 @@ _OPTIONAL_PROTOCOLS = {
 }
 for protocol in _OPTIONAL_PROTOCOLS:
     try:
-        _SSL_PROTOCOLS[protocol] = getattr(ssl,
-                                           _OPTIONAL_PROTOCOLS[protocol])
+        _SSL_PROTOCOLS[protocol] = getattr(ssl, _OPTIONAL_PROTOCOLS[protocol])
     except AttributeError:  # nosec
         pass
 
@@ -80,9 +76,13 @@ def is_enabled(conf):
         raise RuntimeError(_("Unable to find key_file : %s") % key_file)
 
     if use_ssl and (not cert_file or not key_file):
-        raise RuntimeError(_("When running server in SSL mode, you must "
-                             "specify both a cert_file and key_file "
-                             "option value in your configuration file"))
+        raise RuntimeError(
+            _(
+                "When running server in SSL mode, you must "
+                "specify both a cert_file and key_file "
+                "option value in your configuration file"
+            )
+        )
 
     return use_ssl
 
@@ -97,7 +97,8 @@ def wrap(conf, sock):
             ssl_version = _SSL_PROTOCOLS[key]
         except KeyError:
             raise RuntimeError(
-                _("Invalid SSL version : %s") % conf.ssl.version)
+                _("Invalid SSL version : %s") % conf.ssl.version
+            )
 
     context = ssl.SSLContext(ssl_version)
     context.load_cert_chain(conf.ssl.cert_file, conf.ssl.key_file)

@@ -25,8 +25,7 @@ from oslo_service.backend._threading import service
 from oslo_service.tests.backend.threading import test_signal_handler as sg
 
 
-class DummyProcessLauncher():
-
+class DummyProcessLauncher:
     def __init__(self, **kwargs):
         self.signal_handler = service.SignalHandler()
         self.signal_handler.add_handler('SIGTERM', self._graceful_shutdown)
@@ -40,7 +39,6 @@ class DummyProcessLauncher():
 
 
 class DummyService(service.ServiceBase):
-
     def __init__(self, service_sleep=0, **kwargs):
         super().__init__(**kwargs)
         self.service_sleep = service_sleep
@@ -60,7 +58,6 @@ class DummyService(service.ServiceBase):
 
 
 class SignalHandlerTestCase(TestCase):
-
     def setUp(self):
         super().setUp()
         signal_handler = service.SignalHandler()
@@ -102,8 +99,7 @@ class SignalHandlerTestCase(TestCase):
         mock_a.assert_called_once_with(signal.SIGALRM, 'test3')
 
     @mock.patch.object(sg.DummyService, 'stop')
-    def test_sigterm_signal_handler_call_service_stop(
-            self, mock_stop):
+    def test_sigterm_signal_handler_call_service_stop(self, mock_stop):
         launcher = service.ProcessLauncher(self.conf, no_fork=True)
         launcher.launch_service(self.s1)
         signal_handler = launcher.signal_handler

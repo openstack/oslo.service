@@ -47,5 +47,21 @@ threading = [
 [tool.setuptools.packages.find]
 include = ["oslo_service*"]
 
-[tool.bandit]
-exclude_dirs = ["tests"]
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "preserve"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["E", "F", "G", "LOG", "S", "UP"]
+external = ["H"]
+ignore = [
+    "S101",  # asserts are only used for type narrowing
+    # FIXME(stephenfin): Remove all the below exceptions
+    "S104", "S311", "UP031", "G004", "G201", "E501",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"oslo_service/tests/*" = ["S"]

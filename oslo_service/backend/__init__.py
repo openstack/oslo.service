@@ -50,7 +50,7 @@ __all__ = [
     "BackendType",
     "register_backend_default_hook",
     "get_backend_type",
-    "get_backend"
+    "get_backend",
 ]
 
 
@@ -134,7 +134,8 @@ def get_backend() -> BaseBackend:
             except Exception:
                 LOG.exception(
                     "Backend hook raised an exception."
-                    " Falling back to default.")
+                    " Falling back to default."
+                )
 
         init_backend(type_)
 

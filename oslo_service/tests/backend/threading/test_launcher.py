@@ -75,7 +75,8 @@ class BaseLauncherTestCase(TestCase):
 
     def _test_multiple_launch_service_re_evaluates_context(self, launcher):
         with mock.patch.object(
-                service, '_check_spawn_picklable') as mock_check:
+            service, '_check_spawn_picklable'
+        ) as mock_check:
             launcher.start_method = 'spawn'
             s1 = DummyService()
             launcher.launch_service(s1)
@@ -86,8 +87,7 @@ class BaseLauncherTestCase(TestCase):
     def _test_unpicklable_second_service_rejected_by_spawn(self, launcher):
         launcher.start_method = 'spawn'
         launcher.launch_service(DummyService())
-        self.assertEqual(
-            launcher._manager_context.get_start_method(), "spawn")
+        self.assertEqual(launcher._manager_context.get_start_method(), "spawn")
         self.assertRaises(
             (AttributeError, pickle.PicklingError),
             launcher.launch_service,
@@ -124,7 +124,8 @@ class ProcessLauncherTestCase(BaseLauncherTestCase):
             launcher.launch_service(s2)
         except Exception as e:
             self.fail(
-                f"Multiple launch_service() calls raised an exception: {e}")
+                f"Multiple launch_service() calls raised an exception: {e}"
+            )
 
     def test_multiple_launch_service_re_evaluates_context(self):
         launcher = service.ProcessLauncher(self.conf)
@@ -137,10 +138,11 @@ class ProcessLauncherTestCase(BaseLauncherTestCase):
     def test_no_fork_notifies_systemd_after_start(self):
         launcher = service.ProcessLauncher(self.conf, no_fork=True)
         svc = DummyService()
-        with mock.patch.object(
-                service.systemd, "notify_once") as m_notify, \
-                mock.patch.object(svc, "start") as m_start, \
-                mock.patch.object(svc, "wait") as m_wait:
+        with (
+            mock.patch.object(service.systemd, "notify_once") as m_notify,
+            mock.patch.object(svc, "start") as m_start,
+            mock.patch.object(svc, "wait") as m_wait,
+        ):
             parent = mock.Mock()
             parent.attach_mock(m_start, "start")
             parent.attach_mock(m_notify, "notify_once")
@@ -148,11 +150,11 @@ class ProcessLauncherTestCase(BaseLauncherTestCase):
             launcher.launch_service(svc)
         self.assertEqual(
             ["start", "notify_once", "wait"],
-            [call[0] for call in parent.mock_calls])
+            [call[0] for call in parent.mock_calls],
+        )
 
 
 class ServiceLauncherTestCase(BaseLauncherTestCase):
-
     def test_multiple_launch_service_re_evaluates_context(self):
         launcher = service.ServiceLauncher(self.conf)
         self._test_multiple_launch_service_re_evaluates_context(launcher)
@@ -163,15 +165,16 @@ class ServiceLauncherTestCase(BaseLauncherTestCase):
 
 
 class LauncherTestCase(BaseLauncherTestCase):
-
     def test_picklable_service_uses_fork_by_default(self):
         context = service._select_service_manager_context(
-            DummyService(), self.conf)
+            DummyService(), self.conf
+        )
         self.assertEqual("fork", context.get_start_method())
 
     def test_explicit_spawn_selects_spawn(self):
         context = service._select_service_manager_context(
-            DummyService(), self.conf, "spawn")
+            DummyService(), self.conf, "spawn"
+        )
         self.assertEqual("spawn", context.get_start_method())
 
     def test_explicit_spawn_rejects_unpicklable_service(self):
@@ -184,13 +187,12 @@ class LauncherTestCase(BaseLauncherTestCase):
         )
 
     def test_explicit_spawn_rejects_unpicklable_conf(self):
-        self.conf.register_opt(
-            cfg.StrOpt("callback", default=lambda: None))
+        self.conf.register_opt(cfg.StrOpt("callback", default=lambda: None))
         self.assertRaises(
             (
                 AttributeError,
                 pickle.PicklingError,
-                cfg.ConfigOptsSerializationError
+                cfg.ConfigOptsSerializationError,
             ),
             service._select_service_manager_context,
             DummyService(),
@@ -201,33 +203,40 @@ class LauncherTestCase(BaseLauncherTestCase):
     def test_invalid_start_method(self):
         with self.assertRaises(ValueError) as raised:
             service._select_service_manager_context(
-                DummyService(), self.conf, "forkserver")
+                DummyService(), self.conf, "forkserver"
+            )
         exc = raised.exception
         self.assertIn("Invalid start_method", str(exc))
 
     @mock.patch.object(
-        service.multiprocessing, "get_all_start_methods",
-        return_value=["spawn"])
+        service.multiprocessing,
+        "get_all_start_methods",
+        return_value=["spawn"],
+    )
     def test_spawn_is_default_when_fork_is_unavailable(self, mock_methods):
         context = service._select_service_manager_context(
-            DummyService(), self.conf)
+            DummyService(), self.conf
+        )
         self.assertEqual("spawn", context.get_start_method())
 
     @mock.patch.object(service.ProcessLauncher, "launch_service")
     def test_launch_propagates_start_method(self, mock_launch_service):
         launcher = service.launch(
-            self.conf, DummyService(), workers=2, start_method="spawn")
+            self.conf, DummyService(), workers=2, start_method="spawn"
+        )
         self.assertEqual("spawn", launcher.start_method)
         mock_launch_service.assert_called_once()
 
     def test_no_fork_does_not_validate_spawn_picklability(self):
         launcher = service.ProcessLauncher(
-            self.conf, no_fork=True, start_method="spawn")
+            self.conf, no_fork=True, start_method="spawn"
+        )
         unpicklable_service = UnpicklableService()
-        with mock.patch.object(unpicklable_service, "start"), \
-                mock.patch.object(unpicklable_service, "wait"), \
-                mock.patch.object(
-                    service, "_check_spawn_picklable") as mock_check:
+        with (
+            mock.patch.object(unpicklable_service, "start"),
+            mock.patch.object(unpicklable_service, "wait"),
+            mock.patch.object(service, "_check_spawn_picklable") as mock_check,
+        ):
             launcher.launch_service(unpicklable_service)
         mock_check.assert_not_called()
 
@@ -243,7 +252,8 @@ class LauncherTestCase(BaseLauncherTestCase):
     @mock.patch('cotyledon.ServiceManager.add')
     @mock.patch('cotyledon.oslo_config_glue.link')
     def test_graceful_shutdown_timeout_is_set_in_cotyledon(
-        self, mock_link, mock_add):
+        self, mock_link, mock_add
+    ):
         launchers = [service.ProcessLauncher, service.ServiceLauncher]
         timeout = 20
         for launcher in launchers:
@@ -258,12 +268,12 @@ class LauncherTestCase(BaseLauncherTestCase):
                 mock_mgr.assert_called_once()
                 call_kwargs = mock_mgr.call_args[1]
                 self.assertEqual(
-                    call_kwargs['graceful_shutdown_timeout'], timeout)
+                    call_kwargs['graceful_shutdown_timeout'], timeout
+                )
                 self.assertIn('mp_context', call_kwargs)
 
 
 class ServicePickleTestCase(TestCase):
-
     def test_threading_service_roundtrip(self):
         svc = service.Service(threads=500)
         data = pickle.dumps(svc)
