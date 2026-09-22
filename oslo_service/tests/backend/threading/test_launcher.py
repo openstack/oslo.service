@@ -134,6 +134,22 @@ class ProcessLauncherTestCase(BaseLauncherTestCase):
         launcher = service.ProcessLauncher(self.conf)
         self._test_unpicklable_second_service_rejected_by_spawn(launcher)
 
+    def test_no_fork_notifies_systemd_after_start(self):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+        svc = DummyService()
+        with mock.patch.object(
+                service.systemd, "notify_once") as m_notify, \
+                mock.patch.object(svc, "start") as m_start, \
+                mock.patch.object(svc, "wait") as m_wait:
+            parent = mock.Mock()
+            parent.attach_mock(m_start, "start")
+            parent.attach_mock(m_notify, "notify_once")
+            parent.attach_mock(m_wait, "wait")
+            launcher.launch_service(svc)
+        self.assertEqual(
+            ["start", "notify_once", "wait"],
+            [call[0] for call in parent.mock_calls])
+
 
 class ServiceLauncherTestCase(BaseLauncherTestCase):
 
