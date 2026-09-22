@@ -142,11 +142,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
             expected = expected_calls[i]
             args, kwargs = call
             actual = args[0]
-            message = 'Call #%d, expected: %s, actual: %s' % (
-                i,
-                expected,
-                actual,
-            )
+            message = f'Call #{i}, expected: {expected}, actual: {actual}'
             self.assertAlmostEqual(expected, actual, message=message)
 
     def test_looping_call_timed_out(self):

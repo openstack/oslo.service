@@ -44,10 +44,9 @@ def _check_spawn_picklable(service_instance, conf=None):
         if conf is not None:
             ForkingPickler.dumps(conf)
     except Exception:
-        LOG.error(
+        LOG.exception(
             "Service %s or its ConfigOpts is not serializable with spawn.",
             type(service_instance).__name__,
-            exc_info=True,
         )
         raise
 
@@ -65,7 +64,8 @@ def _select_service_manager_context(
     available_methods = multiprocessing.get_all_start_methods()
     if start_method not in (None, "fork", "spawn"):
         raise ValueError(
-            f"Invalid start_method {start_method!r}; expected 'fork' or 'spawn'"
+            f"Invalid start_method {start_method!r}; "
+            f"expected 'fork' or 'spawn'"
         )
 
     selected_method = start_method
@@ -74,8 +74,8 @@ def _select_service_manager_context(
 
     if selected_method not in available_methods:
         raise ValueError(
-            f"Multiprocessing start method {selected_method!r} is not available on this "
-            "platform"
+            f"Multiprocessing start method {selected_method!r} is not "
+            f"available on this platform"
         )
 
     if selected_method == "spawn":

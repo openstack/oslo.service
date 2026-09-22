@@ -99,7 +99,7 @@ def init_backend(type_: BackendType) -> None:
         return  # already initialized with same value; no-op
 
     backend_name = type_.value
-    LOG.info(f"Loading backend: {backend_name}")
+    LOG.info("Loading backend: %s", backend_name)
 
     try:
         module_name = f"oslo_service.backend._{backend_name}"
@@ -110,15 +110,15 @@ def init_backend(type_: BackendType) -> None:
         _cached_backend = new_backend = backend_class()
 
     except ModuleNotFoundError:
-        LOG.error(f"Backend module {module_name} not found.")
+        LOG.error("Backend module %s not found.", module_name)
         raise ValueError(f"Unknown backend: {backend_name!r}")
     except AttributeError:
-        LOG.error(f"Backend class not found in module {module_name}.")
+        LOG.error("Backend class not found in module %s.", module_name)
         raise ImportError(f"Backend class not found in module {module_name}")
 
     _cached_backend_type = type_
     _cached_components = new_backend.get_service_components()
-    LOG.info(f"Backend {type_.value!r} successfully loaded and cached.")
+    LOG.info("Backend %r successfully loaded and cached.", type_.value)
 
 
 def get_backend() -> BaseBackend:
@@ -130,7 +130,7 @@ def get_backend() -> BaseBackend:
         if _backend_hook is not None:
             try:
                 type_ = _backend_hook()
-                LOG.info(f"Backend hook selected: {type_.value}")
+                LOG.info("Backend hook selected: %s", type_.value)
             except Exception:
                 LOG.exception(
                     "Backend hook raised an exception."

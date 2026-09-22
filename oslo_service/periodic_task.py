@@ -215,7 +215,7 @@ def _nearest_boundary(last_run, spacing):
     delta = current_time - last_run
     offset = delta % spacing
     # Add up to 5% jitter
-    jitter = int(spacing * (random.random() / 20))  # nosec
+    jitter = int(spacing * (random.random() / 20))  # noqa: S311
     return current_time - offset + jitter
 
 
@@ -350,12 +350,11 @@ class PeriodicTasks(metaclass=_PeriodicTasksMeta):
             ForkingPickler.dumps(self)
             ForkingPickler.dumps(context)
         except Exception:
-            LOG.error(
+            LOG.exception(
                 "%(class)s or context is not picklable with spawn. "
                 "The PeriodicTasks instance and context must be spawn-safe "
                 "for parallel periodic tasks.",
                 {"class": type(self).__name__},
-                exc_info=True,
             )
             raise
         for full_task_name, task_name, task, next_run in due_tasks:

@@ -43,7 +43,7 @@ class ThreadingBackend(BaseBackend):
             "LoopingCallDone": loopingcall.LoopingCallDone,
             "LoopingCallTimeOut": loopingcall.LoopingCallTimeOut,
             "FixedIntervalLoopingCall": loopingcall.FixedIntervalLoopingCall,
-            "FixedIntervalWithTimeoutLoopingCall": loopingcall.FixedIntervalWithTimeoutLoopingCall,
+            "FixedIntervalWithTimeoutLoopingCall": loopingcall.FixedIntervalWithTimeoutLoopingCall,  # noqa: E501
             "DynamicLoopingCall": loopingcall.DynamicLoopingCall,
             "BackOffLoopingCall": loopingcall.BackOffLoopingCall,
             "RetryDecorator": loopingcall.RetryDecorator,

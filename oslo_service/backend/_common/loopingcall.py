@@ -68,10 +68,9 @@ def _safe_wrapper(f, kind, func_name):
         except LoopingCallDone:
             raise  # let the outer handler process this
         except Exception:
-            LOG.error(
+            LOG.exception(
                 '%(kind)s %(func_name)r failed',
                 {'kind': kind, 'func_name': func_name},
-                exc_info=True,
             )
             return 0
 

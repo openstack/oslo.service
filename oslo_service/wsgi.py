@@ -95,8 +95,8 @@ class Server(service.ServiceBase):
         conf,
         name,
         app,
-        host='0.0.0.0',
-        port=0,  # nosec
+        host='0.0.0.0',  # noqa: S104
+        port=0,
         pool_size=None,
         protocol=eventlet.wsgi.HttpProtocol,
         backlog=128,

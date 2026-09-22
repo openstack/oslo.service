@@ -221,14 +221,14 @@ class TestWSGIServer(WsgiTestCase):
         server.start()
         self.assertFalse(server._server.dead)
 
-        uri = "http://127.0.0.1:%d/%s" % (server.port, 10000 * 'x')
+        uri = "http://127.0.0.1:{}/{}".format(server.port, 10000 * 'x')
         resp = requests.get(uri, proxies={"http": ""})
         eventlet.sleep(0)
         self.assertNotEqual(
             requests.codes.REQUEST_URI_TOO_LARGE, resp.status_code
         )
 
-        uri = "http://127.0.0.1:%d/%s" % (server.port, 20000 * 'x')
+        uri = "http://127.0.0.1:{}/{}".format(server.port, 20000 * 'x')
         resp = requests.get(uri, proxies={"http": ""})
         eventlet.sleep(0)
         self.assertEqual(
