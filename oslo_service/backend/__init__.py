@@ -22,10 +22,10 @@ import logging
 from typing import Any
 from typing import TYPE_CHECKING
 
-from . import exceptions
+from oslo_service.backend import exceptions
 
 if TYPE_CHECKING:
-    from .base import BaseBackend
+    from oslo_service.backend.base import BaseBackend
 
 LOG = logging.getLogger(__name__)
 
