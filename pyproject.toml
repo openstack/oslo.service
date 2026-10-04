@@ -47,6 +47,20 @@ threading = [
 [tool.setuptools.packages.find]
 include = ["oslo_service*"]
 
+[tool.coverage.run]
+source = [
+    "oslo_service"
+]
+branch = true
+parallel = true
+omit = [
+    "oslo_service/tests/*"
+]
+
+[tool.coverage.report]
+ignore_errors = true
+show_missing = true
+
 [tool.ruff]
 line-length = 79
 
