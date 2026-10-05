@@ -17,6 +17,7 @@ import ssl
 from unittest import mock
 
 from oslo_config import cfg
+import testtools
 
 from oslo_service import sslutils
 from oslo_service.tests import base
@@ -149,6 +150,10 @@ class SslutilsTestCase(base.ServiceBaseTestCase):
             ca_file=self.conf.ssl.ca_file, ciphers=self.conf.ssl.ciphers
         )
 
+    @testtools.skipUnless(
+        hasattr(ssl, 'PROTOCOL_TLSv1'),
+        'ssl.PROTOCOL_TLSv1 is not available (e.g. with OpenSSL 4)',
+    )
     def test_wrap_ssl_version(self):
         self.conf.set_default(
             "ca_file", self.ca_file_name, group=sslutils.config_section

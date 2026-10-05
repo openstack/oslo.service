@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``oslo_service.sslutils`` can now be imported when Python is built
+    against OpenSSL 4.0, where ``ssl.PROTOCOL_TLSv1`` is not available.
+    `LP#2169555 <https://bugs.launchpad.net/oslo.service/+bug/2169555>`_

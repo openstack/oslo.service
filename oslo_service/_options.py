@@ -208,9 +208,8 @@ ssl_opts = [
             " removed in a future release."
         ),
         help='SSL version to use (valid only if SSL enabled). '
-        'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
-        'TLSv1_1, and TLSv1_2 may be available on some '
-        'distributions.',
+        'Depending on the Python and OpenSSL versions, valid values '
+        'are SSLv23, TLSv1, TLSv1_1, TLSv1_2, SSLv2 and SSLv3.',
     ),
     cfg.StrOpt(
         'ciphers',
