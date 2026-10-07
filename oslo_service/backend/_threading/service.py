@@ -417,7 +417,7 @@ class ProcessLauncher:
                 LOG.exception('The service failed to start')
                 self._graceful_shutdown(status=1)
             systemd.notify_once()
-            self.service.wait()
+            self._wait_no_fork()
             return
 
         # NOTE(gmaan): cotyledon.ServiceManager does not allow more than one
@@ -466,11 +466,23 @@ class ProcessLauncher:
         os._exit(status)
 
     def _reload_service(self, *args):
-        # TODO(gmaan): This handler is suppose to reload the service but we
-        # need to implement the restart() method for no_fork case which can
-        # call reset/restart on the service instance.
-        self.signal_handler.clear()
+        # Leave service.wait(), so that _wait_no_fork() handles the signal.
         raise common_service.SignalExit(signal.SIGHUP)
+
+    def _wait_no_fork(self):
+        while True:
+            try:
+                self.service.wait()
+                return
+            except common_service.SignalExit as exc:
+                if exc.signo != signal.SIGHUP:
+                    raise
+            # A terminal that hangs up ends the process, as SIGTERM does.
+            # Otherwise the process reads its configuration files again.
+            if not common_service.is_daemon():
+                self._graceful_shutdown()
+                return
+            self.restart()
 
     def _fast_exit(self, *args):
         LOG.info('Caught SIGINT signal, instantaneous exiting')
@@ -506,7 +518,21 @@ class ProcessLauncher:
         manager.shutdown()
 
     def restart(self):
-        raise NotImplementedError()
+        """Reload config files and reset or restart a no_fork service.
+
+        cotyledon handles SIGHUP for the services that it forks.
+        """
+        if not self.no_fork:
+            raise NotImplementedError()
+        LOG.info('Caught SIGHUP, reading the configuration files again')
+        if self.restart_method == 'reload':
+            self.conf.reload_config_files()
+            self.service.stop()
+        else:  # self.restart_method == 'mutate'
+            self.conf.mutate_config_files()
+        self.service.reset()
+        if self.restart_method == 'reload':
+            self.service.start()
 
 
 def launch(

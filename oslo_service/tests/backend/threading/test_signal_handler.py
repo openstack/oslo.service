@@ -130,6 +130,70 @@ class SignalHandlerTestCase(TestCase):
             signo = signal_handler._signals_by_name['SIGTERM']
             self.assertNotIn(signo, signal_handler._signal_handlers)
 
+    def _launch_with_sighup(self, launcher):
+        """Launch the service, which gets a SIGHUP in its first wait()."""
+        waits = []
+
+        def wait():
+            waits.append(True)
+            if len(waits) == 1:
+                launcher.signal_handler._handle_signal_cb(signal.SIGHUP, None)
+
+        with mock.patch.object(self.s1, 'wait', side_effect=wait):
+            launcher.launch_service(self.s1)
+        return len(waits)
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighup_mutates_the_configuration(self, mock_daemon):
+        launcher = service.ProcessLauncher(
+            self.conf, no_fork=True, restart_method='mutate'
+        )
+        with (
+            mock.patch.object(self.conf, 'mutate_config_files') as mutate,
+            mock.patch.object(self.s1, 'start') as start,
+            mock.patch.object(self.s1, 'stop') as stop,
+            mock.patch.object(self.s1, 'reset') as reset,
+        ):
+            # The launcher waits for the service again.
+            self.assertEqual(2, self._launch_with_sighup(launcher))
+        mutate.assert_called_once_with()
+        reset.assert_called_once_with()
+        start.assert_called_once_with()
+        stop.assert_not_called()
+        # The next signals are handled too.
+        self.assertEqual(4, len(launcher.signal_handler._signal_handlers))
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighup_reloads_the_configuration_and_restarts(self, mock_daemon):
+        launcher = service.ProcessLauncher(
+            self.conf, no_fork=True, restart_method='reload'
+        )
+        calls = mock.Mock()
+        with (
+            mock.patch.object(self.conf, 'reload_config_files', calls.reload),
+            mock.patch.object(self.s1, 'start', calls.start),
+            mock.patch.object(self.s1, 'stop', calls.stop),
+            mock.patch.object(self.s1, 'reset', calls.reset),
+        ):
+            self.assertEqual(2, self._launch_with_sighup(launcher))
+        self.assertEqual(
+            ['start', 'reload', 'stop', 'reset', 'start'],
+            [call[0] for call in calls.mock_calls],
+        )
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=False)
+    def test_sighup_ends_a_foreground_process(self, mock_daemon):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+        with (
+            mock.patch.object(self.s1, 'stop') as stop,
+            mock.patch.object(self.s1, 'reset') as reset,
+            mock.patch('os._exit') as exit_,
+        ):
+            self.assertEqual(1, self._launch_with_sighup(launcher))
+        stop.assert_called_once_with()
+        exit_.assert_called_once_with(0)
+        reset.assert_not_called()
+
     @mock.patch.object(service.ProcessLauncher, '_on_alarm_exit')
     def test_sigterm_timeout_terminated_by_sigalrm(self, mock_alarm):
         conf = cfg.ConfigOpts()
