@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    In the threading backend, a service launched with ``no_fork=True``
+    whose ``start()`` fails is now stopped, and the process exits with
+    status 1, as it exits on SIGTERM. Before, the process could hang at
+    exit, waiting for thread pool workers that the service had started, so
+    service managers did not restart it. See `bug 2169754
+    <https://bugs.launchpad.net/nova/+bug/2169754>`_.
