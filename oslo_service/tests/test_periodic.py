@@ -40,14 +40,6 @@ class AnException(Exception):
     pass
 
 
-# Minimal picklable conf for tests that run the real spawn pool (no lambdas).
-class _PicklableConf:
-    run_external_periodic_tasks = False
-
-    def register_opts(self, opts):
-        pass
-
-
 # Module-level classes for run_periodic_tasks_in_parallel tests: instances
 # must be picklable (sent to spawn workers). Local classes in test methods
 # are not picklable.
@@ -624,7 +616,13 @@ class ManagerTestCase(base.ServiceBaseTestCase):
             finally:
                 lock.release()
 
-        m = _PicklableManagerTenTasks(_PicklableConf())
+        # Spawn workers initialize oslo.log as well as running tasks, so use
+        # a real, parsed ConfigOpts with logging options registered. A minimal
+        # conf stub makes the pool initializer fail and respawn indefinitely.
+        self.conf.reset()
+        oslo_log.register_options(self.conf)
+        self.conf(args=[], default_config_files=[])
+        m = _PicklableManagerTenTasks(self.conf)
         self.assertEqual(10, len(m._periodic_tasks))
 
         lock_holder = threading.Thread(target=hold_lock)
