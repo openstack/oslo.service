@@ -73,6 +73,24 @@ class ThreadGroupThreadDoneTestCase(TestCase):
             self.assertEqual(len(tg.threads), 0)
         self.assertEqual(count[0], 3)
 
+    def test_cancel_does_not_kill_native_thread(self):
+        """Cancellation is a no-op: native workers must exit cooperatively."""
+        tg = threadgroup.ThreadGroup()
+        release = threading.Event()
+        worker = tg.add_thread(release.wait)
+        # Release and join even if an assertion fails.
+        self.addCleanup(worker.wait)
+        self.addCleanup(release.set)
+
+        tg.cancel()
+        tg.cancel(timeout=0, wait_time=0)
+        self.assertTrue(worker.thread.is_alive())
+        self.assertIn(worker.thread, tg.threads)
+
+        release.set()
+        worker.wait()
+        self.assertEqual([], tg.threads)
+
     def test_waitall_completes_without_deadlock(self):
         """waitall() does not deadlock when threads call thread_done()."""
         tg = threadgroup.ThreadGroup(max_threads=10)

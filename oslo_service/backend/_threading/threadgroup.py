@@ -12,9 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-
 import logging
 import threading
+
+from debtcollector import removals
 
 from oslo_service.backend._common import threadgroup
 from oslo_service.backend._threading import loopingcall
@@ -150,6 +151,11 @@ class ThreadGroup(threadgroup.ThreadGroupBase):
                     action_func(thread)
                 except Exception:
                     on_error_func(thread)
+
+    @removals.remove(removal_version='?')
+    def cancel(self, *throw_args, **kwargs):
+        # Native threads cannot be cancelled
+        pass
 
     def waitall(self):
         """Block until all timers and threads in the group are complete."""
