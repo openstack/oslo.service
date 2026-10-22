@@ -11,11 +11,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import threading
 import time
 from unittest import mock
 
 import eventlet
-from eventlet.green import threading as greenthreading
 from oslotest import base as test_base
 
 from oslo_service import fixture
@@ -86,7 +87,7 @@ class LoopingCallTestCase(test_base.BaseTestCase):
             self.num_runs = self.num_runs - 1
 
     def test_no_double_start(self):
-        wait_ev = greenthreading.Event()
+        wait_ev = threading.Event()
 
         def _run_forever_until_set():
             if wait_ev.is_set():
@@ -179,7 +180,7 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
         self.assertTrue(timer.start().wait())
 
     def test_no_double_start(self):
-        wait_ev = greenthreading.Event()
+        wait_ev = threading.Event()
 
         def _run_forever_until_set():
             if wait_ev.is_set():
