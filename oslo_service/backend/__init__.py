@@ -101,23 +101,35 @@ def init_backend(type_: BackendType) -> None:
     backend_name = type_.value
     LOG.info("Loading backend: %s", backend_name)
 
+    module_name = f"oslo_service.backend._{backend_name}"
     try:
-        module_name = f"oslo_service.backend._{backend_name}"
         module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name == module_name:
+            LOG.error("Backend module %s not found.", module_name)
+            raise ValueError(f"Unknown backend: {backend_name!r}") from exc
+        if exc.name is None:
+            raise
+        raise ImportError(
+            f"Cannot initialize {backend_name!r} backend: "
+            f"required module {exc.name!r} is not installed. "
+            f"Install the dependencies for the {backend_name!r} backend."
+        ) from exc
+
+    try:
         backend_class = getattr(module, f"{backend_name.capitalize()}Backend")
-
-        new_backend: BaseBackend
-        _cached_backend = new_backend = backend_class()
-
-    except ModuleNotFoundError:
-        LOG.error("Backend module %s not found.", module_name)
-        raise ValueError(f"Unknown backend: {backend_name!r}")
-    except AttributeError:
+    except AttributeError as exc:
         LOG.error("Backend class not found in module %s.", module_name)
-        raise ImportError(f"Backend class not found in module {module_name}")
+        raise ImportError(
+            f"Backend class not found in module {module_name}"
+        ) from exc
 
+    new_backend: BaseBackend = backend_class()
+    new_components = new_backend.get_service_components()
+
+    _cached_backend = new_backend
     _cached_backend_type = type_
-    _cached_components = new_backend.get_service_components()
+    _cached_components = new_components
     LOG.info("Backend %r successfully loaded and cached.", type_.value)
 
 
