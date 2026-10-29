@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    In the threading backend, a service launched with ``no_fork=True`` no
+    longer hangs at exit when its ``stop()`` raises during a shutdown. The
+    process now exits with status 1.
