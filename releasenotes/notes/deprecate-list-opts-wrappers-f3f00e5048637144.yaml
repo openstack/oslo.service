@@ -1,0 +1,8 @@
+---
+deprecations:
+  - |
+    The ``oslo_service.service.list_opts()`` and
+    ``oslo_service.wsgi.list_opts()`` functions are deprecated. Use
+    ``oslo_service.opts.list_service_opts()`` and
+    ``oslo_service.opts.list_wsgi_opts()`` instead. The existing
+    ``oslo.config.opts`` namespaces remain unchanged.

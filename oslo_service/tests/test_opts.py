@@ -10,10 +10,93 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import subprocess
+import sys
+
 from oslo_config import cfg
 from oslotest import base as test_base
 
+from oslo_service import _options
 from oslo_service import opts
+
+
+class TestListOpts(test_base.BaseTestCase):
+    def assert_options_are_independent(
+        self, callback, originals, expected_group=None
+    ):
+        [(group, options)] = callback()
+        self.assertEqual(expected_group, group)
+        self.assertEqual(
+            [option.name for option in originals],
+            [option.name for option in options],
+        )
+        for original, option in zip(originals, options):
+            self.assertIsNot(original, option)
+
+        original_default = originals[0].default
+        options[0].default = object()
+        options.pop()
+
+        [(group, fresh_options)] = callback()
+        self.assertEqual(original_default, originals[0].default)
+        self.assertEqual(original_default, fresh_options[0].default)
+        self.assertEqual(len(originals), len(fresh_options))
+
+    def test_periodic_task_options_are_independent(self):
+        self.assert_options_are_independent(
+            opts.list_periodic_task_opts, _options.periodic_opts
+        )
+
+    def test_service_options_are_independent(self):
+        self.assert_options_are_independent(
+            opts.list_service_opts,
+            _options.eventlet_backdoor_opts + _options.service_opts,
+        )
+
+    def test_ssl_options_are_independent(self):
+        self.assert_options_are_independent(
+            opts.list_ssl_opts, _options.ssl_opts, expected_group='ssl'
+        )
+
+    def test_wsgi_options_are_independent(self):
+        self.assert_options_are_independent(
+            opts.list_wsgi_opts, _options.wsgi_opts
+        )
+
+    def test_entry_points_do_not_select_a_backend(self):
+        # Use a fresh process without the test suite's backend hook.
+        code = """
+import sys
+from importlib import metadata
+
+from oslo_service import backend
+
+entry_points = metadata.entry_points(group='oslo.config.opts')
+for namespace, expected_group in (
+    ('oslo.service.periodic_task', None),
+    ('oslo.service.service', None),
+    ('oslo.service.sslutils', 'ssl'),
+    ('oslo.service.wsgi', None),
+):
+    entry_point = next(ep for ep in entry_points if ep.name == namespace)
+    options = entry_point.load()()
+    assert options and options[0][0] == expected_group
+
+assert backend.get_backend_type() is None
+assert backend._backend_hook is None
+assert 'eventlet' not in sys.modules
+assert 'oslo_service.periodic_task' not in sys.modules
+assert 'oslo_service.service' not in sys.modules
+assert 'oslo_service.sslutils' not in sys.modules
+assert 'oslo_service.wsgi' not in sys.modules
+"""
+        result = subprocess.run(
+            [sys.executable, '-c', code],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
 
 
 class TestSetServiceOptsDefaults(test_base.BaseTestCase):

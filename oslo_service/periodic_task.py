@@ -11,7 +11,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
 import logging
 from multiprocessing.reduction import ForkingPickler
 import random
@@ -24,6 +23,7 @@ from oslo_service import _options
 from oslo_service import _spawn_utils
 from oslo_service import backend
 from oslo_service.backend.exceptions import UnsupportedBackendError
+from oslo_service import opts
 from oslo_utils import reflection
 
 LOG = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def _collect_async_task_results(async_results, raise_on_error):
 
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [(None, copy.deepcopy(_options.periodic_opts))]
+    return opts.list_periodic_task_opts()
 
 
 class InvalidPeriodicTaskArg(Exception):

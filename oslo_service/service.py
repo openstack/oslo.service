@@ -17,11 +17,11 @@
 
 """Generic Node base class for all workers that run on hosts."""
 
-import copy
+from debtcollector import removals
 
 from oslo_service.backend import get_component
 
-from oslo_service import _options
+from oslo_service import opts
 
 
 # Dynamically expose components from the backend
@@ -44,13 +44,9 @@ _is_daemon = get_component("_is_daemon")
 _is_sighup_and_daemon = get_component("_is_sighup_and_daemon")
 
 
+@removals.remove(
+    message="Use oslo_service.opts.list_service_opts() instead.",
+)
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [
-        (
-            None,
-            copy.deepcopy(
-                _options.eventlet_backdoor_opts + _options.service_opts
-            ),
-        )
-    ]
+    return opts.list_service_opts()
