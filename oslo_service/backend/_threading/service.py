@@ -409,7 +409,13 @@ class ProcessLauncher:
         if self.no_fork:
             LOG.warning("no_fork=True: running service in main process")
             self.service = service
-            self.service.start()
+            try:
+                self.service.start()
+            except Exception:
+                # Stop what did start, and exit without waiting for the
+                # threads that the service may have left running.
+                LOG.exception('The service failed to start')
+                self._graceful_shutdown(status=1)
             systemd.notify_once()
             self.service.wait()
             return
@@ -440,7 +446,7 @@ class ProcessLauncher:
         # ServiceManager.add() is thread-safe, no need to hold lock
         self._manager.add(ServiceWrapper, workers, args=(service,))
 
-    def _graceful_shutdown(self, *args):
+    def _graceful_shutdown(self, *args, status=0):
         LOG.info('Graceful shutdown start')
         # At this time, first SIGTERM is caught and this handler started the
         # graceful shutdown. We need to ignore the another SIGTERM signal if
@@ -457,7 +463,7 @@ class ProcessLauncher:
             signal.alarm(self.conf.graceful_shutdown_timeout)
         self.service.stop()
         LOG.info('Graceful shutdown finish')
-        os._exit(0)
+        os._exit(status)
 
     def _reload_service(self, *args):
         # TODO(gmaan): This handler is suppose to reload the service but we

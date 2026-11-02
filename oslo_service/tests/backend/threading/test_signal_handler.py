@@ -103,9 +103,21 @@ class SignalHandlerTestCase(TestCase):
         launcher = service.ProcessLauncher(self.conf, no_fork=True)
         launcher.launch_service(self.s1)
         signal_handler = launcher.signal_handler
-        with mock.patch('os._exit'):
+        with mock.patch('os._exit') as mock_exit:
             signal_handler._handle_signal_cb(signal.SIGTERM, 'test')
             mock_stop.assert_called_once_with()
+            mock_exit.assert_called_once_with(0)
+
+    def test_failed_start_stops_the_service_and_exits(self):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+        with (
+            mock.patch.object(self.s1, 'start', side_effect=RuntimeError),
+            mock.patch.object(self.s1, 'stop') as mock_stop,
+            mock.patch('os._exit', side_effect=SystemExit) as mock_exit,
+        ):
+            self.assertRaises(SystemExit, launcher.launch_service, self.s1)
+        mock_stop.assert_called_once_with()
+        mock_exit.assert_called_once_with(1)
 
     def test_second_sigterm_is_ignored(self):
         launcher = service.ProcessLauncher(self.conf, no_fork=True)
