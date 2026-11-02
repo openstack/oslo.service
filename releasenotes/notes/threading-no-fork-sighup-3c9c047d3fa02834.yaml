@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    In the threading backend, a service launched with ``no_fork=True`` now
+    handles SIGHUP as the ``restart_method`` of ``launch()`` says. With
+    ``mutate``, the configuration files are mutated and the service is
+    reset. With ``reload``, they are reloaded and the service is stopped and
+    started again. Before, the process exited without stopping the service,
+    and hung if one of its threads never ended, such as a timer of its
+    thread group. A process in the foreground of a terminal now stops the
+    service and exits on SIGHUP, as on SIGTERM.
