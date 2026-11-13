@@ -386,6 +386,9 @@ class ProcessLauncher:
         self._manager_context = None
         self.service = None
         self.signal_handler = None
+        # For SIGHUP with no_fork; see _reload_service().
+        self._waiting = False
+        self._reload_pending = False
         # NOTE(gmaan): If service is launched with no_fork=True that means
         # service is running in the main process, and we need to handle the
         # signals. In other cases, service processes are handled by the
@@ -453,6 +456,8 @@ class ProcessLauncher:
         # they comes during the graceful shutdown otherwise they will interupt
         # and race the already running graceful shutdown.
         self.signal_handler.ignore_handler('SIGTERM')
+        # A SIGHUP would interrupt the stop to reload the service.
+        self.signal_handler.ignore_handler('SIGHUP')
         # Register alarm signal with conf.graceful_shutdown_timeout.
         # If graceful shutdown is not finished within the
         # timeout, then alarm signal will exit the process.
@@ -461,28 +466,53 @@ class ProcessLauncher:
             and self.signal_handler.is_signal_supported('SIGALRM')
         ):
             signal.alarm(self.conf.graceful_shutdown_timeout)
-        self.service.stop()
+        try:
+            self.service.stop()
+        except Exception:
+            # Exit anyway: a normal exit would wait for the threads that
+            # the service left running.
+            LOG.exception('The service failed to stop')
+            status = status or 1
         LOG.info('Graceful shutdown finish')
         os._exit(status)
 
     def _reload_service(self, *args):
-        # Leave service.wait(), so that _wait_no_fork() handles the signal.
-        raise common_service.SignalExit(signal.SIGHUP)
+        # Interrupt only service.wait(). During start() or restart(), the
+        # SIGHUP leaves a pending reload, which _wait_no_fork() runs once
+        # that call returns.
+        self._reload_pending = True
+        if self._waiting:
+            raise common_service.SignalExit(signal.SIGHUP)
 
     def _wait_no_fork(self):
         while True:
+            # The finally sits inside the try: a SIGHUP that lands before
+            # it clears the flag raises there, and is caught too.
             try:
-                self.service.wait()
-                return
+                try:
+                    self._waiting = True
+                    if not self._reload_pending:
+                        self.service.wait()
+                        return
+                finally:
+                    self._waiting = False
             except common_service.SignalExit as exc:
                 if exc.signo != signal.SIGHUP:
                     raise
+            # This reload handles every SIGHUP so far. One that comes
+            # during the reload leaves one more pending reload.
+            self._reload_pending = False
             # A terminal that hangs up ends the process, as SIGTERM does.
             # Otherwise the process reads its configuration files again.
             if not common_service.is_daemon():
                 self._graceful_shutdown()
                 return
-            self.restart()
+            LOG.info('Caught SIGHUP, reading the configuration files again')
+            try:
+                self.restart()
+            except Exception:
+                LOG.exception('The service failed to restart')
+                self._graceful_shutdown(status=1)
 
     def _fast_exit(self, *args):
         LOG.info('Caught SIGINT signal, instantaneous exiting')
@@ -524,7 +554,6 @@ class ProcessLauncher:
         """
         if not self.no_fork:
             raise NotImplementedError()
-        LOG.info('Caught SIGHUP, reading the configuration files again')
         if self.restart_method == 'reload':
             self.conf.reload_config_files()
             self.service.stop()

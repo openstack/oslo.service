@@ -57,6 +57,27 @@ class DummyService(service.ServiceBase):
         pass
 
 
+class LateSighupProcessLauncher(service.ProcessLauncher):
+    """Gets SIGHUPs just before _wait_no_fork() clears _waiting.
+
+    Python runs a signal handler between any two bytecodes, so a SIGHUP can
+    land in the finally that clears the flag.
+    """
+
+    late_sighups = 0
+
+    @property
+    def _waiting(self):
+        return self.__dict__.get('_waiting_flag', False)
+
+    @_waiting.setter
+    def _waiting(self, value):
+        if not value and self._waiting and self.late_sighups:
+            self.late_sighups -= 1
+            self.signal_handler._handle_signal_cb(signal.SIGHUP, None)
+        self.__dict__['_waiting_flag'] = value
+
+
 class SignalHandlerTestCase(TestCase):
     def setUp(self):
         super().setUp()
@@ -126,9 +147,11 @@ class SignalHandlerTestCase(TestCase):
         self.assertEqual(4, len(signal_handler._signal_handlers))
         with mock.patch('os._exit'):
             signal_handler._handle_signal_cb(signal.SIGTERM, 'test')
-            self.assertEqual(3, len(signal_handler._signal_handlers))
-            signo = signal_handler._signals_by_name['SIGTERM']
-            self.assertNotIn(signo, signal_handler._signal_handlers)
+            # SIGHUP is ignored too.
+            self.assertEqual(2, len(signal_handler._signal_handlers))
+            for name in ('SIGTERM', 'SIGHUP'):
+                signo = signal_handler._signals_by_name[name]
+                self.assertNotIn(signo, signal_handler._signal_handlers)
 
     def _launch_with_sighup(self, launcher):
         """Launch the service, which gets a SIGHUP in its first wait()."""
@@ -193,6 +216,193 @@ class SignalHandlerTestCase(TestCase):
         stop.assert_called_once_with()
         exit_.assert_called_once_with(0)
         reset.assert_not_called()
+
+    def test_failed_start_exits_when_stop_fails(self):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+        with (
+            mock.patch.object(self.s1, 'start', side_effect=RuntimeError),
+            mock.patch.object(self.s1, 'stop', side_effect=AttributeError),
+            mock.patch('os._exit', side_effect=SystemExit) as exit_,
+        ):
+            self.assertRaises(SystemExit, launcher.launch_service, self.s1)
+        exit_.assert_called_once_with(1)
+
+    def test_sigterm_exits_when_stop_fails(self):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+        launcher.launch_service(self.s1)
+        with (
+            mock.patch.object(self.s1, 'stop', side_effect=AttributeError),
+            mock.patch('os._exit') as exit_,
+        ):
+            launcher.signal_handler._handle_signal_cb(signal.SIGTERM, None)
+        exit_.assert_called_once_with(1)
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_failed_reset_stops_the_service_and_exits(self, mock_daemon):
+        launcher = service.ProcessLauncher(
+            self.conf, no_fork=True, restart_method='mutate'
+        )
+        with (
+            mock.patch.object(self.conf, 'mutate_config_files'),
+            mock.patch.object(self.s1, 'reset', side_effect=RuntimeError),
+            mock.patch.object(self.s1, 'stop') as stop,
+            mock.patch('os._exit', side_effect=SystemExit) as exit_,
+        ):
+            self.assertRaises(SystemExit, self._launch_with_sighup, launcher)
+        stop.assert_called_once_with()
+        exit_.assert_called_once_with(1)
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_failed_restart_stops_the_service_and_exits(self, mock_daemon):
+        launcher = service.ProcessLauncher(
+            self.conf, no_fork=True, restart_method='reload'
+        )
+        with (
+            mock.patch.object(self.conf, 'reload_config_files'),
+            mock.patch.object(
+                self.s1, 'start', side_effect=[None, RuntimeError]
+            ),
+            mock.patch.object(self.s1, 'stop') as stop,
+            mock.patch('os._exit', side_effect=SystemExit) as exit_,
+        ):
+            self.assertRaises(SystemExit, self._launch_with_sighup, launcher)
+        # Once to restart the service, once to shut down.
+        self.assertEqual(2, stop.call_count)
+        exit_.assert_called_once_with(1)
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighup_during_start_reloads_after_start(self, mock_daemon):
+        launcher = service.ProcessLauncher(
+            self.conf, no_fork=True, restart_method='mutate'
+        )
+        calls = mock.Mock()
+
+        def start():
+            calls.start()
+            launcher.signal_handler._handle_signal_cb(signal.SIGHUP, None)
+            calls.start_done()
+
+        with (
+            mock.patch.object(self.conf, 'mutate_config_files', calls.mutate),
+            mock.patch.object(self.s1, 'start', side_effect=start),
+            mock.patch.object(self.s1, 'reset', calls.reset),
+            mock.patch.object(self.s1, 'wait', calls.wait),
+        ):
+            launcher.launch_service(self.s1)
+        self.assertEqual(
+            ['start', 'start_done', 'mutate', 'reset', 'wait'],
+            [call[0] for call in calls.mock_calls],
+        )
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighups_during_restart_reload_once_more(self, mock_daemon):
+        launcher = service.ProcessLauncher(
+            self.conf, no_fork=True, restart_method='mutate'
+        )
+        resets = []
+
+        def reset():
+            resets.append(True)
+            if len(resets) == 1:
+                # Several SIGHUPs during one restart give one more reload,
+                # not one reload each.
+                for _ in range(3):
+                    launcher.signal_handler._handle_signal_cb(
+                        signal.SIGHUP, None
+                    )
+
+        with (
+            mock.patch.object(self.conf, 'mutate_config_files'),
+            mock.patch.object(self.s1, 'reset', side_effect=reset),
+        ):
+            # The launcher waits for the service again after both reloads.
+            self.assertEqual(2, self._launch_with_sighup(launcher))
+        self.assertEqual(2, len(resets))
+
+    def test_sighup_during_failed_start_does_not_reload(self):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+
+        def start():
+            launcher.signal_handler._handle_signal_cb(signal.SIGHUP, None)
+            raise RuntimeError()
+
+        with (
+            mock.patch.object(self.s1, 'start', side_effect=start),
+            mock.patch.object(self.s1, 'reset') as reset,
+            mock.patch('os._exit', side_effect=SystemExit) as exit_,
+        ):
+            self.assertRaises(SystemExit, launcher.launch_service, self.s1)
+        exit_.assert_called_once_with(1)
+        reset.assert_not_called()
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighup_during_shutdown_is_ignored(self, mock_daemon):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+
+        def wait():
+            launcher.signal_handler._handle_signal_cb(signal.SIGTERM, None)
+
+        def stop():
+            launcher.signal_handler._handle_signal_cb(signal.SIGHUP, None)
+
+        with (
+            mock.patch.object(self.s1, 'wait', side_effect=wait),
+            mock.patch.object(self.s1, 'stop', side_effect=stop),
+            mock.patch.object(self.s1, 'reset') as reset,
+            mock.patch('os._exit', side_effect=SystemExit) as exit_,
+        ):
+            self.assertRaises(SystemExit, launcher.launch_service, self.s1)
+        exit_.assert_called_once_with(0)
+        reset.assert_not_called()
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighup_while_a_sighup_unwinds(self, mock_daemon):
+        launcher = LateSighupProcessLauncher(
+            self.conf, no_fork=True, restart_method='mutate'
+        )
+        launcher.late_sighups = 1
+        with (
+            mock.patch.object(self.conf, 'mutate_config_files'),
+            mock.patch.object(self.s1, 'reset') as reset,
+        ):
+            # The launcher waits for the service again after one reload.
+            self.assertEqual(2, self._launch_with_sighup(launcher))
+        reset.assert_called_once_with()
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_sighup_while_a_pending_reload_starts(self, mock_daemon):
+        launcher = LateSighupProcessLauncher(
+            self.conf, no_fork=True, restart_method='mutate'
+        )
+
+        def start():
+            launcher.signal_handler._handle_signal_cb(signal.SIGHUP, None)
+            launcher.late_sighups = 1
+
+        with (
+            mock.patch.object(self.conf, 'mutate_config_files'),
+            mock.patch.object(self.s1, 'start', side_effect=start),
+            mock.patch.object(self.s1, 'reset') as reset,
+            mock.patch.object(self.s1, 'wait') as wait,
+        ):
+            launcher.launch_service(self.s1)
+        reset.assert_called_once_with()
+        wait.assert_called_once_with()
+
+    @mock.patch.object(service.common_service, 'is_daemon', return_value=True)
+    def test_other_signal_exit_leaves_the_wait(self, mock_daemon):
+        launcher = service.ProcessLauncher(self.conf, no_fork=True)
+        signal_exit = service.common_service.SignalExit(signal.SIGINT)
+        with (
+            mock.patch.object(
+                self.s1, 'wait', side_effect=[signal_exit, None]
+            ),
+            mock.patch.object(launcher, 'restart') as restart,
+            self.assertRaises(service.common_service.SignalExit) as caught,
+        ):
+            launcher.launch_service(self.s1)
+        self.assertIs(signal_exit, caught.exception)
+        restart.assert_not_called()
 
     @mock.patch.object(service.ProcessLauncher, '_on_alarm_exit')
     def test_sigterm_timeout_terminated_by_sigalrm(self, mock_alarm):
