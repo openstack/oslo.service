@@ -22,13 +22,15 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 import traceback
 from unittest import mock
 
-import eventlet
-from eventlet import event
-from eventlet import patcher
+if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
+    import eventlet
+    from eventlet import patcher
+
 from oslotest import base as test_base
 
 from oslo_service import service
@@ -364,11 +366,19 @@ class ServiceRestartTest(ServiceTestBase):
 class _Service(service.Service):
     def __init__(self):
         super().__init__()
-        self.init = event.Event()
+        if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
+            from eventlet import event
+
+            self.init = event.Event()
+        else:
+            self.init = threading.Event()
         self.cleaned_up = False
 
     def start(self):
-        self.init.send()
+        if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
+            self.init.send()
+        else:
+            self.init.set()
 
     def stop(self):
         self.cleaned_up = True
@@ -658,12 +668,20 @@ class ProcessLauncherTest(base.ServiceBaseTestCase):
 class GracefulShutdownTestService(service.Service):
     def __init__(self):
         super().__init__()
-        self.finished_task = event.Event()
+        if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
+            from eventlet import event
+
+            self.finished_task = event.Event()
+        else:
+            self.finished_task = threading.Event()
 
     def start(self, sleep_amount):
         def sleep_and_send(finish_event):
             time.sleep(sleep_amount)
-            finish_event.send()
+            if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
+                finish_event.send()
+            else:
+                finish_event.set()
 
         self.tg.add_thread(sleep_and_send, self.finished_task)
 

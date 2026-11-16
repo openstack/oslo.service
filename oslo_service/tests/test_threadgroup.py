@@ -17,9 +17,10 @@
 Unit Tests for thread groups
 """
 
+import os
+import threading
 import time
-
-from eventlet import event
+import unittest
 
 from oslotest import base as test_base
 
@@ -105,7 +106,12 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         self.assertEqual(('arg',), timer.args)
         self.assertEqual({'kwarg': 'kwarg'}, timer.kw)
 
-    def test_stop_current_thread(self):
+    @unittest.skipIf(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
+        "skipping eventlet tests",
+    )
+    def test_stop_current_thread_eventlet(self):
+        from eventlet import event
 
         stop_event = event.Event()
         quit_event = event.Event()
@@ -123,6 +129,26 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         stop_event.wait()
         self.assertEqual(1, len(self.tg.threads))
         quit_event.send('quit_event')
+
+    def test_stop_current_thread_threading(self):
+        stop_event = threading.Event()
+        quit_event = threading.Event()
+
+        def stop_self(*args, **kwargs):
+            if args[0] == 1:
+                time.sleep(1)
+                self.tg.stop()
+                stop_event.set()
+            quit_event.wait()
+
+        for i in range(0, 4):
+            self.tg.add_thread(stop_self, i, kwargs='kwargs')
+
+        self.assertTrue(
+            stop_event.wait(timeout=5), "stop_self thread never called stop()"
+        )
+        self.assertEqual(1, len(self.tg.threads))
+        quit_event.set()
 
     def test_stop_immediately(self):
 
@@ -153,6 +179,11 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
         self.assertTrue(end_time - start_time >= 1)
         self.assertEqual(0, len(self.tg.timers))
 
+    @unittest.skipIf(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
+        'Cancelling an unstarted greenlet requires eventlet; native threads '
+        'start immediately and cannot be cancelled.',
+    )
     def test_cancel_early(self):
 
         def foo(*args, **kwargs):
@@ -174,6 +205,11 @@ class ThreadGroupTestCase(test_base.BaseTestCase):
 
         self.assertEqual(1, len(self.tg.threads))
 
+    @unittest.skipIf(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
+        'Forcibly killing a running greenlet requires eventlet; native '
+        'threads cannot be killed.',
+    )
     def test_cancel_timeout(self):
 
         def foo(*args, **kwargs):

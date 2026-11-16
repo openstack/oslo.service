@@ -12,11 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import threading
 import time
+import unittest
 from unittest import mock
 
-import eventlet
+if not os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'):
+    import eventlet
 from oslotest import base as test_base
 
 from oslo_service import fixture
@@ -35,6 +38,10 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
         self.assertTrue(timer.start(interval=0.5).wait())
 
+    @unittest.skipIf(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
+        'The eventlet hub clock requires eventlet.',
+    )
     def test_monotonic_timer(self):
         def _raise_it():
             clock = eventlet.hubs.get_hub().clock
@@ -44,6 +51,10 @@ class LoopingCallTestCase(test_base.BaseTestCase):
         timer = loopingcall.FixedIntervalLoopingCall(_raise_it)
         self.assertTrue(timer.start(interval=0.5).wait())
 
+    @unittest.skipIf(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
+        'The eventlet hub clock requires eventlet.',
+    )
     def test_eventlet_clock(self):
         # Make sure that by default the oslo_service.service_hub() kicks in,
         # test in the main thread
@@ -170,6 +181,10 @@ class DynamicLoopingCallTestCase(test_base.BaseTestCase):
         timer = loopingcall.DynamicLoopingCall(_raise_it)
         self.assertTrue(timer.start().wait())
 
+    @unittest.skipIf(
+        os.environ.get('OSLO_SERVICE_SKIP_EVENTLET'),
+        'The eventlet hub clock requires eventlet.',
+    )
     def test_monotonic_timer(self):
         def _raise_it():
             clock = eventlet.hubs.get_hub().clock
