@@ -10,11 +10,39 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 from typing import Any
 
 from oslo_config import cfg
 
 from oslo_service import _options
+
+
+def list_periodic_task_opts():
+    """Return periodic task options without loading the implementation."""
+    return [(None, copy.deepcopy(_options.periodic_opts))]
+
+
+def list_service_opts():
+    """Return service options without loading a backend."""
+    return [
+        (
+            None,
+            copy.deepcopy(
+                _options.eventlet_backdoor_opts + _options.service_opts
+            ),
+        )
+    ]
+
+
+def list_ssl_opts():
+    """Return SSL options without loading the deprecated SSL module."""
+    return [('ssl', copy.deepcopy(_options.ssl_opts))]
+
+
+def list_wsgi_opts():
+    """Return WSGI options without loading a backend or Eventlet."""
+    return [(None, copy.deepcopy(_options.wsgi_opts))]
 
 
 def register_service_opts(

@@ -42,10 +42,10 @@ eventlet = [
 ]
 
 [project.entry-points."oslo.config.opts"]
-"oslo.service.periodic_task" = "oslo_service.periodic_task:list_opts"
-"oslo.service.service" = "oslo_service.service:list_opts"
-"oslo.service.sslutils" = "oslo_service.sslutils:list_opts"
-"oslo.service.wsgi" = "oslo_service.wsgi:list_opts"
+"oslo.service.periodic_task" = "oslo_service.opts:list_periodic_task_opts"
+"oslo.service.service" = "oslo_service.opts:list_service_opts"
+"oslo.service.sslutils" = "oslo_service.opts:list_ssl_opts"
+"oslo.service.wsgi" = "oslo_service.opts:list_wsgi_opts"
 
 [tool.setuptools.packages.find]
 include = ["oslo_service*"]

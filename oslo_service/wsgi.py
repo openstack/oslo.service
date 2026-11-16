@@ -17,7 +17,6 @@
 
 """Utility methods for working with WSGI servers."""
 
-import copy
 import os
 import socket
 
@@ -34,6 +33,7 @@ from oslo_service._i18n import _
 from oslo_service import _options
 from oslo_service import backend
 from oslo_service.backend.exceptions import UnsupportedBackendError
+from oslo_service import opts
 from oslo_service import service
 from oslo_service import sslutils
 
@@ -57,9 +57,12 @@ def _check_backend_compatibility():
         raise UnsupportedBackendError(message)
 
 
+@removals.remove(
+    message="Use oslo_service.opts.list_wsgi_opts() instead.",
+)
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [(None, copy.deepcopy(_options.wsgi_opts))]
+    return opts.list_wsgi_opts()
 
 
 def register_opts(conf):

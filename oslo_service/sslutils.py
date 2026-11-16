@@ -12,12 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
 import os
 import ssl
 
 from oslo_service._i18n import _
 from oslo_service import _options
+from oslo_service import opts
 
 from debtcollector import removals
 
@@ -53,7 +53,7 @@ for protocol in _OPTIONAL_PROTOCOLS:
 
 def list_opts():
     """Entry point for oslo-config-generator."""
-    return [(config_section, copy.deepcopy(_options.ssl_opts))]
+    return opts.list_ssl_opts()
 
 
 def register_opts(conf):
