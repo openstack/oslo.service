@@ -1,0 +1,7 @@
+---
+other:
+  - |
+    Backend dependency errors now identify the matching installation extra,
+    such as ``oslo.service[eventlet]`` or ``oslo.service[threading]``.
+    The Eventlet backend logs a warning on first initialization to recommend
+    migration to the threading backend.

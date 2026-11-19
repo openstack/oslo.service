@@ -139,6 +139,9 @@ class TestBackendLoadingErrors(BackendTestCase):
                 backend_module.importlib, "import_module", return_value=module
             )
         )
+        self.warning = self.enterContext(
+            mock.patch.object(backend_module.LOG, "warning")
+        )
 
     def assert_cache_empty(self):
         self.assertIsNone(backend_module._cached_backend)
@@ -149,8 +152,9 @@ class TestBackendLoadingErrors(BackendTestCase):
         for backend_type, dependency in (
             (BackendType.EVENTLET, "eventlet"),
             (BackendType.THREADING, "cotyledon"),
+            (BackendType.THREADING, "futurist"),
         ):
-            with self.subTest(backend=backend_type):
+            with self.subTest(backend=backend_type, dependency=dependency):
                 self.import_module.reset_mock()
                 error = ModuleNotFoundError(
                     f"No module named {dependency!r}", name=dependency
@@ -168,13 +172,16 @@ class TestBackendLoadingErrors(BackendTestCase):
                 self.assertIn(
                     f"required module {dependency!r} is not installed", message
                 )
-                self.assertIn("Install the dependencies", message)
+                self.assertIn(
+                    f"Install 'oslo.service[{backend_type.value}]'", message
+                )
                 self.assertNotIn("Unknown backend", message)
                 self.assertIs(caught.exception.__cause__, error)
                 self.import_module.assert_called_once_with(
                     f"oslo_service.backend._{backend_type.value}"
                 )
                 self.assert_cache_empty()
+                self.warning.assert_not_called()
 
     def test_missing_backend_module(self):
         module_name = "oslo_service.backend._eventlet"
@@ -190,6 +197,7 @@ class TestBackendLoadingErrors(BackendTestCase):
 
         self.assertIs(caught.exception.__cause__, error)
         self.assert_cache_empty()
+        self.warning.assert_not_called()
 
     def test_missing_backend_class(self):
         self.import_module.return_value = types.SimpleNamespace()
@@ -202,6 +210,25 @@ class TestBackendLoadingErrors(BackendTestCase):
 
         self.assertIsInstance(caught.exception.__cause__, AttributeError)
         self.assert_cache_empty()
+        self.warning.assert_not_called()
+
+    def test_eventlet_backend_warns_once(self):
+        self.assertIs(get_backend(), self.backend)
+        init_backend(BackendType.EVENTLET)
+        get_backend()
+        backend_module.get_component("ServiceBase")
+
+        self.warning.assert_called_once_with(
+            "The Eventlet backend is in use. Plan to migrate your "
+            "application to the threading backend."
+        )
+
+    def test_threading_backend_does_not_warn(self):
+        init_backend(BackendType.THREADING)
+        get_backend()
+        init_backend(BackendType.THREADING)
+
+        self.warning.assert_not_called()
 
     def test_successful_initialization(self):
         for backend_type in BackendType:
@@ -243,10 +270,12 @@ class TestBackendLoadingErrors(BackendTestCase):
                 get_backend()
 
         self.assertIs(caught.exception.__cause__, error)
+        self.assertIn("oslo.service[eventlet]", str(caught.exception))
         self.import_module.assert_called_once_with(
             "oslo_service.backend._eventlet"
         )
         self.assert_cache_empty()
+        self.warning.assert_not_called()
 
     def test_import_errors_are_preserved(self):
         for error in (
@@ -263,6 +292,7 @@ class TestBackendLoadingErrors(BackendTestCase):
 
                 self.assertIs(caught.exception, error)
                 self.assert_cache_empty()
+                self.warning.assert_not_called()
 
     def test_failed_import_allows_retry(self):
         self.import_module.side_effect = ModuleNotFoundError(
@@ -273,9 +303,11 @@ class TestBackendLoadingErrors(BackendTestCase):
             init_backend(BackendType.EVENTLET)
 
         self.assert_cache_empty()
+        self.warning.assert_not_called()
         self.import_module.side_effect = None
         init_backend(BackendType.EVENTLET)
         self.assertIs(get_backend(), self.backend)
+        self.warning.assert_called_once()
         self.assertIs(backend_module.get_backend_type(), BackendType.EVENTLET)
         self.assertIs(backend_module._cached_components, self.components)
 
@@ -287,6 +319,7 @@ class TestBackendLoadingErrors(BackendTestCase):
             for error_type in (RuntimeError, AttributeError, ImportError):
                 with self.subTest(stage=stage, error=error_type.__name__):
                     backend_module._reset_backend()
+                    self.warning.reset_mock()
                     error = error_type("Backend initialization failed")
                     failing_mock.side_effect = error
 
@@ -295,9 +328,11 @@ class TestBackendLoadingErrors(BackendTestCase):
 
                     self.assertIs(caught.exception, error)
                     self.assert_cache_empty()
+                    self.warning.assert_not_called()
                     failing_mock.side_effect = None
                     init_backend(BackendType.EVENTLET)
                     self.assertIs(get_backend(), self.backend)
+                    self.warning.assert_called_once()
                     self.assertIs(
                         backend_module.get_backend_type(), BackendType.EVENTLET
                     )

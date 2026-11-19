@@ -113,7 +113,7 @@ def init_backend(type_: BackendType) -> None:
         raise ImportError(
             f"Cannot initialize {backend_name!r} backend: "
             f"required module {exc.name!r} is not installed. "
-            f"Install the dependencies for the {backend_name!r} backend."
+            f"Install 'oslo.service[{backend_name}]' to use this backend."
         ) from exc
 
     try:
@@ -131,6 +131,11 @@ def init_backend(type_: BackendType) -> None:
     _cached_backend_type = type_
     _cached_components = new_components
     LOG.info("Backend %r successfully loaded and cached.", type_.value)
+    if type_ == BackendType.EVENTLET:
+        LOG.warning(
+            "The Eventlet backend is in use. Plan to migrate your "
+            "application to the threading backend."
+        )
 
 
 def get_backend() -> BaseBackend:
